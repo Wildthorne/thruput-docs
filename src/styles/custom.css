@@ -1,0 +1,208 @@
+:root {
+  --sl-text-h1: 2rem;
+  --sl-text-h2: 1.5rem;
+  --sl-text-h3: 1.25rem;
+  --sl-text-h4: 1.125rem;
+}
+
+/* ── Reduce hero whitespace on splash page ── */
+[data-has-hero] .hero {
+  padding-block: 2rem 1rem;
+}
+
+[data-has-hero] .hero .stack {
+  gap: 0.5rem;
+}
+
+/* ── Two Paths Section ── */
+
+.two-paths {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+  margin-top: 1rem;
+}
+
+@media (max-width: 640px) {
+  .two-paths {
+    grid-template-columns: 1fr;
+  }
+}
+
+.path-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1.5rem;
+  border-radius: 0.75rem;
+  text-decoration: none;
+  color: inherit;
+  border: 1px solid var(--sl-color-gray-5);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.path-card:hover {
+  text-decoration: none;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+:root[data-theme="dark"] .path-card:hover {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.path-build {
+  border-left: 3px solid var(--sl-color-accent);
+}
+
+.path-build:hover {
+  border-color: var(--sl-color-accent);
+}
+
+.path-understand {
+  border-left: 3px solid var(--sl-color-gray-3);
+}
+
+.path-understand:hover {
+  border-color: var(--sl-color-gray-3);
+}
+
+.path-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.path-build .path-label {
+  color: var(--sl-color-accent);
+}
+
+.path-understand .path-label {
+  color: var(--sl-color-gray-3);
+}
+
+.path-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--sl-color-white);
+}
+
+.path-desc {
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--sl-color-gray-2);
+}
+
+.path-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-top: 0.25rem;
+}
+
+.path-step {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--sl-color-gray-2);
+}
+
+.step-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 50%;
+  font-size: 0.65rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.path-build .step-num {
+  background: var(--sl-color-accent);
+  color: var(--sl-color-black);
+}
+
+.path-understand .step-num {
+  background: var(--sl-color-gray-4);
+  color: var(--sl-color-gray-1);
+}
+
+.step-text {
+  font-weight: 500;
+}
+
+.path-cta {
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-top: auto;
+  padding-top: 0.5rem;
+}
+
+.path-build .path-cta {
+  color: var(--sl-color-accent);
+}
+
+.path-understand .path-cta {
+  color: var(--sl-color-gray-2);
+}
+
+.path-arrow {
+  display: inline-block;
+  transition: transform 0.15s ease;
+}
+
+.path-card:hover .path-arrow {
+  transform: translateX(3px);
+}
+
+/* ── Why Groundhog Grid ── */
+
+.why-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-top: 0.75rem;
+}
+
+@media (max-width: 480px) {
+  .why-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.why-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 1rem 1.25rem;
+  border-left: 2px solid var(--sl-color-gray-5);
+}
+
+.why-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.why-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  flex-shrink: 0;
+  color: var(--sl-color-accent);
+}
+
+.why-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--sl-color-white);
+}
+
+.why-desc {
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--sl-color-gray-2);
+}

@@ -1,40 +1,90 @@
 ---
-title: Welcome to Starlight
-description: Get started building your docs site with Starlight.
-template: splash # Remove or comment out this line to display the site sidebar on this page.
+title: Groundhog
+description: Developer documentation for the Groundhog L1 blockchain.
+template: splash
+pagefind: false
+prev: false
+next: false
 hero:
-  tagline: Congrats on setting up a new Starlight project!
-  image:
-    file: ../../assets/houston.webp
-  actions:
-    - text: Example Guide
-      link: /guides/example/
-      icon: right-arrow
-    - text: Read the Starlight docs
-      link: https://starlight.astro.build
-      icon: external
-      variant: minimal
+  title: Groundhog
+  tagline: Developer docs. The L1 built for abundance, not scarcity.
+  actions: []
 ---
 
-import { Card, CardGrid } from '@astrojs/starlight/components';
+## Pick Your Path
 
-## Next steps
+<div class="two-paths">
+  <a href="/start/choose-your-background/" class="path-card path-build">
+    <span class="path-label">Builder</span>
+    <span class="path-title">Build something</span>
+    <span class="path-desc">Pick your background, set up the SDK, write a contract. You'll deploy a working counter in 15 minutes.</span>
+    <span class="path-steps">
+      <span class="path-step">
+        <span class="step-num">1</span>
+        <span class="step-text">Choose Your Background</span>
+      </span>
+      <span class="path-step">
+        <span class="step-num">2</span>
+        <span class="step-text">Getting Started</span>
+      </span>
+      <span class="path-step">
+        <span class="step-num">3</span>
+        <span class="step-text">Tutorials</span>
+      </span>
+    </span>
+    <span class="path-cta">Start here <span class="path-arrow">&rarr;</span></span>
+  </a>
+  <a href="/how-it-works/architecture/" class="path-card path-understand">
+    <span class="path-label">Architect</span>
+    <span class="path-title">Understand the engine</span>
+    <span class="path-desc">How Groundhog achieves parallel execution, what commutativity means at the protocol level, and why the tradeoffs work.</span>
+    <span class="path-steps">
+      <span class="path-step">
+        <span class="step-num">1</span>
+        <span class="step-text">Architecture</span>
+      </span>
+      <span class="path-step">
+        <span class="step-num">2</span>
+        <span class="step-text">Execution Model</span>
+      </span>
+      <span class="path-step">
+        <span class="step-num">3</span>
+        <span class="step-text">Deep Dive</span>
+      </span>
+    </span>
+    <span class="path-cta">Start here <span class="path-arrow">&rarr;</span></span>
+  </a>
+</div>
 
-<CardGrid stagger>
-	<Card title="Update content" icon="pencil">
-		Edit `src/content/docs/index.mdx` to see this page change.
-	</Card>
-	<Card title="Change page layout" icon="document">
-		Delete `template: splash` in `src/content/docs/index.mdx` to display a
-		sidebar on this page.
-	</Card>
-	<Card title="Add new content" icon="add-document">
-		Add Markdown or MDX files to `src/content/docs` to create new pages.
-	</Card>
-	<Card title="Configure your site" icon="setting">
-		Edit your `sidebar` and other config in `astro.config.mjs`.
-	</Card>
-	<Card title="Read the docs" icon="open-book">
-		Learn more in [the Starlight Docs](https://starlight.astro.build/).
-	</Card>
-</CardGrid>
+## Why Groundhog?
+
+<div class="why-grid">
+  <div class="why-item">
+    <span class="why-header">
+      <svg class="why-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+      <span class="why-title">Free Compute</span>
+    </span>
+    <span class="why-desc">No gas fees. Hold HOG tokens for capacity, not pay per operation. Storage is a refundable deposit, not a burn.</span>
+  </div>
+  <div class="why-item">
+    <span class="why-header">
+      <svg class="why-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="13 17 18 12 13 7"/><polyline points="6 17 11 12 6 7"/></svg>
+      <span class="why-title">1M+ TPS</span>
+    </span>
+    <span class="why-desc">Commutative operations execute in parallel without coordination. Same result regardless of execution order.</span>
+  </div>
+  <div class="why-item">
+    <span class="why-header">
+      <svg class="why-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      <span class="why-title">Irrevocable Finality</span>
+    </span>
+    <span class="why-desc">Transactions are final when confirmed. No reorgs, no probabilistic finality, no waiting.</span>
+  </div>
+  <div class="why-item">
+    <span class="why-header">
+      <svg class="why-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      <span class="why-title">No MEV</span>
+    </span>
+    <span class="why-desc">Transaction order doesn't affect outcomes. Nothing to extract because ordering doesn't matter.</span>
+  </div>
+</div>
