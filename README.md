@@ -1,49 +1,33 @@
-# Starlight Starter Kit: Basics
+# Groundhog Developer Docs
 
-[![Built with Starlight](https://astro.badg.es/v2/built-with-starlight/tiny.svg)](https://starlight.astro.build)
+Developer documentation for the [Groundhog](https://groundhogchain.dev) L1 blockchain. Built with [Astro](https://astro.build) + [Starlight](https://starlight.astro.build).
 
-```
-pnpm create astro@latest -- --template starlight
-```
+## Development
 
-> 🧑‍🚀 **Seasoned astronaut?** Delete this file. Have fun!
-
-## 🚀 Project Structure
-
-Inside of your Astro + Starlight project, you'll see the following folders and files:
-
-```
-.
-├── public/
-├── src/
-│   ├── assets/
-│   ├── content/
-│   │   └── docs/
-│   └── content.config.ts
-├── astro.config.mjs
-├── package.json
-└── tsconfig.json
+```bash
+pnpm install       # Install dependencies
+pnpm dev           # Dev server at localhost:4321
+pnpm build         # Production build to dist/
+pnpm preview       # Preview production build locally
 ```
 
-Starlight looks for `.md` or `.mdx` files in the `src/content/docs/` directory. Each file is exposed as a route based on its file name.
+## Content
 
-Images can be added to `src/assets/` and embedded in Markdown with a relative link.
+Markdown files live in `src/content/docs/`, organized by section. The sidebar is manually configured in `astro.config.mjs`.
 
-Static assets, like favicons, can be placed in the `public/` directory.
+| Section | Path | Description |
+|---------|------|-------------|
+| Concepts | `start/` | Background guides by developer archetype |
+| Tutorials | `start/`, `tutorials/` | Getting Started + step-by-step contract builds |
+| Tools | `tools/` | TypeScript SDK, block explorer, wallet, faucet |
+| How It Works | `how-it-works/` | Architecture, execution model, contracts |
+| Reference | `reference/` | Storage types, syscalls, SDK macros, error handling |
+| Migration Guides | `migration/` | Stellar, EVM, Solana migration paths |
+| Community | `community/` | Contributing, security, roadmap |
 
-## 🧞 Commands
+## Adding a Page
 
-All commands are run from the root of the project, from a terminal:
-
-| Command                   | Action                                           |
-| :------------------------ | :----------------------------------------------- |
-| `pnpm install`             | Installs dependencies                            |
-| `pnpm dev`             | Starts local dev server at `localhost:4321`      |
-| `pnpm build`           | Build your production site to `./dist/`          |
-| `pnpm preview`         | Preview your build locally, before deploying     |
-| `pnpm astro ...`       | Run CLI commands like `astro add`, `astro check` |
-| `pnpm astro -- --help` | Get help using the Astro CLI                     |
-
-## 👀 Want to learn more?
-
-Check out [Starlight’s docs](https://starlight.astro.build/), read [the Astro documentation](https://docs.astro.build), or jump into the [Astro Discord server](https://astro.build/chat).
+1. Create a `.md` file in the appropriate `src/content/docs/<section>/` directory
+2. Add frontmatter with `title` and `description`
+3. Add the slug to the sidebar array in `astro.config.mjs`
+4. Run `pnpm build` to verify
