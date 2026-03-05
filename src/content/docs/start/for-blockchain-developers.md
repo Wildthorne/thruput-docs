@@ -67,9 +67,9 @@ fn _adjust_balance(&mut self, owner: &ContractAddress, diff: Difference) {
 }
 ```
 
-`strict_inc(diff)` doesn't read-then-write. It says: "adjust this value by `diff`." Two concurrent transfers both produce deltas. At block close, the deltas merge: the balance decreases by both amounts. If the combined result would be negative, one transaction is excluded from the block. No stale reads. No race condition. No ordering required.
+`strict_inc(diff)` doesn't read-then-write. It says: "adjust this value by `diff`." The diff can be positive (add) or negative (subtract), and both directions commute with each other. Two concurrent transfers from the same account both produce negative deltas. A transfer in and a transfer out produce deltas with opposite signs. At block close, all deltas merge: the balance reflects every operation. If the combined result would be negative, one transaction is excluded from the block. No stale reads. No race condition. No ordering required.
 
-NNInt does have a low-level `set()` method for absolute writes, but using it destroys commutativity: any concurrent `strict_inc()` on the same key conflicts with a `set()`, and one transaction gets excluded. **The non-commutative path exists, but the system makes it expensive.** Every contract in the SDK uses `strict_inc()` exclusively.
+NNInt does have a low-level `set()` method for absolute writes. It's there if you need it, but using it destroys commutativity: any concurrent `strict_inc()` on the same key conflicts with a `set()`, and one transaction gets excluded. Every contract in the SDK uses `strict_inc()` exclusively.
 
 All transactions in a block read the same frozen snapshot. Your code produces deltas against that snapshot. At block close, all deltas merge deterministically. This is why ordering doesn't matter, and why you don't need to think about it. For the full details on this model, see [Execution Model](/how-it-works/execution-model/).
 
@@ -81,7 +81,7 @@ On most chains, you control parallelism through annotations, access lists, or co
 
 | I need to... | Use | Parallel-safe? |
 |---|---|---|
-| Track a balance or counter | `NNInt` | Yes, concurrent increments merge |
+| Track a balance or counter | `NNInt` | Yes, increments and decrements both commute |
 | Store data per account/key | `Map<K, V>` | Yes, different keys are independent |
 | Buffer items for later processing | `RetrocausalQueue` | Yes for inserts, sequenced for consumes |
 | Store a single record (owner, config) | `Bytestring` | No, concurrent writes conflict |
