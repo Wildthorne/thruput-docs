@@ -103,7 +103,7 @@ client.transfer(&recipient, 100);
 | CPI (cross-program invocation) | Cross-contract calls | Same concept, simpler API, snapshot isolation. |
 | `Signer<'info>` propagation | `get_caller()` | Caller identity. No signer array to thread through CPIs. |
 | `balance -= amount; balance += amount` | `strict_inc(-diff); strict_inc(diff)` | Deltas merge in parallel. Assignments conflict. |
-| Account-level write locks | Type-level merge rules | The type (NNInt, Map, Bytestring) determines concurrency. |
+| Account-level write locks | Type-level guarantees | The type (NNInt, Map, Bytestring) enforces correctness; concurrency follows from that. |
 
 ## What Disappears
 

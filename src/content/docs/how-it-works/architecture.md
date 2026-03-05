@@ -11,14 +11,14 @@ You don't manage any of this. You write contracts using typed storage primitives
 
 Most parallel systems put the burden on the developer: declare your locks, specify your access lists, hope you didn't miss an edge case. One wrong annotation and you get silent data corruption or deadlocks. Solana requires you to declare every account a transaction will touch before submission. Sui requires owned-vs-shared object reasoning. Even database developers with decades of experience routinely ship locking bugs.
 
-Groundhog takes a different approach. Instead of asking developers to manage concurrency, it provides storage types with built-in merge rules:
+Groundhog takes a different approach. Instead of asking developers to manage concurrency, it provides storage types that guarantee correctness under parallel execution:
 
 - **NonnegativeInt**: concurrent increments merge by addition. Two transfers to the same account produce two deltas that combine cleanly.
 - **Map**: operations on different keys never interact. Operations on the same key follow the value type's rules.
 - **RetrocausalQueue**: multiple producers, always mergeable.
 - **Bytestring**: concurrent writes of different values conflict. Use for data written rarely.
 
-If two transactions both increment a balance, the deltas merge. If two transactions write conflicting values to the same bytestring, one is excluded from the block and returned to the mempool. The contract developer doesn't choose a locking strategy or declare access patterns. The types handle it.
+If two transactions both increment a balance, the deltas merge. If two transactions write conflicting values to the same bytestring, one is excluded from the block and returned to the mempool. The contract developer doesn't choose a locking strategy or declare access patterns. The system guarantees correctness: balances never go negative, conflicting writes never silently overwrite each other.
 
 This is not an optimization bolted onto a sequential design. It is the design. Every layer of Groundhog, from the ledger format to the syscall interface to the SDK, is built around typed, mergeable storage.
 
