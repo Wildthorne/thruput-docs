@@ -1,15 +1,171 @@
 ---
 title: Getting Started
-description: Set up the Groundhog Rust SDK and write your first contract.
+description: Set up the Groundhog SDK and write your first contract.
 ---
 
-import { Aside } from '@astrojs/starlight/components';
+## The Groundhog CLI
 
-## Installation
+:::caution[Coming Soon]
+The Groundhog CLI is under development. When it ships, the full workflow below will work as written. For now, skip to [Early Access Setup](#early-access-setup) for the current manual path.
+:::
 
-<Aside type="caution" title="Coming Soon">
-The SDK is not yet publicly available. Installation instructions and project setup will be added when the crate is published. The rest of this page documents the SDK design and contract patterns for early access developers.
-</Aside>
+The CLI handles the entire contract lifecycle in single commands:
+
+```bash
+# Install
+brew install groundhog
+
+# Create a new contract project
+groundhog init my-counter
+cd my-counter
+
+# Test locally (native execution, instant feedback)
+groundhog test
+
+# Build to WASM
+groundhog build
+
+# Create a testnet identity and fund it
+groundhog keys new --fund
+
+# Deploy
+groundhog deploy
+
+# Call your contract
+groundhog call my-counter increment 1
+groundhog call my-counter get        # => 1
+```
+
+No config files to manage. No toolchain flags to remember. The CLI wraps Rust compilation, WASM optimization, the test executor, and deployment into one tool.
+
+---
+
+## Early Access Setup
+
+The SDK is available to early access developers as a Rust workspace. You'll need:
+
+- **Rust nightly** (the SDK uses unstable features for WASM compilation)
+- **wasm-opt** (from [Binaryen](https://github.com/WebAssembly/binaryen), for optimizing WASM output)
+
+```bash
+# Install Rust (if you don't have it)
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+
+# Add the WASM target
+rustup target add wasm32-unknown-unknown
+
+# Install wasm-opt (macOS)
+brew install binaryen
+```
+
+### Creating a Contract
+
+The fastest path: start from the `counter/` example in the SDK's `example-contracts/` directory. It contains a working Cargo.toml, contract code, and tests.
+
+For a new contract from scratch, you need three files:
+
+**`Cargo.toml`** with the WASM crate type and SDK dependency:
+
+```toml
+[package]
+name = "my-contract"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+doctest = false
+test = false
+
+[dependencies]
+sdk = { version = "0.1" }
+thiserror = { version = "2", default-features = false }
+xdrs = { version = "0.1" }
+
+[features]
+dev = ["sdk/dev"]
+
+[dev-dependencies]
+my-contract = { path = ".", features = ["dev"] }
+```
+
+**`src/lib.rs`** with the contract:
+
+```rust
+#![cfg_attr(not(feature = "dev"), no_std)]
+
+use sdk::prelude::*;
+
+#[derive(Error, Debug, Clone, PartialEq, ReadXDR, WriteXDR)]
+#[repr(i32)]
+pub enum Error {
+    #[error("Not authorized")]
+    NotAuthorized = 1,
+}
+
+#[sdk::storage]
+pub struct Counter {
+    count: NNInt,
+}
+
+#[contract(throws = Error)]
+impl Counter {
+    #[init]
+    pub fn initialize(&mut self, starting_value: u64) {
+        self.count.strict_inc(starting_value as i128);
+    }
+
+    pub fn increment(&mut self, amount: u64) {
+        self.count.strict_inc(amount as i128);
+    }
+
+    pub fn get(&self) -> u64 {
+        self.count.try_get().unwrap_or(0) as u64
+    }
+}
+```
+
+**`tests/test.rs`** with a basic test:
+
+```rust
+use my_contract::*;
+use sdk::testutils::*;
+
+#[test]
+fn test_increment() {
+    let env = TestEnvironment::no_cost();
+    let (addr, mut client) = env.deploy::<Counter>();
+
+    client.increment(5);
+    assert_eq!(client.get(), 5);
+
+    client.increment(3);
+    assert_eq!(client.get(), 8);
+}
+```
+
+### Building
+
+```bash
+# Build to WASM
+cargo --config .cargo/contract.toml build --release
+
+# Optimize (reduces binary size)
+wasm-opt -O3 --enable-bulk-memory target/wasm32-unknown-unknown/release/my_contract.wasm \
+  -o my_contract.wasm
+```
+
+### Testing
+
+Building to WASM only needs the Rust toolchain. Running tests uses the `native_exec` mock executor, which runs your contract logic natively (not in WASM) so you can use standard Rust debugging tools, set breakpoints, and iterate on business logic before deploying to testnet.
+
+```bash
+cargo test -- --show-output
+```
+
+On supported platforms (x86_64 Linux, aarch64 macOS), prebuilt test libraries are downloaded automatically.
+
+---
 
 ## SDK Layers: Use What You Need
 
@@ -27,72 +183,27 @@ The tutorials use the macro layer because it's the fastest path to a working con
 
 If the provided storage types don't fit your use case, you can work with raw bytestrings and build your own abstractions. The syscall interface is stable and documented in the [Syscalls Reference](/reference/syscalls/).
 
-## Contract Structure at a Glance
+## Contract Anatomy
 
 A Groundhog contract (using the macro layer) has three parts:
 
-1. **Error type** - Defines your contract's error variants. Must derive XDR serialization. SDK-level errors (like NNInt underflow) abort automatically; you only define business logic errors.
+1. **Error type.** Defines your contract's error variants. Must derive XDR serialization. SDK-level errors (like NNInt underflow) abort automatically; you only define business logic errors.
 
-2. **Storage struct** - Marked with `#[sdk::storage]`. Fields become persistent storage slots. Use `NNInt` for balances/counters, `Map<K, V>` for key-value data.
+2. **Storage struct.** Marked with `#[sdk::storage]`. Fields become persistent storage slots. Use `NNInt` for balances/counters, `Map<K, V>` for key-value data, `Handle<T>` for single values.
 
-3. **Implementation block** - Marked with `#[contract]`. Public methods become WASM exports. `#[init]` marks the constructor. `&mut self` methods write state; `&self` methods are read-only.
+3. **Implementation block.** Marked with `#[contract]`. Public methods become WASM exports. `#[init]` marks the constructor (runs once at deployment). `&mut self` methods write state; `&self` methods are read-only.
 
 The core pattern: all state mutations use `strict_inc(delta)` to record changes as deltas, not absolute values. This is what makes operations commutative and enables parallel execution.
 
-For the full walkthrough with project setup, line-by-line explanation, and tests, see [Build a Counter](/tutorials/build-a-counter/).
-
 ### Error Handling
 
-The SDK uses an **abort-centric** error model. Contract methods return values directly (not `Result`). When something goes wrong, the transaction aborts. `strict_inc(delta)` aborts automatically on NNInt underflow/overflow, `abort(&error)` aborts with a typed error, and `ensure(condition, error)` aborts if the condition is false.
+The SDK uses an **abort-centric** error model. Contract methods return values directly (not `Result`). When something goes wrong, the transaction aborts:
 
-You can't "catch" an abort within the same contract. To handle errors from *another* contract, use the `try_*` client methods. See [Error Handling](/reference/error-handling/) for the complete model.
+- `strict_inc(delta)` aborts automatically on NNInt underflow
+- `abort(&error)` aborts with a typed error
+- `ensure(condition, error)` aborts if the condition is false
 
----
-
-## Building and Testing
-
-The SDK provides `./scripts/dev.sh` for common operations:
-
-### Build for WASM
-
-```bash
-# Build all example contracts
-./scripts/dev.sh build-examples
-
-# Or directly with cargo from the example-contracts workspace
-cd example-contracts/erc20
-cargo --config ../.cargo/contract.toml build --release
-```
-
-### Run Tests
-
-Building contracts to WASM works with just the Rust toolchain. Running tests requires the `native_exec` mock executor, which runs your contract logic natively (not in WASM) so you can use standard Rust debugging tools, set breakpoints, and iterate on business logic before deploying to testnet.
-
-On supported platforms (x86_64 Linux, aarch64 macOS), prebuilt test libraries are automatically downloaded. No C++ toolchain required.
-
-```bash
-# Run everything (SDK tests + examples + integration tests)
-./scripts/dev.sh test
-
-# Test just the example contracts
-./scripts/dev.sh test-examples
-
-# Test a specific contract
-cd example-contracts && cargo test -p counter -- --show-output
-
-# Full CI (formatting + linting + all tests)
-./scripts/dev.sh ci
-```
-
-### Other Useful Commands
-
-```bash
-./scripts/dev.sh lint                              # Run clippy
-./scripts/dev.sh open-docs                         # Generate and open docs
-./scripts/dev.sh expand example-contracts/erc20    # Expand macros
-```
-
----
+You can't catch an abort within the same contract. To handle errors from *another* contract, use the `try_*` client methods. See [Error Handling](/reference/error-handling/) for the complete model.
 
 ## Design Guidelines
 
@@ -101,7 +212,7 @@ cd example-contracts && cargo test -p counter -- --show-output
 - Use `NNInt` for all balances and counters
 - Use `strict_inc(delta)` for commutative updates (aborts on underflow)
 - Use `ensure(condition, error)` for authorization checks
-- Design with deltas in mind: `+50`, `-20` not `set 130`
+- Design with deltas in mind: `+50`, `-20`, not `set 130`
 - Keep storage keys independent when possible
 
 ### Avoid
@@ -109,29 +220,9 @@ cd example-contracts && cargo test -p counter -- --show-output
 - Absolute writes to frequently-updated values (forces serialization)
 - Reading a value and writing it back (use deltas instead)
 
----
+## Next Steps
 
-## Examples to Study
-
-All examples live in `example-contracts/`:
-
-| Example | What It Shows |
-|---------|---------------|
-| `counter/` | Simplest complete example, start here |
-| `erc20/` | Production patterns: trait impl, events, `ensure()`, `strict_inc()` |
-| `erc20_low_level/` | Same ERC-20 using raw syscalls (no SDK abstractions) |
-| `erc20_no_storage/` | ERC-20 with typed wrappers but no `#[storage]` macro |
-| `caller/` | Cross-contract invocation via generated clients |
-| `exceptions/` | Exception handling: `try_*` calls, `CallError`, `CrossExn` matching |
-| `hasher/` | Minimal stateless contract |
-
-Start with `counter/`, then study `erc20/src/implementation.rs` for production patterns. Compare `erc20/`, `erc20_no_storage/`, and `erc20_low_level/` to see the same contract at each SDK layer. The `exceptions/` example is the best reference for understanding the error handling system. For step-by-step tutorials, see [Build a Counter](/tutorials/build-a-counter/) and [Build a Token](/tutorials/build-a-token/).
-
----
-
-## Further Reading
-
+- [Build a Counter](/tutorials/build-a-counter/) for the full step-by-step first contract tutorial
+- [Build a Token](/tutorials/build-a-token/) for a production ERC-20 implementation
 - [Storage Types](/reference/storage-types/) for the full `NNInt`, `Map`, and `Bytestring` API
-- [SDK Macros Reference](/reference/sdk-macros/) for details on the `#[contract]` and `#[storage]` macros
-- [Error Handling](/reference/error-handling/) for the abort model and `ensure()` pattern
-- [Cross-Contract Calls](/reference/cross-contract-calls/) for calling other contracts
+- [Execution Model](/how-it-works/execution-model/) for snapshots, deltas, and merge rules

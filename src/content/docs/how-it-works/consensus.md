@@ -3,11 +3,9 @@ title: Consensus
 description: How Groundhog achieves consensus and finality.
 ---
 
-import { Aside } from '@astrojs/starlight/components';
-
-<Aside type="caution" title="Coming Soon">
+:::caution[Coming Soon]
 This page is planned but not yet written.
-</Aside>
+:::
 
 ## What Will Go Here
 
