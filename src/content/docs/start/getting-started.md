@@ -193,7 +193,7 @@ A Groundhog contract (using the macro layer) has three parts:
 
 3. **Implementation block.** Marked with `#[contract]`. Public methods become WASM exports. `#[init]` marks the constructor (runs once at deployment). `&mut self` methods write state; `&self` methods are read-only.
 
-The core pattern: all state mutations use `strict_inc(delta)` to record changes as deltas, not absolute values. This is what makes operations commutative and enables parallel execution.
+The core pattern: all state mutations use `strict_inc(delta)` to record changes as deltas, not absolute values. This gives you built-in guarantees (no double spends, no negative balances) with less code. It also makes operations commutative, which is how the system executes them in parallel.
 
 ### Error Handling
 

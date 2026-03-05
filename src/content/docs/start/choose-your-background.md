@@ -3,7 +3,7 @@ title: Choose Your Background
 description: Pick the right Groundhog guide based on what you already know.
 ---
 
-Groundhog is a blockchain where most operations execute in parallel, safely, deterministically, without you managing the parallelism. The trick: your storage types have built-in merge rules that make concurrent execution correct by construction.
+Groundhog is a blockchain where most operations execute in parallel, safely, deterministically, without you managing the parallelism. The trick: blocks guarantee the properties you care about, like no double spends or negative account balances, without sequential execution.
 
 If that sounds abstract, you probably already understand the underlying concept. You just know it by a different name.
 
@@ -14,9 +14,9 @@ If that sounds abstract, you probably already understand the underlying concept.
 | Your background | Groundhog feels like... | Start here |
 |---|---|---|
 | **Postgres / MySQL / MVCC databases** | Snapshot isolation with typed delta columns. `UPDATE balance = balance + 5` is your primary write pattern. | [Guide for Backend & Database Developers](/start/for-backend-developers/) |
-| **Solidity / EVM** | Everything you know minus gas, MEV, and ordering. Types enforce concurrency safety instead of sequential execution. | [Guide for Blockchain Developers](/start/for-blockchain-developers/) |
-| **Solana / SVM** | No access lists, no compute budgets, no account sizing. Types replace annotations. | [Guide for Blockchain Developers](/start/for-blockchain-developers/) |
-| **Move (Aptos / Sui)** | Typed resources, but with commutative merge semantics instead of ownership transfers. | [Guide for Blockchain Developers](/start/for-blockchain-developers/) |
+| **Solidity / EVM** | Everything you know minus gas, MEV, and ordering. Simpler primitives, stronger guarantees. | [Guide for Blockchain Developers](/start/for-blockchain-developers/) |
+| **Solana / SVM** | No access lists, no compute budgets, no account sizing. Less to declare, more that just works. | [Guide for Blockchain Developers](/start/for-blockchain-developers/) |
+| **Move (Aptos / Sui)** | Typed resources, but simpler: no ownership transfers, no move semantics to reason about. | [Guide for Blockchain Developers](/start/for-blockchain-developers/) |
 | **Distributed systems / CRDTs** | A replicated state machine where storage primitives are CRDTs with invariant enforcement. | [Guide for Distributed Systems Developers](/start/for-distributed-systems-developers/) |
 
 ---
