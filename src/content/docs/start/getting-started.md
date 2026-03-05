@@ -16,7 +16,7 @@ The CLI handles the entire contract lifecycle in single commands:
 brew install groundhog
 
 # Create a new contract project
-groundhog init my-counter
+groundhog new my-counter
 cd my-counter
 
 # Test locally (native execution, instant feedback)
