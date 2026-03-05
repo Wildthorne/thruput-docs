@@ -94,7 +94,7 @@ The key difference: every read within a block sees the same snapshot. Two transa
 | Solidity / EVM | Groundhog | Why |
 |----------------|-----------|-----|
 | `balance = newValue` | `balance.strict_inc(delta)` | Deltas merge in parallel. Absolute writes conflict. |
-| `mapping(address => uint256)` | `Map<Address, NNInt>` | Same concept, but the value type's merge rules determine parallelism. |
+| `mapping(address => uint256)` | `Map<Address, NNInt>` | Same concept. The value type enforces guarantees (e.g. non-negativity) and enables parallel execution. |
 | Gas per operation | No gas. HOG deposit for storage capacity. | You hold tokens for throughput, not pay per call. |
 | Sequential execution | Parallel by default | Every transaction in a block runs simultaneously against the same snapshot. |
 | `require(condition, "message")` | `ensure(condition, Error::Variant)` | Typed errors instead of string messages. |

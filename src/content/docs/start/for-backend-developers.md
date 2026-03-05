@@ -178,6 +178,6 @@ Let's be honest about what changes:
 
 ## Next Steps
 
-Groundhog is a globally-replicated database with snapshot isolation, where typed deltas replace absolute writes and the type system enforces merge rules. For the full technical details, see [Execution Model](/how-it-works/execution-model/).
+Groundhog is a globally-replicated database with snapshot isolation, where typed deltas replace absolute writes. You get the guarantees you care about (no double spends, no negative balances, no dirty reads) with less code. The bonus: the same simplicity that makes your code correct also makes it parallel. For the full technical details, see [Execution Model](/how-it-works/execution-model/).
 
 Ready to write code? [Getting Started](/start/getting-started/) walks you through the SDK setup and your first contract.
