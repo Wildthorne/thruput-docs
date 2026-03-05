@@ -168,8 +168,9 @@ pub struct Token {
 
 fn transfer(&mut self, receiver: &ContractAddress, amount: Amount) {
     let caller = get_caller();
-    self.balances.entry(&caller).strict_inc(-(amount as i128));
-    self.balances.entry(receiver).strict_inc(amount as i128);
+    let diff = amount_to_diff(amount);
+    self.balances.get(&caller).strict_inc(-diff);
+    self.balances.get(receiver).strict_inc(diff);
 }
 ```
 
@@ -198,13 +199,14 @@ function mint(address to, uint256 amount) external onlyOwner {
 ```rust
 #[sdk::storage]
 pub struct Token {
-    owner: Handle<ContractAddress>,
+    contract_owner: ContractAddress,
     // ...
 }
 
 fn mint(&mut self, receiver: &ContractAddress, amount: Amount) {
-    ensure(&get_caller() == &self.owner.get(), Error::NotOwner);
-    self.balances.entry(receiver).strict_inc(amount as i128);
+    ensure(&get_caller() == &self.contract_owner, Error::NotOwner);
+    let diff = amount_to_diff(amount);
+    self.balances.get(receiver).strict_inc(diff);
 }
 ```
 
@@ -235,9 +237,10 @@ impl Token {
     #[init]
     pub fn initialize(&mut self, initial_supply: Amount) {
         let caller = get_caller();
-        self.owner.set(&caller);
-        self.balances.entry(&caller).strict_inc(initial_supply as i128);
-        log_event("mint", &caller, initial_supply);
+        self.contract_owner = caller.clone();
+        let diff = amount_to_diff(initial_supply);
+        self.balances.get(&caller).strict_inc(diff);
+        log_transfer_event(CONTRACT_ADDR_ZERO, &caller, initial_supply);
     }
 }
 ```
@@ -263,11 +266,11 @@ function transfer(address to, uint256 amount) external {
 fn transfer(&mut self, receiver: &ContractAddress, amount: Amount) {
     let caller = get_caller();
     // ... transfer logic ...
-    log_event("transfer", (&caller, receiver, amount));
+    log_transfer_event(&caller, receiver, amount);
 }
 ```
 
-**What changes:** No `indexed` parameters. Events are logged as serialized data. The structure is simpler: a string tag and a payload. Indexing and filtering happen at the node/explorer layer, not in the contract.
+**What changes:** No `indexed` keyword. Events use typed structs (`TransferEvent`, `ApprovalEvent`) with topic-based indexing built into the type. The SDK provides helpers like `log_transfer_event` that handle serialization. Indexing and filtering happen at the node/explorer layer, not in the contract.
 
 ## ERC-20 Side-by-Side
 
@@ -311,33 +314,37 @@ contract ERC20 {
 
 ```rust
 #[sdk::storage]
-pub struct ERC20 {
+pub struct TokenContract {
+    contract_owner: ContractAddress,
     balances: Map<ContractAddress, NNInt>,
     allowances: Map<ContractAddress, Map<ContractAddress, NNInt>>,
-    owner: Handle<ContractAddress>,
+    total_supply: NNInt,
 }
 
-#[contract(throws = ERC20Error, client = ERC20Client)]
-impl ERC20 {
+#[contract(throws = ERC20Error)]
+impl ERC20 for TokenContract {
     fn transfer(&mut self, receiver: &ContractAddress, amount: Amount) {
-        let caller = get_caller();
-        self.balances.entry(&caller).strict_inc(-(amount as i128));
-        self.balances.entry(receiver).strict_inc(amount as i128);
-        log_event("transfer", (&caller, receiver, amount));
+        let owner = get_caller();
+        let diff = amount_to_diff(amount);
+        self.balances.get(&owner).strict_inc(-diff);
+        self.balances.get(receiver).strict_inc(diff);
+        log_transfer_event(&owner, receiver, amount);
     }
 
     fn adjust_allowance(&mut self, spender: &ContractAddress, diff: Difference) {
-        let caller = get_caller();
-        self.allowances.entry(&caller).entry(spender).strict_inc(diff);
-        log_event("approval", (&caller, spender, diff));
+        let owner = get_caller();
+        let owner_allowances = self.allowances.get(&owner);
+        owner_allowances.get(spender).strict_inc(diff);
+        log_approval_event(&owner, spender, diff);
     }
 
     fn transfer_from(&mut self, owner: &ContractAddress, receiver: &ContractAddress, amount: Amount) {
-        let caller = get_caller();
-        self.allowances.entry(owner).entry(&caller).strict_inc(-(amount as i128));
-        self.balances.entry(owner).strict_inc(-(amount as i128));
-        self.balances.entry(receiver).strict_inc(amount as i128);
-        log_event("transfer", (owner, receiver, amount));
+        let spender = get_caller();
+        let diff = amount_to_diff(amount);
+        self.allowances.get(owner).get(&spender).strict_inc(-diff);
+        self.balances.get(owner).strict_inc(-diff);
+        self.balances.get(receiver).strict_inc(diff);
+        log_transfer_event(owner, receiver, amount);
     }
 }
 ```

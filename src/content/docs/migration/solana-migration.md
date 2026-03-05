@@ -36,8 +36,9 @@ pub struct Token {
 
 fn transfer(&mut self, receiver: &ContractAddress, amount: Amount) {
     let caller = get_caller();
-    self.balances.entry(&caller).strict_inc(-(amount as i128));
-    self.balances.entry(receiver).strict_inc(amount as i128);
+    let diff = amount_to_diff(amount);
+    self.balances.get(&caller).strict_inc(-diff);
+    self.balances.get(receiver).strict_inc(diff);
 }
 ```
 
@@ -101,7 +102,7 @@ client.transfer(&recipient, 100);
 | 200k compute units per TX | No compute budget | Free execution. Hold HOG for throughput capacity. |
 | CPI (cross-program invocation) | Cross-contract calls | Same concept, simpler API, snapshot isolation. |
 | `Signer<'info>` propagation | `get_caller()` | Caller identity. No signer array to thread through CPIs. |
-| `balance -= amount; balance += amount` | `strict_inc(-(amount)); strict_inc(amount)` | Deltas merge in parallel. Assignments conflict. |
+| `balance -= amount; balance += amount` | `strict_inc(-diff); strict_inc(diff)` | Deltas merge in parallel. Assignments conflict. |
 | Account-level write locks | Type-level merge rules | The type (NNInt, Map, Bytestring) determines concurrency. |
 
 ## What Disappears
@@ -168,7 +169,7 @@ pub struct MyContract {
 }
 
 fn get_user_state(&self, user: &ContractAddress) -> UserState {
-    self.user_states.try_get(user).unwrap_or_default()
+    self.user_states.get(user).try_get().unwrap_or_default()
 }
 ```
 
@@ -193,8 +194,9 @@ token::transfer(cpi_ctx, amount)?;
 ```rust
 fn transfer(&mut self, receiver: &ContractAddress, amount: Amount) {
     let caller = get_caller();
-    self.balances.entry(&caller).strict_inc(-(amount as i128));
-    self.balances.entry(receiver).strict_inc(amount as i128);
+    let diff = amount_to_diff(amount);
+    self.balances.get(&caller).strict_inc(-diff);
+    self.balances.get(receiver).strict_inc(diff);
 }
 ```
 
@@ -257,7 +259,7 @@ pub enum Error {
 }
 
 // In method:
-ensure(&get_caller() == &self.owner.get(), Error::NotAuthorized);
+ensure(&get_caller() == &self.contract_owner, Error::NotAuthorized);
 ```
 
 Similar pattern: define error variants, check conditions. Anchor uses `require!` macro, Groundhog uses `ensure()`. Both abort the transaction on failure. The difference: Groundhog errors are XDR-serialized (for cross-contract error inspection), and `NNInt` underflow aborts automatically without needing an explicit check.
