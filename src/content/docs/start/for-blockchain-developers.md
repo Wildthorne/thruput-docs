@@ -3,7 +3,7 @@ title: "For Blockchain Developers"
 description: Map your Ethereum, Solana, or Move experience to Groundhog's programming model.
 ---
 
-*If you've built on Ethereum, Solana, or any smart contract platform, this guide maps what you know to how Groundhog works. The short version: use deltas instead of assignments, and the types handle concurrency for you.*
+*If you've built on Ethereum, Solana, or any smart contract platform, this guide maps what you know to how Groundhog works. The short version: use deltas instead of assignments, and you still get the guarantees you expect: no double spends, no negative balances, no dirty reads.*
 
 ---
 
@@ -77,7 +77,7 @@ All transactions in a block read the same frozen snapshot. Your code produces de
 
 ## Storage Types at a Glance
 
-On most chains, you control parallelism through annotations, access lists, or compiler hints. On Groundhog, **the [storage type](/reference/storage-types/) you choose determines whether operations are parallel-safe.** There's nothing else to declare.
+On most chains, you manage parallelism through annotations, access lists, or compiler hints. On Groundhog, **you pick a [storage type](/reference/storage-types/) that matches your intent, and the system enforces the guarantees.** There's nothing else to declare. Parallel execution is a consequence, not something you orchestrate.
 
 | I need to... | Use | Parallel-safe? |
 |---|---|---|

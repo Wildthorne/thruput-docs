@@ -3,7 +3,7 @@ title: Build a Counter
 description: "Tutorial: build a counter contract on Groundhog, step by step."
 ---
 
-We're building a counter contract with initialize, increment, decrement, and get operations. It's the simplest possible Groundhog contract, but it demonstrates the core idea: all state mutations use commutative delta operations (`strict_inc`), so concurrent increments and decrements produce the correct result regardless of execution order.
+We're building a counter contract with initialize, increment, decrement, and get operations. It's the simplest possible Groundhog contract, but it demonstrates the core idea: express what you want to happen (`strict_inc`), not how to compute it. The system guarantees the result is correct, and as a bonus, concurrent operations execute in parallel.
 
 **Prerequisites:** Complete the [Getting Started](/start/getting-started/) guide for SDK setup.
 

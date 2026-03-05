@@ -3,7 +3,7 @@ title: Build a Token
 description: "Tutorial: build an ERC-20 token on Groundhog, step by step."
 ---
 
-We're building an ERC-20 token with transfer, approve, mint, and burn. The contract uses delta-based operations (`strict_inc`) instead of absolute writes, which means transfers to and from the same account can execute in parallel without conflicts. That is the core difference between this implementation and a traditional ERC-20.
+We're building an ERC-20 token with transfer, approve, mint, and burn. The contract uses delta-based operations (`strict_inc`) instead of absolute writes. You express intent ("subtract 50 from this balance") and the system enforces the guarantee (balance never goes negative). No explicit balance checks, no race conditions. The bonus: because these operations are simple deltas, the system can execute them in parallel.
 
 **Prerequisites:** Complete [Build a Counter](/tutorials/build-a-counter/) first (covers SDK setup, project structure, and basic patterns).
 
