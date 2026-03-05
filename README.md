@@ -1,6 +1,6 @@
 # Groundhog Developer Docs
 
-Developer documentation for the [Groundhog](https://groundhogchain.dev) L1 blockchain. Built with [Astro](https://astro.build) + [Starlight](https://starlight.astro.build).
+Developer documentation for the [Groundhog](https://groundhog.dev) L1 blockchain. Built with [Astro](https://astro.build) + [Starlight](https://starlight.astro.build).
 
 ## Development
 
