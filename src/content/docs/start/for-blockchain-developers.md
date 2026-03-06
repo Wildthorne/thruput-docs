@@ -67,9 +67,13 @@ fn _adjust_balance(&mut self, owner: &ContractAddress, diff: Difference) {
 }
 ```
 
-`strict_inc(diff)` doesn't read-then-write. It says: "adjust this value by `diff`." The diff can be positive (add) or negative (subtract), and both directions commute with each other. Two concurrent transfers from the same account both produce negative deltas. A transfer in and a transfer out produce deltas with opposite signs. At block close, all deltas merge: the balance reflects every operation. If the combined result would be negative, one transaction is excluded from the block. No stale reads. No race condition. No ordering required.
+`strict_inc(diff)` says: "adjust this value by `diff`." It reads the snapshot value to check the non-negative invariant, but this doesn't break commutativity: every transaction in a block reads the same snapshot, so they all share the same base. The diff can be positive (add) or negative (subtract), and both directions commute with each other. Two concurrent transfers from the same account both produce negative deltas. A transfer in and a transfer out produce deltas with opposite signs. At block close, all deltas merge: the balance reflects every operation. If the combined result would be negative, one transaction is excluded from the block. No stale reads. No race condition. No ordering required.
 
-NNInt does have a low-level `set()` method for absolute writes. It's there if you need it, but using it destroys commutativity: any concurrent `strict_inc()` on the same key conflicts with a `set()`, and one transaction gets excluded. Every contract in the SDK uses `strict_inc()` exclusively.
+Under the hood, each NNInt has two pending values: a **set** (absolute base) and an **add** (accumulated delta). The underlying operation is `set_add(set, add)`, and the final value is `set + add`. The commutativity rule: two operations commute **if their set values match**. They don't have to be any particular value, they just have to agree.
+
+`strict_inc()` gets this for free: every transaction in a block resolves to the same snapshot base, so the set values always match. There's also `inc()`, an optimization that tells the DB to fill in the snapshot base automatically, skipping the client-side read. Same commutativity, fewer DB lookups.
+
+NNInt also has a `set()` method for absolute writes. It replaces the base and clears the delta. Two concurrent `set(100)` calls commute (same base), but `set(100)` vs `set(200)` conflicts (different bases). Use `strict_inc()` on hot paths; reserve `set()` for initialization or admin operations.
 
 All transactions in a block read the same frozen snapshot. Your code produces deltas against that snapshot. At block close, all deltas merge deterministically. This is why ordering doesn't matter, and why you don't need to think about it. For the full details on this model, see [Execution Model](/how-it-works/execution-model/).
 
@@ -108,7 +112,7 @@ For DEX activity specifically: 95% is resting orders (commutative), only 5% is t
 
 For the operations that genuinely need ordering, Groundhog still works. Those transactions are included in blocks like any other. They just can't execute in parallel *with each other* on the same contested state. They still benefit from:
 
-- **Free compute.** No per-operation gas. You hold HOG for capacity, not pay to execute.
+- **Free compute.** Gas limits exist for metering (bounding loops), but gas costs zero. You hold HOG for capacity, not pay to execute.
 - **Snapshot isolation.** Clean reads, no dirty state.
 - **Irrevocable finality.** Confirmed means confirmed, no 25-second window.
 
@@ -129,7 +133,7 @@ The `Bytestring` type is your indicator. When you're writing a Bytestring, you'r
 | `event Transfer(...)` | `log_transfer_event(...)` | Events work similarly |
 | `approve(addr, amount)` | `adjust_allowance(addr, diff)` | Delta-based, no race condition |
 | `onlyOwner` modifier | `ensure(&caller == self.owner, err)` | No modifier syntax; inline check |
-| Gas fees | None | Compute costs nothing; storage requires a refundable HOG deposit |
+| Gas fees | Gas limits exist for metering, but cost zero | Compute is free; storage requires a refundable HOG deposit |
 | Storage slots | Typed fields | `#[sdk::storage]` macro handles layout |
 
 ---

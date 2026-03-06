@@ -34,7 +34,7 @@ Let's make this concrete. Here's how database operations map to Groundhog:
 | `BEGIN TRANSACTION` | Transaction starts executing | Snapshot is frozen at block boundary |
 | `SELECT balance FROM accounts WHERE id = ?` | `self.balances.get(&account).try_get()` | Read from snapshot |
 | `UPDATE accounts SET balance = balance + 5 WHERE id = ?` | `self.balances.get(&account).strict_inc(5)` | Produce a delta (+5) |
-| `INSERT INTO ledger (account, amount) VALUES (?, ?)` | `self.ledger.get(&account).strict_inc(amount)` | Produce a delta |
+| `INSERT INTO accounts (id, data) VALUES (?, ?)` | `self.accounts.set(&id, &data)` | Store a value at a new Map key |
 | `COMMIT` | Block close: reservation phase | Test all deltas against invariants |
 | Serialization failure -> retry | Transaction excluded, returned to mempool | Mempool resubmits next block |
 
@@ -57,6 +57,12 @@ self.balances.get(&account).strict_inc(5);
 ```
 
 This is equivalent to `UPDATE accounts SET balance = balance + 5`. Note that it's `+5`, not `= new_value`. You're expressing **how the value should change**, not what it should become. This is what makes concurrent execution safe. Two `+5` operations always produce `+10`, regardless of execution order.
+
+Under the hood, each NNInt maintains two pending values during a transaction: a **set** value (the absolute base) and an **add** value (the accumulated delta). The underlying operation is `set_add(set, add)`, and the final committed value is `set + add`. The commutativity rule is simple: two operations commute **if their set values match**. They don't have to be any particular value. They just have to agree.
+
+`strict_inc(5)` reads the snapshot base, keeps it as the set value, and accumulates `+5` into the add value. Since every transaction in a block reads the same snapshot, `strict_inc` calls always agree on the base. This is the common case: use `strict_inc()` and commutativity comes for free. `strict_inc(5)` and `strict_inc(3)` on the same key merge to `+8` on top of the shared base. There's also `inc()`, which tells the DB to fill in the snapshot base automatically, skipping the client-side read. Same commutativity, fewer DB lookups.
+
+NNInt also has a `set(value)` method for absolute writes (like `UPDATE ... SET col = ?`). It replaces the base and clears the delta. Two concurrent `set(100)` calls commute (same base), but `set(100)` vs `set(200)` conflicts (different bases). Use `strict_inc()` on hot paths; reserve `set()` for initialization or admin operations.
 
 ### The Commit Phase
 
@@ -157,12 +163,12 @@ For complete contract examples with tests, see the [Build a Counter](/tutorials/
 
 Coming from backend development, here's what you might expect to learn about blockchains that **doesn't apply to Groundhog**:
 
-- **Gas fees.** Compute costs nothing. Your free HOG token balance determines your throughput share through Balance-Proportional Scheduling, but you don't pay per-operation. Think of it like a database where CPU is free but disk space requires a refundable deposit.
+- **Gas as a cost center.** Transactions specify a gas limit for metering (bounding loops and cross-contract calls), but gas costs zero tokens. No gas is burned. Your free HOG token balance determines your throughput share through Balance-Proportional Scheduling: schedule your coins, don't burn them. Think of it like a database where CPU is free but disk space requires a refundable deposit.
 - **Fee markets.** No bidding. No priority lanes. No "pay more to go faster." Under congestion, capacity is allocated proportionally to your free HOG balance. Under normal load, everything lands.
 - **Storage tiers.** One storage model. No hot/cold/archive distinction. No TTLs. Data persists as long as its HOG deposit is held. Delete the data, get the deposit back.
 - **Transaction ordering.** There is no meaningful ordering within a block. All transactions are peers. If you're used to database isolation levels handling this for you, Groundhog does the same.
 - **Nonces / sequence numbers.** No nonce management. No "transaction nonce too low" errors. Submit transactions and they execute.
-- **Compute limits.** No per-transaction compute budget. A 100ms complex computation runs alongside thousands of simple transfers without blocking them.
+- **Compute budgets as cost centers.** Gas limits exist for safety (preventing infinite loops), but since gas is free, there is no economic pressure to minimize instructions. A complex computation runs alongside thousands of simple transfers without blocking them.
 
 ### What IS Different From a Database
 
