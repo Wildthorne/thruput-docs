@@ -3,11 +3,16 @@ title: "For Blockchain Developers"
 description: Map your Ethereum, Solana, or Move experience to Groundhog's programming model.
 ---
 
-*If you've built on Ethereum, Solana, or any smart contract platform, here's what Groundhog looks like: easy things are still easy, whole classes of footguns are gone, the infrastructure tax disappears, and the same simplicity that makes your code correct is what makes it fast.*
+If you've built on Ethereum, Solana, or any smart contract platform, here's what Groundhog looks like: easy things are still easy, whole classes of footguns are gone, the infrastructure tax disappears. 
+
+The same simplicity that makes your code correct is what makes makes Groundhog incredibly fast and effectively "free" to execute contracts on.
 
 ---
 
 ## Easy Things Are Still Easy
+
+*We may not all write contracts for an EVM-based chain, but for this example we picked Solidity since many folks are at
+least familiar with it. We'll have "what you need to know" guides for most popular chains in the near future!*
 
 A token transfer on Solidity:
 
@@ -79,12 +84,12 @@ This isn't just reentrancy. The delta model eliminates several classes of bugs a
 
 Everything on this list exists because other chains execute transactions sequentially and charge for the privilege:
 
-- **Gas price estimation.** The hard part isn't knowing how much gas your transaction uses. It's predicting what gas will *cost* when it lands: fee markets, priority tips, congestion spikes. On Groundhog, gas limits exist for metering but gas costs zero tokens. No fee markets. No price volatility. Schedule your coins, don't burn them.
-- **MEV protection.** Ordering doesn't matter. Nothing to extract.
-- **Nonces.** No sequence numbers, no "nonce too low" errors.
-- **Compute budgets.** No per-transaction compute budget to fit within.
-- **Access lists.** No need to declare which accounts a transaction touches.
-- **Storage slot packing.** Typed fields via `#[sdk::storage]`. No manual layout.
+- **Gas price estimation.** Gas limits exist for metering, but gas costs zero. No fee markets, no priority tips, no congestion spikes. Schedule your coins, don't burn them.
+- **MEV protection.** All transactions read the same snapshot. Ordering doesn't affect outcomes, so there's nothing to extract, sandwich, or front-run.
+- **Nonces.** No sequence numbers. No "nonce too low" errors. Submit transactions and they execute.
+- **Compute budgets.** No per-transaction compute limit to fit within. Gas is free, so there's no pressure to minimize instructions.
+- **Access lists.** No need to declare which accounts a transaction touches up front. The runtime handles it.
+- **Storage slot packing.** Typed fields via `#[sdk::storage]`. No manual layout, no packing variables into 256-bit slots.
 - **TTL management.** No storage expiry. Data persists as long as its HOG deposit is held. Delete the data, get the deposit back.
 
 ---
@@ -93,9 +98,9 @@ Everything on this list exists because other chains execute transactions sequent
 
 Under the hood, each NNInt maintains two pending values: a **set** (absolute base) and an **add** (accumulated delta). The underlying operation is `set_add(set, add)`, and the final value is `set + add`. Two operations commute **if their set values match**. `strict_inc()` always uses the snapshot as the set value, so concurrent calls always agree. Commutativity comes for free.
 
-Not everything commutes. Order book matching, unique name registration, and some governance operations have ordering dependencies. But **82% of blockchain operations are natively commutative or easily adaptable**, based on analysis of 195 million real transactions across six chains.[^commutativity-study]
+NNInt is the workhorse, but it's not the only storage type. `Bytestring` stores up to 2KB of arbitrary data (config, metadata, serialized structs). For higher-level patterns, `Map<K, V>` gives you per-key independence (like `mapping` in Solidity), and `RetrocausalQueue` handles producer-consumer workflows where inserts commute but consumption needs sequencing.
 
-[^commutativity-study]: See the Groundhog whitepaper for methodology and per-chain breakdowns.
+Not everything commutes. Order book matching, unique name registration, and some governance operations need sequencing. Groundhog doesn't force you to do acrobatics for these: `Bytestring` and `RetrocausalQueue` give you the tools to handle serialized workflows cleanly. Meanwhile, the vast majority of on-chain activity (payments, transfers, balance updates) flows with zero effort, giving you all the compute capacity you need to make your applications as rich as you want them to be. For the full API of each type, see [Storage Types](/reference/storage-types/).
 
 ---
 
