@@ -13,11 +13,9 @@ In exchange, we're asking you to learn one new concept: `NNInt` (non-negative in
 
 | Your background | Groundhog feels like... | Start here |
 |---|---|---|
-| **Postgres / MySQL / MVCC databases** | Snapshot isolation with typed delta columns. `UPDATE balance = balance + 5` is your primary write pattern. | [Guide for Backend & Database Developers](/start/for-backend-developers/) |
-| **Solidity / EVM** | Everything you know minus gas, MEV, and ordering. Simpler primitives, stronger guarantees. | [Guide for Blockchain Developers](/start/for-blockchain-developers/) |
-| **Solana / SVM** | No access lists, no compute budgets, no account sizing. Less to declare, more that just works. | [Guide for Blockchain Developers](/start/for-blockchain-developers/) |
-| **Move (Aptos / Sui)** | Typed resources, but simpler: no ownership transfers, no move semantics to reason about. | [Guide for Blockchain Developers](/start/for-blockchain-developers/) |
-| **Distributed systems** | Don't worry, Groundhog is **not** CRDTs on a blockchain! | [Guide for Distributed Systems Developers](/start/for-distributed-systems-developers/) |
+| **Smart contracts** (EVM, SVM, Move) | Everything you know minus gas, MEV, and ordering. No reentrancy, no access lists, no move semantics. Fewer footguns, stronger guarantees, and simplicity that yields performance. | [Guide for Blockchain Developers](/start/for-blockchain-developers/) |
+| **SQL databases** | Snapshot isolation with typed delta columns. `UPDATE balance = balance + 5` is your primary write pattern. | [Guide for Backend Developers](/start/for-backend-developers/) |
+| **Distributed systems** | Your intuition transfers, but don't worry Groundhog is **not** CRDTs on a blockchain. | [Guide for Distributed Systems Developers](/start/for-distributed-systems-developers/) |
 
 ---
 
@@ -27,4 +25,4 @@ Pick the guide that matches your background, then head to [Getting Started](/sta
 
 - **[Guide for Blockchain Developers](/start/for-blockchain-developers/)** if you've written Solidity, Solana, or Move contracts
 - **[Guide for Backend Developers](/start/for-backend-developers/)** if you come from Postgres or web backends
-- **[Guide for Distributed Systems Developers](/start/for-distributed-systems-developers/)** if you've worked with CRDTs, eventual consistency, or conflict-free replication
+- **[Guide for Distributed Systems Developers](/start/for-distributed-systems-developers/)** if you've worked with CRDTs or eventual consistency
