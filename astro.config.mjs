@@ -13,7 +13,7 @@ export default defineConfig({
         {
           label: 'Concepts',
           items: [
-            'start/choose-your-background',
+            'start',
             'start/for-blockchain-developers',
             'start/for-backend-developers',
             'start/for-distributed-systems-developers',

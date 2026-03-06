@@ -11,7 +11,7 @@ description: Map your distributed systems experience to Groundhog's programming 
 
 You already think in terms of commutative operations. You know that `x + 5` and `x + 3` produce the same result in any order. You know that operations on independent keys don't interact. You've designed systems around these properties.
 
-That instinct is exactly right for Groundhog. The core storage type, `NNInt`, works like a counter whose increments merge additively. `Map<K, V>` gives you key-level independence. If you've ever reached for a PN-Counter or a per-key CRDT map, you already know why these primitives exist.
+That instinct is exactly right for Groundhog. The core storage type, `NNInt` (non-negative integer), works like a counter whose increments merge additively. `Map<K, V>` gives you key-level independence. If you've ever reached for a PN-Counter or a per-key CRDT map, you already know why these primitives exist.
 
 The difference: **you don't need to think about any of the hard parts.**
 

@@ -1,11 +1,11 @@
 ---
-title: Choose Your Background
+title: Start Here
 description: Pick the right Groundhog guide based on what you already know.
 ---
 
-Groundhog is a blockchain where most operations execute in parallel, safely, deterministically, without you managing the parallelism. The trick: blocks guarantee the properties you care about, like no double spends or negative account balances, without sequential execution.
+Groundhog is a blockchain where most operations execute in parallel, safely, deterministically, without you managing the parallelism. No double spends, no negative balances, no dirty reads. No gas costs, no MEV, no reentrancy. All without sequential execution.
 
-If that sounds abstract, you probably already understand the underlying concept. You just know it by a different name.
+In exchange, we're asking you to learn one new concept: `NNInt` (non-negative integer). It's a storage primitive where writes are deltas (`+5`, `-3`) instead of absolute assignments. Concurrent deltas merge automatically. The non-negative invariant is enforced at the protocol level. Everything above follows from this one primitive. The guides below show how it maps to concepts you already know.
 
 ---
 
