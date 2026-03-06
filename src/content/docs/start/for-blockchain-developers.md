@@ -3,143 +3,114 @@ title: "For Blockchain Developers"
 description: Map your Ethereum, Solana, or Move experience to Groundhog's programming model.
 ---
 
-*If you've built on Ethereum, Solana, or any smart contract platform, this guide maps what you know to how Groundhog works. The short version: use deltas instead of assignments, and you still get the guarantees you expect: no double spends, no negative balances, no dirty reads.*
+*If you've built on Ethereum, Solana, or any smart contract platform, here's what Groundhog looks like: easy things are still easy, whole classes of footguns are gone, the infrastructure tax disappears, and the same simplicity that makes your code correct is what makes it fast.*
 
 ---
 
-## The Pain You Already Know
+## Easy Things Are Still Easy
 
-You're a smart contract developer. You write business logic: tokens, swaps, lending protocols. But how much of your time is actually spent on business logic?
-
-Here's the list of things that eat your time on every other chain:
-
-- **Gas estimation.** Will this transaction land? How much buffer do I need?
-- **MEV protection.** Am I going to get sandwiched? Do I need Flashbots?
-- **Storage optimization.** Packing variables into 256-bit slots, minimizing SLOADs.
-- **Sequence numbers.** Managing nonces, handling the "nonce too low" dance.
-- **Compute budgets.** Will this fit in a Solana transaction? Do I need to split it?
-- **Access lists.** Declaring which accounts a Solana transaction will touch, up front.
-- **TTL management.** Soroban's storage expiry, cron jobs to extend, data disappearing.
-- **Fee spikes.** Handling 100x fee increases during congestion.
-
-None of this is your business logic. All of it exists for one reason: **the chain executes transactions one at a time, in order.** When everything must be sequenced, resources are scarce, and the system needs elaborate mechanisms to manage that scarcity.
-
-Consider the classic `approve()` race condition in ERC-20. Alice approves Bob to spend 100 tokens. She wants to change it to 50. She calls `approve(bob, 50)`. But Bob sees the pending transaction and quickly spends the original 100 before the new approval lands. Then he spends the new 50 too. Alice lost 150 tokens instead of 50.
-
-This bug exists because `approve()` is an absolute write (`allowance = 50`), and ordering determines who wins. The entire community has worked around it for years with `increaseAllowance()`/`decreaseAllowance()`, but the underlying problem is the programming model.
-
----
-
-## The One Change
-
-Groundhog contracts use **deltas instead of assignments**.
-
-Here's a token transfer on Ethereum:
+A token transfer on Solidity:
 
 ```solidity
-// Solidity: absolute writes
 function transfer(address to, uint256 amount) public {
     require(balances[msg.sender] >= amount, "insufficient");
-    balances[msg.sender] -= amount;   // write: set to new value
-    balances[to] += amount;           // write: set to new value
+    balances[msg.sender] -= amount;
+    balances[to] += amount;
 }
 ```
 
-Both lines are absolute writes. They read the current balance, compute a new value, and store it. If two transfers from the same sender execute concurrently, the second one reads stale state and produces a wrong result. That's why EVM transactions execute sequentially.
-
-Here's the same thing on Groundhog:
+The same transfer on Groundhog:
 
 ```rust
-// Groundhog: delta operations
 fn transfer(&mut self, receiver: &ContractAddress, amount: Amount) {
-    let owner = get_caller();
-    let diff = amount_to_diff(amount);
-
-    self._adjust_balance(&owner, -diff);   // delta: subtract amount
-    self._adjust_balance(receiver, diff);  // delta: add amount
-
-    log_transfer_event(&owner, receiver, amount);
-}
-
-fn _adjust_balance(&mut self, owner: &ContractAddress, diff: Difference) {
-    let mut balance = self.balances.get(owner);
-    balance.strict_inc(diff)  // abort if result would go negative
+    self.balances.get(&get_caller()).strict_inc(-amount);
+    self.balances.get(receiver).strict_inc(amount);
 }
 ```
 
-`strict_inc(diff)` says: "adjust this value by `diff`." It reads the snapshot value to check the non-negative invariant, but this doesn't break commutativity: every transaction in a block reads the same snapshot, so they all share the same base. The diff can be positive (add) or negative (subtract), and both directions commute with each other. Two concurrent transfers from the same account both produce negative deltas. A transfer in and a transfer out produce deltas with opposite signs. At block close, all deltas merge: the balance reflects every operation. If the combined result would be negative, one transaction is excluded from the block. No stale reads. No race condition. No ordering required.
-
-Under the hood, each NNInt has two pending values: a **set** (absolute base) and an **add** (accumulated delta). The underlying operation is `set_add(set, add)`, and the final value is `set + add`. The commutativity rule: two operations commute **if their set values match**. They don't have to be any particular value, they just have to agree.
-
-`strict_inc()` gets this for free: every transaction in a block resolves to the same snapshot base, so the set values always match. There's also `inc()`, an optimization that tells the DB to fill in the snapshot base automatically, skipping the client-side read. Same commutativity, fewer DB lookups.
-
-NNInt also has a `set()` method for absolute writes. It replaces the base and clears the delta. Two concurrent `set(100)` calls commute (same base), but `set(100)` vs `set(200)` conflicts (different bases). Use `strict_inc()` on hot paths; reserve `set()` for initialization or admin operations.
-
-All transactions in a block read the same frozen snapshot. Your code produces deltas against that snapshot. At block close, all deltas merge deterministically. This is why ordering doesn't matter, and why you don't need to think about it. For the full details on this model, see [Execution Model](/how-it-works/execution-model/).
+Familiar structure. Shorter. Each balance is an `NNInt` (non-negative integer): Groundhog's core storage primitive. `strict_inc(delta)` produces a **delta** ("adjust by this amount") instead of an absolute write ("set to this value"). That one change eliminates entire classes of bugs.
 
 ---
 
-## Storage Types at a Glance
+## Whole Classes of Footguns, Gone
 
-On most chains, you manage parallelism through annotations, access lists, or compiler hints. On Groundhog, **you pick a [storage type](/reference/storage-types/) that matches your intent, and the system enforces the guarantees.** There's nothing else to declare. Parallel execution is a consequence, not something you orchestrate.
+Here's a withdrawal function on the EVM, written safely:
 
-| I need to... | Use | Parallel-safe? |
-|---|---|---|
-| Track a balance or counter | `NNInt` | Yes, increments and decrements both commute |
-| Store data per account/key | `Map<K, V>` | Yes, different keys are independent |
-| Buffer items for later processing | `RetrocausalQueue` | Yes for inserts, sequenced for consumes |
-| Store a single record (owner, config) | `Bytestring` | No, concurrent writes conflict |
+```solidity
+// Solidity: the ceremony required to avoid reentrancy
+bool locked;
+modifier nonReentrant() {
+    require(!locked);
+    locked = true;
+    _;
+    locked = false;
+}
 
-`NNInt` is the workhorse. It replaces `uint256` balances, counters, and vote tallies. `Map<K, V>` replaces `mapping(address => uint)`. `Bytestring` is the escape hatch for absolute writes. When you reach for it, ask: could I use `NNInt` or `Map` instead?
+function withdraw(uint256 amount) public nonReentrant {
+    require(balances[msg.sender] >= amount);  // manual underflow check
+    balances[msg.sender] -= amount;           // must update BEFORE external call
+    (bool success, ) = msg.sender.call{value: amount}("");
+    require(success);
+}
+```
 
-For the full API and behavior of each type, see [Storage Types](/reference/storage-types/).
+Reentrancy guard. Checks-effects-interactions ordering. Manual balance check. Get any of it wrong and you lose funds.
+
+On Groundhog:
+
+```rust
+fn withdraw(&mut self, amount: Amount) {
+    self.balances.get(&get_caller()).strict_inc(-amount);
+    self.token.transfer(&get_caller(), amount);
+}
+```
+
+That's it. No reentrancy guard: every contract call reads from a frozen snapshot, so a callback can't observe partial state. No manual balance check: NNInt enforces `>= 0` at the protocol level. No ordering discipline: deltas are deltas regardless of when they're produced.
+
+This isn't just reentrancy. The delta model eliminates several classes of bugs at once:
+
+- **Front-running and MEV.** All transactions read the same snapshot. Order doesn't matter. Nothing to reorder, sandwich, or front-run.
+- **The approve() race condition.** ERC-20's `approve(spender, amount)` is an absolute write, creating a race where the spender can extract both the old and new allowance. On Groundhog, allowances are deltas. The race doesn't exist.
+- **Integer underflow.** NNInt enforces non-negative as a protocol invariant. If merged deltas would drive a balance negative, the transaction is excluded and returned to the mempool. No `require()` needed.
 
 ---
 
-## What About Operations That Can't Be Deltas?
+## The Infrastructure Tax Disappears
 
-Let's be honest: not everything commutes.
+Everything on this list exists because other chains execute transactions sequentially and charge for the privilege:
 
-- **Order book matching.** Which buy meets which sell depends on order. This is sequenced.
-- **Unique name registration.** Two people claiming the same name must have a winner. This is sequenced.
-- **Some governance operations.** Proposals that cancel other proposals have ordering dependencies.
+- **Gas price estimation.** The hard part isn't knowing how much gas your transaction uses. It's predicting what gas will *cost* when it lands: fee markets, priority tips, congestion spikes. On Groundhog, gas limits exist for metering but gas costs zero tokens. No fee markets. No price volatility. Schedule your coins, don't burn them.
+- **MEV protection.** Ordering doesn't matter. Nothing to extract.
+- **Nonces.** No sequence numbers, no "nonce too low" errors.
+- **Compute budgets.** No per-transaction compute budget to fit within.
+- **Access lists.** No need to declare which accounts a transaction touches.
+- **Storage slot packing.** Typed fields via `#[sdk::storage]`. No manual layout.
+- **TTL management.** No storage expiry. Data persists as long as its HOG deposit is held. Delete the data, get the deposit back.
 
-But here's the measured reality: **82% of blockchain operations are natively commutative or easily adaptable.** This comes from analyzing 195 million real transactions across six chains (Ethereum, Solana, Polygon, Arbitrum, Optimism, and Base). The number isn't theoretical. It's what people actually do on blockchains.[^commutativity-study]
+---
+
+## The Programming Model in Brief
+
+Under the hood, each NNInt maintains two pending values: a **set** (absolute base) and an **add** (accumulated delta). The underlying operation is `set_add(set, add)`, and the final value is `set + add`. Two operations commute **if their set values match**. `strict_inc()` always uses the snapshot as the set value, so concurrent calls always agree. Commutativity comes for free.
+
+Not everything commutes. Order book matching, unique name registration, and some governance operations have ordering dependencies. But **82% of blockchain operations are natively commutative or easily adaptable**, based on analysis of 195 million real transactions across six chains.[^commutativity-study]
 
 [^commutativity-study]: See the Groundhog whitepaper for methodology and per-chain breakdowns.
 
-For DEX activity specifically: 95% is resting orders (commutative), only 5% is trade execution (sequenced). So even "sequencing-heavy" use cases are mostly parallelizable.
-
-For the operations that genuinely need ordering, Groundhog still works. Those transactions are included in blocks like any other. They just can't execute in parallel *with each other* on the same contested state. They still benefit from:
-
-- **Free compute.** Gas limits exist for metering (bounding loops), but gas costs zero. You hold HOG for capacity, not pay to execute.
-- **Snapshot isolation.** Clean reads, no dirty state.
-- **Irrevocable finality.** Confirmed means confirmed, no 25-second window.
-
-The `Bytestring` type is your indicator. When you're writing a Bytestring, you're saying: "This operation might not parallelize." Use it intentionally.
-
 ---
 
-## Quick Reference
+## Simplicity Is the Performance
 
-| Solidity | Groundhog | Notes |
-|----------|-----------|-------|
-| `msg.sender` | `get_caller()` | Returns `ContractAddress` |
-| `mapping(K => V)` | `Map<K, V>` | Auto-persisted via `#[sdk::storage]` |
-| `uint256` (for balances) | `NNInt` | Delta-only; can't go negative |
-| `balance = x` | `balance.strict_inc(diff)` | Deltas, not assignments |
-| `require(condition)` | `ensure(condition, err)` | Aborts transaction on failure |
-| `revert("msg")` | `abort(&err)` / `panic!()` | Aborts transaction, discards all state changes |
-| `event Transfer(...)` | `log_transfer_event(...)` | Events work similarly |
-| `approve(addr, amount)` | `adjust_allowance(addr, diff)` | Delta-based, no race condition |
-| `onlyOwner` modifier | `ensure(&caller == self.owner, err)` | No modifier syntax; inline check |
-| Gas fees | Gas limits exist for metering, but cost zero | Compute is free; storage requires a refundable HOG deposit |
-| Storage slots | Typed fields | `#[sdk::storage]` macro handles layout |
+On every other chain, correctness and performance are at odds. You optimize gas, pack storage slots, split transactions to fit compute budgets. You fight for performance, and every optimization makes your code harder to audit.
+
+Groundhog inverts this. The same delta model that eliminates reentrancy and race conditions is what enables parallel execution. `strict_inc(5)` and `strict_inc(3)` from different transactions merge to `+8` with no coordination. The runtime doesn't need locks, dependency graphs, or speculative execution. It just merges deltas. The simpler your code, the more it parallelizes.
+
+Getting the primitive right at the most fundamental level (typed deltas with known merge semantics) means you don't choose between correct and fast. The 3-line transfer that eliminated four classes of bugs? It also runs in parallel with every other transfer in the block.
 
 ---
 
 ## Next Steps
 
-See a complete token contract side by side with ERC-20 in the [Build a Token](/tutorials/build-a-token/) tutorial. For the full execution model (snapshots, deltas, merge rules, conflict behavior), see [Execution Model](/how-it-works/execution-model/). For everything that disappears from your workflow (gas, MEV, nonces, compute budgets), see the [comparison tables](/how-it-works/execution-model/#how-this-compares).
+For a detailed Solidity-to-Groundhog mapping, see the [EVM Migration Guide](/migration/evm-migration/). For the full execution model (snapshots, deltas, merge rules), see [Execution Model](/how-it-works/execution-model/).
 
 Ready to write code? [Getting Started](/start/getting-started/) walks you through the SDK setup and your first contract.

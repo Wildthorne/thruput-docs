@@ -9,7 +9,7 @@ Every transaction reads from a consistent snapshot and writes deltas (changes), 
 
 You learn one new concept: commutativity (which operations can run in parallel and which conflict). In return, you stop thinking about gas fees, storage expiration, transaction size limits, and sequence numbers. Those problems do not exist here.
 
-This page is the canonical reference for Groundhog's execution model. The background guides in [Start Here](/start/choose-your-background/) explain these concepts through the lens of specific developer backgrounds. Everything below is the full, authoritative description.
+This page is the canonical reference for Groundhog's execution model. The background guides in [Start Here](/start/) explain these concepts through the lens of specific developer backgrounds. Everything below is the full, authoritative description.
 
 ## Snapshot Isolation
 
@@ -133,7 +133,7 @@ See [Storage & Scheduling Economics](/how-it-works/storage-economics/) for the f
 | State persists forever after one-time gas payment | State persists while refundable HOG deposit is held; delete data, get deposit back |
 | Gas price auction for priority | Age-weighted fair scheduling; no bidding |
 
-**What you can stop doing:** gas estimation, EIP-1559 mechanics, MEV protection strategies, storage slot packing.
+**What you can stop doing:** gas price estimation, fee market mechanics, MEV protection strategies, storage slot packing.
 
 **What you need to learn:** which of your operations commute.
 
