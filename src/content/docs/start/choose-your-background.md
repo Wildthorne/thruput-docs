@@ -17,7 +17,7 @@ If that sounds abstract, you probably already understand the underlying concept.
 | **Solidity / EVM** | Everything you know minus gas, MEV, and ordering. Simpler primitives, stronger guarantees. | [Guide for Blockchain Developers](/start/for-blockchain-developers/) |
 | **Solana / SVM** | No access lists, no compute budgets, no account sizing. Less to declare, more that just works. | [Guide for Blockchain Developers](/start/for-blockchain-developers/) |
 | **Move (Aptos / Sui)** | Typed resources, but simpler: no ownership transfers, no move semantics to reason about. | [Guide for Blockchain Developers](/start/for-blockchain-developers/) |
-| **Distributed systems / CRDTs** | A replicated state machine where storage primitives are CRDTs with invariant enforcement. | [Guide for Distributed Systems Developers](/start/for-distributed-systems-developers/) |
+| **Distributed systems** | Don't worry, Groundhog is **not** CRDTs on a blockchain! | [Guide for Distributed Systems Developers](/start/for-distributed-systems-developers/) |
 
 ---
 
