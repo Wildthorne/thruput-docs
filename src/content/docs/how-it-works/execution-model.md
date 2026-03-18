@@ -75,39 +75,9 @@ The rule of thumb: if you'd use a CRDT in a distributed system, it will parallel
 
 ## Storage Primitives
 
-Groundhog provides typed storage primitives at the protocol level. You work with a flat key-value store where each value is one of these types.
+Groundhog provides four typed storage primitives at the protocol level: **NNInt** (commutative integer), **Map** (independent keys), **Bytestring** (raw bytes), and **RetrocausalQueue** (multi-producer queue). Each type defines its own merge rules for concurrent writes.
 
-### NNInt
-
-Non-negative integer with a two-component (set, add) model. The public API provides three operations:
-
-- **`strict_inc(delta)`**: increment or decrement by a delta. Concurrent calls always commute (all resolve to the same snapshot base). Aborts immediately if the result would be negative. This is the common case.
-- **`inc(delta)`**: same commutativity, but skips the snapshot read. Underflow caught at commit, not at call site.
-- **`set(value)`**: absolute write. Commutes only when all concurrent callers set the same value.
-
-Use `strict_inc` by default. See [NNInt In Depth](/programming-model/nnint/) for the full commutativity rules.
-
-### Map
-
-SDK-level abstraction over `Bytestring` storage. Each key is SHA256-hashed internally, so operations on different keys always commute.
-
-Maps do not support enumeration. There is no `keys()` method and no iteration. If you need to list entries, maintain a separate index alongside the map. This is a known limitation the team is working to improve.
-
-### Bytestring
-
-Arbitrary bytes, up to 1,024 bytes per item. Concurrent writes of the same value commute. Concurrent writes of different values conflict. Use bytestrings for data that is read often and written rarely: config, serialized records, metadata.
-
-### RetrocausalQueue
-
-Multi-producer, single-consumer queue. Inserts always commute. Consumption is serialized: only one transaction can consume from a given queue per block.
-
-Production and consumption happen in separate blocks. In block N, any number of transactions insert entries. In block N+1, a consumer transaction dequeues and processes those entries. This two-phase design keeps the insert path conflict-free.
-
-Deleting a queue destroys it. A delete is not a consume: it removes the queue and all its entries. Concurrent deletes of the same queue commute (both produce an empty key). A delete conflicts with concurrent inserts or consumes on the same queue.
-
-Use queues for event streams, message passing, and task distribution.
-
-See [Storage Types](/programming-model/storage-types/) for conflict semantics and usage guidance, or [Storage Types Reference](/reference/storage-types/) for the full API.
+For the full treatment of each type, conflict semantics, and how to choose between them, see [Programming Model: Storage Types](/programming-model/storage-types/). For the underlying commutativity model, see [NNInt In Depth](/programming-model/nnint/). For API signatures, see [Storage Types Reference](/reference/storage-types/).
 
 ## HOG and the Capital Model
 
