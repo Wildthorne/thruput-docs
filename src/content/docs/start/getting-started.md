@@ -44,16 +44,18 @@ Three commands. You now have a working counter contract with passing tests. The 
 
 ## Two Modes: cargo vs groundhog
 
-Generated projects work with both `cargo` and `groundhog`. They target different things:
+Generated projects work with both `cargo` and `groundhog`. They compile and test your contract differently:
 
-| Command | Target | Use for |
-|---------|--------|---------|
-| `cargo build` | Native (host) | IDE support, rust-analyzer |
-| `cargo test` | Native (host) | Fast iteration, step-through debugging |
-| `groundhog build` | WASM | Production contract binary |
-| `groundhog test` | WASM mock executor | Integration tests against the C++ mock runtime |
+| Command | What happens | Use for |
+|---------|-------------|---------|
+| `cargo build` | Compiles as native code for your host machine | IDE support, rust-analyzer |
+| `cargo test` | Runs tests natively. Faults are Rust panics caught by `catch_unwind`. | Fast iteration, step-through debugging |
+| `groundhog build` | Cross-compiles to WASM (the production binary format) | Deployable contract artifact |
+| `groundhog test` | Runs tests through the C++ mock executor. Faults abort like a real contract. | Behavior-accurate integration tests |
 
-The `dev` feature is on by default, so `cargo build` and `cargo test` target your host machine out of the box. The CLI commands are shortcuts for calling cargo with the right flags for WASM:
+These are meaningfully different test experiences. In native mode, a contract fault is a Rust panic that unwinds. In the mock executor, a fault is an actual abort, the same as what would happen on-chain. If you're debugging business logic, `cargo test` is faster and you can set breakpoints. If you're verifying that your contract behaves correctly under real abort/exclusion semantics, use `groundhog test`.
+
+The `dev` feature is on by default, so `cargo` targets your host machine out of the box. The CLI commands are shortcuts for calling cargo with the WASM flags:
 
 ```bash
 # What `groundhog build` does:
@@ -65,9 +67,9 @@ cargo --config .cargo/contract.toml build \
 #   panic = immediate-abort
 ```
 
-You can call cargo directly with these flags if you prefer. The CLI just makes the default `cargo build` / `cargo test` be the native path (fast, debuggable) and provides `groundhog build` / `groundhog test` for the WASM path.
+You can call cargo directly with these flags if you prefer. The CLI just makes the default `cargo build` / `cargo test` be the native path and provides `groundhog build` / `groundhog test` for the WASM path.
 
-Both test modes use mock executors, not a live network. Testing against a local node or testnet is not yet available.
+Neither test mode uses a live network. Testing against a local node or testnet is not yet available.
 
 ## What the CLI Generated
 
