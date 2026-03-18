@@ -75,18 +75,7 @@ Clients submit transactions and query state through two paths:
 
 **Wallet (current).** The coordinator includes an HTTP/REST wallet endpoint. Clients submit signed transactions, which the coordinator forwards to the mempool via `submit_unvetted`. This exists for testing, not real public usage.
 
-**JSON-RPC gateway (in progress).** A separate service (`groundhog-rpc`) that exposes a JSON-RPC 2.0 API. It connects to the mempool and indexer via x23 RPC. Phase 1 methods:
-
-| Method | What it does |
-|--------|-------------|
-| `groundhog_sendRawTransaction` | Submit a signed transaction |
-| `groundhog_getTransactionReceipt` | Get execution result and events |
-| `groundhog_getTransactionStatus` | Check if pending, committed, or unknown |
-| `groundhog_chainTip` | Current block height and hash |
-| `groundhog_getBlockByNumber` | Block header by height |
-| `groundhog_getContractEvents` | Query events by contract address and block range |
-
-The gateway is architecturally separate from the validator. It does not participate in consensus and can be scaled independently.
+**JSON-RPC gateway (in progress).** A separate service (`groundhog-rpc`) that exposes a JSON-RPC 2.0 API. It connects to the mempool and indexer via x23 RPC. The gateway is architecturally separate from the validator. It does not participate in consensus and can be scaled independently. See [JSON-RPC API](/reference/json-rpc-api/) for the method reference.
 
 ## Transaction Flow
 
