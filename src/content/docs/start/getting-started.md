@@ -50,11 +50,11 @@ Generated projects work with both `cargo` and `groundhog`. They do different thi
 | `cargo build` | Native (host) | IDE support, rust-analyzer |
 | `cargo test` | Native (host) | Fast iteration, step-through debugging |
 | `groundhog build` | WASM | Production contract binary |
-| `groundhog test` | WASM executor | Integration tests against the real runtime |
+| `groundhog test` | WASM mock executor | Integration tests against the C++ mock runtime |
 
 The `dev` feature is on by default, so `cargo build` and `cargo test` work out of the box for native compilation. `groundhog build` passes `--no-default-features` to disable `dev` and cross-compiles to WASM with `build-std`.
 
-Use `cargo` for day-to-day development. Use `groundhog` when you need the WASM binary or want to test against the real executor.
+Use `cargo` for day-to-day development. Use `groundhog` when you need the WASM binary or want to run your contract through the WASM mock executor (a C++ test harness that simulates the runtime environment).
 
 ```bash
 # Iterate on logic (native, fast, debuggable)
@@ -63,9 +63,11 @@ cargo test
 # Build the production WASM contract
 groundhog build
 
-# Test against the WASM executor
+# Test against the WASM mock executor
 groundhog test
 ```
+
+Both test modes use a mock executor, not a live network. Testing against a local node or testnet is not yet available.
 
 ## What You Get
 
