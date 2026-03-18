@@ -3,9 +3,18 @@ title: Getting Started
 description: Set up the Groundhog SDK and write your first contract.
 ---
 
-## Install
+## How to Start
 
-You need Rust and the Groundhog CLI. The CLI wraps Rust compilation, WASM optimization, and the test executor into one tool.
+The **Groundhog CLI** is the recommended way to get going. It scaffolds a project, manages the Rust toolchain, and wraps the build and test workflow. The tutorials on this site all start from CLI-generated projects.
+
+That said, the CLI is a convenience, not a requirement. You can also:
+
+- Start from the example contracts in the SDK repository (`example-contracts/` in `sdk_rs`)
+- Build a project from scratch using the SDK crate directly
+
+The CLI and example contracts produce the same thing: a Rust crate that compiles to WASM and uses the SDK's storage types and macros.
+
+## Install
 
 ```bash
 # Install Rust (if you don't have it)
@@ -15,8 +24,6 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 cargo install --path /path/to/groundhog-cli
 ```
 
-The CLI manages the nightly toolchain and WASM target automatically for generated projects.
-
 ## Authenticate
 
 During early access, the SDK is distributed through a private Cargo registry. Log in before creating your first project:
@@ -25,25 +32,19 @@ During early access, the SDK is distributed through a private Cargo registry. Lo
 groundhog login
 ```
 
-This configures registry credentials and access to the pre-compiled test executor library.
-
-## Create a Project
+## Create and Run
 
 ```bash
 groundhog new my-counter
 cd my-counter
+cargo test
 ```
 
-This scaffolds a counter contract with tests. Two templates are available:
-
-| Template | Command | What you get |
-|----------|---------|-------------|
-| `counter` (default) | `groundhog new my-counter` | Counter with increment/decrement and tests |
-| `stub` | `groundhog new my-contract --template stub` | Bare-bones contract with empty init |
+Three commands. You now have a working counter contract with passing tests. The CLI also offers a `stub` template (`groundhog new my-contract --template stub`) if you want a bare-bones starting point.
 
 ## Two Modes: cargo vs groundhog
 
-Generated projects work with both `cargo` and `groundhog`. They do different things:
+Generated projects work with both `cargo` and `groundhog`. They target different things:
 
 | Command | Target | Use for |
 |---------|--------|---------|
@@ -52,145 +53,41 @@ Generated projects work with both `cargo` and `groundhog`. They do different thi
 | `groundhog build` | WASM | Production contract binary |
 | `groundhog test` | WASM mock executor | Integration tests against the C++ mock runtime |
 
-The `dev` feature is on by default, so `cargo build` and `cargo test` work out of the box for native compilation. `groundhog build` passes `--no-default-features` to disable `dev` and cross-compiles to WASM with `build-std`.
+The `dev` feature is on by default, so `cargo` works out of the box for native compilation. `groundhog build` disables `dev` and cross-compiles to WASM with `build-std`.
 
-Use `cargo` for day-to-day development. Use `groundhog` when you need the WASM binary or want to run your contract through the WASM mock executor (a C++ test harness that simulates the runtime environment).
+Use `cargo` for day-to-day development (it's fast, you can set breakpoints). Use `groundhog` when you need the production WASM binary or want to test against the mock runtime. Both test modes use mock executors. Testing against a local node or testnet is not yet available.
 
-```bash
-# Iterate on logic (native, fast, debuggable)
-cargo test
+## What the CLI Generated
 
-# Build the production WASM contract
-groundhog build
-
-# Test against the WASM mock executor
-groundhog test
+```
+my-counter/
+  Cargo.toml              # SDK dependency, WASM crate type, dev feature toggle
+  src/
+    lib.rs                # Module wiring, no_std for WASM, test_setup export
+    implementation.rs     # Your contract: error type, storage struct, methods
+  tests/
+    test.rs               # Deploy the contract and exercise it through the client
 ```
 
-Both test modes use a mock executor, not a live network. Testing against a local node or testnet is not yet available.
+The counter has four methods: `initialize`, `increment`, `decrement`, `get`. All mutations use `strict_inc` (delta operations that commute). The test deploys the contract into a mock environment and calls it through a generated client.
 
-## What You Get
+For a line-by-line walkthrough of this code, see [Build a Counter](/tutorials/build-a-counter/).
 
-`groundhog new my-counter` generates three files:
+## The SDK is Layered
 
-**`Cargo.toml`**:
+The CLI generates code using the macro layer (`#[sdk::storage]`, `#[contract]`). This is the fastest path to a working contract, but it's not the only way to build on Groundhog.
 
-```toml
-[package]
-name = "my-counter"
-version = "0.1.0"
-edition = "2024"
+The SDK is three layers, each building on the one below:
 
-[lib]
-crate-type = ["cdylib", "rlib"]
-doctest = false
-test = false
+| Layer | What it provides | When to use |
+|-------|-----------------|-------------|
+| **Macros** | `#[storage]`, `#[contract]`, `#[init]`. Generates storage wiring, WASM exports, and client stubs. | Default. Start here. |
+| **Typed wrappers** | `NNInt`, `Map<K, V>`, `Handle<T>`. Type-safe storage access with auto-serialization. | When you need control over storage layout without writing raw syscalls. |
+| **Raw syscalls** | Direct `bytestring_set()`, `non_negative_int_strict_inc()` calls. | When you need full control or are building your own abstractions. |
 
-[features]
-default = ["dev"]
-dev = ["sdk/dev"]
+The `erc20_low_level/` example in the SDK implements a full ERC-20 token using only raw syscalls. It works identically to the macro-based version. The macros reduce boilerplate, they don't restrict what you can build.
 
-[dependencies]
-sdk = { version = "0.3", registry = "groundhog", features = ["storage"] }
-thiserror = { version = "2", default-features = false }
-xdrs = { version = "0.5", registry = "groundhog", features = ["derive"] }
-
-[dev-dependencies]
-my-counter = { path = ".", features = ["dev"] }
-```
-
-**`src/lib.rs`**:
-
-```rust
-#![cfg_attr(not(feature = "dev"), no_std)]
-
-mod implementation;
-
-pub use implementation::CounterClient;
-pub use implementation::exports::*;
-
-#[cfg(feature = "dev")]
-pub use implementation::test_setup;
-```
-
-**`src/implementation.rs`**:
-
-```rust
-use sdk::storage::NNInt;
-use sdk::*;
-use thiserror::Error;
-
-#[derive(Error, Debug, Clone, PartialEq, ReadXDR, WriteXDR)]
-#[repr(i32)]
-pub enum Error {
-    #[error("Not authorized")]
-    NotAuthorized = 1,
-}
-
-#[derive(Debug)]
-#[sdk::storage]
-pub struct Counter {
-    value: NNInt,
-}
-
-#[contract(throws = Error, client = CounterClient)]
-impl Counter {
-    #[init]
-    pub fn initialize(&mut self, initial_value: u64) {
-        self.value.strict_inc(initial_value as i128);
-    }
-
-    pub fn increment(&mut self, amount: u64) {
-        self.value.strict_inc(amount as i128);
-    }
-
-    pub fn decrement(&mut self, amount: u64) {
-        self.value.strict_inc(-(amount as i128));
-    }
-
-    pub fn get(&self) -> u64 {
-        self.value.try_get().unwrap_or(0) as u64
-    }
-}
-```
-
-**`tests/test.rs`**:
-
-```rust
-use my_counter::CounterClient;
-use sdk::call::CallError;
-use sdk::*;
-
-static NONCE: SHA256Hash =
-    sdk::sha256_static!("MY_COUNTER_NONCE");
-
-#[test]
-fn test_counter() {
-    let mut env = sdk::TestEnvironment::no_cost();
-    let test_contract =
-        my_counter::test_setup::register(&mut env);
-    let contract_hash =
-        env.setup_create_contract(&test_contract);
-
-    contract_exec(env, move || {
-        let addr =
-            deploy_contract(&NONCE, &contract_hash);
-        let mut client = CounterClient::new(&addr);
-
-        client.initialize(10);
-        assert_eq!(client.get(), 10);
-
-        client.increment(5);
-        assert_eq!(client.get(), 15);
-
-        client.decrement(3);
-        assert_eq!(client.get(), 12);
-    })
-    .unwrap_or_else(|e| panic!("Test failed: {e}"));
-}
-```
-
-Run `cargo test` to verify everything works.
+If the provided storage types don't fit your use case, drop down a layer. The syscall interface is documented in the [Syscalls Reference](/reference/syscalls/).
 
 ## Deployment
 
@@ -198,64 +95,8 @@ Run `cargo test` to verify everything works.
 `groundhog deploy`, `groundhog call`, and `groundhog keys` are planned but not yet implemented. Testnet deployment instructions will be added when these commands ship.
 :::
 
----
-
-## SDK Layers: Use What You Need
-
-The SDK is not a framework you're locked into. It's a set of optional convenience layers over the base storage primitives. You can use as much or as little as you want.
-
-| Layer | What It Provides | Example |
-|-------|-----------------|---------|
-| **Raw syscalls** | Direct `bytestring_set()`, `non_negative_int_strict_inc()` calls. Full control, no abstraction. | `erc20_low_level/` |
-| **Typed wrappers** | `NNInt`, `Handle<T>`, `Map<K, V>`. Type-safe access with auto-serialization. | `erc20_no_storage/` |
-| **Macros** | `#[storage]`, `#[contract]`. Generates boilerplate for storage structs, WASM exports, and client code. | `erc20/`, `counter/` |
-
-Each layer builds on the one below it. The `erc20_low_level/` example implements a full ERC-20 token using only raw syscalls and manual key hashing. It works identically to the macro-based version. The macros exist to reduce boilerplate, not to restrict what you can build.
-
-The tutorials use the macro layer because it's the fastest path to a working contract. When you see `#[sdk::storage]` or `#[contract]` in example code, those are convenience macros generating serialization and WASM exports. You could do the same thing by hand with raw syscalls.
-
-If the provided storage types don't fit your use case, you can work with raw bytestrings and build your own abstractions. The syscall interface is stable and documented in the [Syscalls Reference](/reference/syscalls/).
-
-## Contract Anatomy
-
-A Groundhog contract (using the macro layer) has three parts:
-
-1. **Error type.** Defines your contract's error variants. Must derive XDR serialization. SDK-level errors (like NNInt underflow) abort automatically; you only define business logic errors.
-
-2. **Storage struct.** Marked with `#[sdk::storage]`. Fields become persistent storage slots. Use `NNInt` for balances/counters, `Map<K, V>` for key-value data, `Handle<T>` for single values.
-
-3. **Implementation block.** Marked with `#[contract]`. Public methods become WASM exports. `#[init]` marks the constructor (runs once at deployment). `&mut self` methods write state; `&self` methods are read-only.
-
-The core pattern: all state mutations use `strict_inc(delta)` to record changes as deltas, not absolute values. This gives you built-in guarantees (no double spends, no negative balances) with less code. It also makes operations commutative, which is how the system executes them in parallel.
-
-### Error Handling
-
-The SDK uses an **abort-centric** error model. Contract methods return values directly (not `Result`). When something goes wrong, the transaction aborts:
-
-- `strict_inc(delta)` aborts automatically on NNInt underflow
-- `abort(&error)` aborts with a typed error
-- `ensure(condition, error)` aborts if the condition is false
-
-You can't catch an abort within the same contract. To handle errors from *another* contract, use the `try_*` client methods. See [Error Handling](/reference/error-handling/) for the complete model.
-
-## Design Guidelines
-
-### Do
-
-- Use `NNInt` for all balances and counters
-- Use `strict_inc(delta)` for commutative updates (aborts on underflow)
-- Use `ensure(condition, error)` for authorization checks
-- Design with deltas in mind: `+50`, `-20`, not `set 130`
-- Keep storage keys independent when possible
-
-### Avoid
-
-- Absolute writes to frequently-updated values (forces serialization)
-- Reading a value and writing it back (use deltas instead)
-
 ## Next Steps
 
-- [Build a Counter](/tutorials/build-a-counter/) for the full step-by-step first contract tutorial
-- [Build a Token](/tutorials/build-a-token/) for a production ERC-20 implementation
-- [Storage Types](/programming-model/storage-types/) for `NNInt`, `Map`, `Bytestring`, and `RetrocausalQueue`
-- [Execution Model](/programming-model/execution/) for snapshots, deltas, and merge rules
+- **[Build a Counter](/tutorials/build-a-counter/)**: Line-by-line walkthrough of the contract you just generated
+- **[Programming Model](/programming-model/execution/)**: Understand why this works (snapshots, deltas, commutativity)
+- **[Build a Token](/tutorials/build-a-token/)**: Build a full ERC-20 token
