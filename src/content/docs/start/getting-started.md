@@ -44,7 +44,7 @@ No config files to manage. No toolchain flags to remember. The CLI wraps Rust co
 
 The SDK is available to early access developers as a Rust workspace. You'll need:
 
-- **Rust nightly** (the SDK uses unstable features for WASM compilation)
+- **Rust nightly** (the SDK pins a nightly toolchain for `build-std` support)
 - **wasm-opt** (from [Binaryen](https://github.com/WebAssembly/binaryen), for optimizing WASM output)
 
 ```bash
@@ -69,21 +69,21 @@ For a new contract from scratch, you need three files:
 ```toml
 [package]
 name = "my-contract"
-version = "0.1.0"
-edition = "2024"
+version.workspace = true
+edition.workspace = true
 
 [lib]
 crate-type = ["cdylib", "rlib"]
 doctest = false
 test = false
 
-[dependencies]
-sdk = { version = "0.1" }
-thiserror = { version = "2", default-features = false }
-xdrs = { version = "0.1" }
-
 [features]
 dev = ["sdk/dev"]
+
+[dependencies]
+sdk = { workspace = true, features = ["storage"] }
+thiserror = { workspace = true }
+xdrs = { workspace = true, features = ["derive"] }
 
 [dev-dependencies]
 my-contract = { path = ".", features = ["dev"] }
@@ -94,7 +94,19 @@ my-contract = { path = ".", features = ["dev"] }
 ```rust
 #![cfg_attr(not(feature = "dev"), no_std)]
 
-use sdk::prelude::*;
+mod implementation;
+pub use implementation::*;
+
+#[cfg(feature = "dev")]
+pub use implementation::test_setup;
+```
+
+**`src/implementation.rs`** with the contract logic:
+
+```rust
+use sdk::storage::NNInt;
+use sdk::*;
+use thiserror::Error;
 
 #[derive(Error, Debug, Clone, PartialEq, ReadXDR, WriteXDR)]
 #[repr(i32)]
@@ -103,24 +115,29 @@ pub enum Error {
     NotAuthorized = 1,
 }
 
+#[derive(Debug)]
 #[sdk::storage]
 pub struct Counter {
-    count: NNInt,
+    value: NNInt,
 }
 
-#[contract(throws = Error)]
+#[contract(throws = Error, client = CounterClient)]
 impl Counter {
     #[init]
-    pub fn initialize(&mut self, starting_value: u64) {
-        self.count.strict_inc(starting_value as i128);
+    pub fn initialize(&mut self, initial_value: u64) {
+        self.value.strict_inc(initial_value as i128);
     }
 
     pub fn increment(&mut self, amount: u64) {
-        self.count.strict_inc(amount as i128);
+        self.value.strict_inc(amount as i128);
+    }
+
+    pub fn decrement(&mut self, amount: u64) {
+        self.value.strict_inc(-(amount as i128));
     }
 
     pub fn get(&self) -> u64 {
-        self.count.try_get().unwrap_or(0) as u64
+        self.value.try_get().unwrap_or(0) as u64
     }
 }
 ```
@@ -128,19 +145,30 @@ impl Counter {
 **`tests/test.rs`** with a basic test:
 
 ```rust
-use my_contract::*;
-use sdk::testutils::*;
+use my_contract::CounterClient;
+use sdk::*;
+
+static NONCE: SHA256Hash = sdk::sha256_static!("MY_CONTRACT_TEST");
 
 #[test]
 fn test_increment() {
-    let env = TestEnvironment::no_cost();
-    let (addr, mut client) = env.deploy::<Counter>();
+    let mut env = sdk::TestEnvironment::no_cost();
 
-    client.increment(5);
-    assert_eq!(client.get(), 5);
+    let test_contract = my_contract::test_setup::register(&mut env);
+    let contract_hash = env.setup_create_contract(&test_contract);
 
-    client.increment(3);
-    assert_eq!(client.get(), 8);
+    contract_exec(env, move || {
+        let addr = deploy_contract(&NONCE, &contract_hash);
+        let mut client = CounterClient::new(&addr);
+
+        client.initialize(0);
+        client.increment(5);
+        assert_eq!(client.get(), 5);
+
+        client.increment(3);
+        assert_eq!(client.get(), 8);
+    })
+    .unwrap_or_else(|e| panic!("Test failed: {e}"));
 }
 ```
 
@@ -224,5 +252,5 @@ You can't catch an abort within the same contract. To handle errors from *anothe
 
 - [Build a Counter](/tutorials/build-a-counter/) for the full step-by-step first contract tutorial
 - [Build a Token](/tutorials/build-a-token/) for a production ERC-20 implementation
-- [Storage Types](/reference/storage-types/) for the full `NNInt`, `Map`, and `Bytestring` API
-- [Execution Model](/how-it-works/execution-model/) for snapshots, deltas, and merge rules
+- [Storage Types](/programming-model/storage-types/) for `NNInt`, `Map`, `Bytestring`, and `RetrocausalQueue`
+- [Execution Model](/programming-model/execution/) for snapshots, deltas, and merge rules

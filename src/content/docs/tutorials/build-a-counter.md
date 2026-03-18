@@ -217,5 +217,6 @@ This counter is trivial, but the pattern scales. Every mutation is a delta opera
 ## Next Steps
 
 - [Build a Token](/tutorials/build-a-token/) for a full ERC-20 implementation using the same patterns
-- [Storage Types](/reference/storage-types/) for the complete `NNInt` and `Map` API
+- [Storage Types](/programming-model/storage-types/) for `NNInt`, `Map`, `Bytestring`, and `RetrocausalQueue`
+- [NNInt In Depth](/programming-model/nnint/) for the `set_add` primitive and commutativity rules
 - [SDK Macros](/reference/sdk-macros/) for details on `#[contract]`, `#[storage]`, `#[init]`

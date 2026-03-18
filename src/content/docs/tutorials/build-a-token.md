@@ -376,6 +376,7 @@ Every balance mutation in this contract uses `strict_inc`, which records a delta
 ## Next Steps
 
 - [Build a Swap](/tutorials/build-a-swap/) to see cross-contract calls in action
-- [How It Works: Execution Model](/how-it-works/execution-model/) for the full snapshot/delta/merge pipeline
-- [Storage Types](/reference/storage-types/) for the full `NNInt` and `Map` API
+- [Execution Model](/programming-model/execution/) for the full snapshot/delta/merge pipeline
+- [Storage Types](/programming-model/storage-types/) for `NNInt`, `Map`, `Bytestring`, and `RetrocausalQueue`
+- [NNInt In Depth](/programming-model/nnint/) for the `set_add` primitive and commutativity rules
 - [Error Handling](/reference/error-handling/) for the `ensure()` pattern
