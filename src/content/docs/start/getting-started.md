@@ -53,9 +53,21 @@ Generated projects work with both `cargo` and `groundhog`. They target different
 | `groundhog build` | WASM | Production contract binary |
 | `groundhog test` | WASM mock executor | Integration tests against the C++ mock runtime |
 
-The `dev` feature is on by default, so `cargo` works out of the box for native compilation. `groundhog build` disables `dev` and cross-compiles to WASM with `build-std`.
+The `dev` feature is on by default, so `cargo build` and `cargo test` target your host machine out of the box. The CLI commands are shortcuts for calling cargo with the right flags for WASM:
 
-Use `cargo` for day-to-day development (it's fast, you can set breakpoints). Use `groundhog` when you need the production WASM binary or want to test against the mock runtime. Both test modes use mock executors. Testing against a local node or testnet is not yet available.
+```bash
+# What `groundhog build` does:
+cargo --config .cargo/contract.toml build \
+  --release --no-default-features --target wasm32-unknown-unknown
+
+# The config overlay (.cargo/contract.toml) adds:
+#   build-std = ["core", "alloc"]
+#   panic = immediate-abort
+```
+
+You can call cargo directly with these flags if you prefer. The CLI just makes the default `cargo build` / `cargo test` be the native path (fast, debuggable) and provides `groundhog build` / `groundhog test` for the WASM path.
+
+Both test modes use mock executors, not a live network. Testing against a local node or testnet is not yet available.
 
 ## What the CLI Generated
 
