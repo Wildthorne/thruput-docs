@@ -76,3 +76,9 @@ Each variant has an explicit `i32` discriminant. The `thiserror::Error` derive p
 When a contract aborts, the calling frame can catch the error through `try_*` client methods. Direct calls propagate the abort to the caller. Try calls return a `Result` so you can inspect and handle the failure.
 
 See [Cross-Contract Calls](/reference/cross-contract-calls/) for the full pattern. For a working example of `ensure()` in an authorization check, see [Build a Token](/tutorials/build-a-token/).
+
+## Related Documentation
+
+- [Programming Model: Execution Model](/programming-model/execution/) for how exclusion works at the block level
+- [Cross-Contract Calls](/reference/cross-contract-calls/) for the `try_*` pattern
+- [Build a Token](/tutorials/build-a-token/) for `ensure()` in a real contract
