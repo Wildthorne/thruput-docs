@@ -9,7 +9,7 @@ Every transaction reads from a consistent snapshot and writes deltas (changes), 
 
 You learn one new concept: commutativity (which operations can run in parallel and which conflict). In return, you stop thinking about gas fees, storage expiration, transaction size limits, and sequence numbers. Those problems do not exist here.
 
-This page is the canonical reference for Groundhog's execution model. The background guides in [Start Here](/start/) explain these concepts through the lens of specific developer backgrounds. Everything below is the full, authoritative description.
+For contract-writing rules (which operations commute, how to choose storage types, what `strict_inc` does under the hood), see the [Programming Model](/programming-model/execution/) section. This page covers how the engine implements those rules.
 
 ## Snapshot Isolation
 
@@ -61,7 +61,7 @@ Operations that commute run in parallel. Operations that don't commute cause the
 Your data model determines your throughput.
 
 **High parallelism** (design for this):
-- Balances as `NonnegativeInt`: concurrent transfers to different accounts all parallelize.
+- Balances as `NNInt`: concurrent transfers to different accounts all parallelize.
 - Independent records as separate `Map` keys: user profiles, token metadata, order records.
 - Event streams as `RetrocausalQueue`: multiple producers, entries merge automatically.
 
@@ -77,17 +77,15 @@ The rule of thumb: if you'd use a CRDT in a distributed system, it will parallel
 
 Groundhog provides typed storage primitives at the protocol level. You work with a flat key-value store where each value is one of these types.
 
-### NonnegativeInt
+### NNInt
 
-Non-negative integer with two operation modes.
+Non-negative integer with a two-component (set, add) model. The public API provides three operations:
 
-**Add mode** (`strict_inc`): increment or decrement by a delta. Pass a positive value to add, a negative value to subtract. Concurrent additions always commute. The transaction aborts if the value would drop below zero.
+- **`strict_inc(delta)`**: increment or decrement by a delta. Concurrent calls always commute (all resolve to the same snapshot base). Aborts immediately if the result would be negative. This is the common case.
+- **`inc(delta)`**: same commutativity, but skips the snapshot read. Underflow caught at commit, not at call site.
+- **`set(value)`**: absolute write. Commutes only when all concurrent callers set the same value.
 
-Use this for token balances, vote counts, supply tracking.
-
-**SetAdd mode**: specify both a base value and a delta. Commutes only when all concurrent writers supply the same base value. Use this for constraint-tracking patterns like lending, where a contract needs to enforce an invariant against a specific collateral value.
-
-Use Add mode by default. Reach for SetAdd only when you need constraint tracking.
+Use `strict_inc` by default. See [NNInt In Depth](/programming-model/nnint/) for the full commutativity rules.
 
 ### Map
 
@@ -109,7 +107,7 @@ Deleting a queue destroys it. A delete is not a consume: it removes the queue an
 
 Use queues for event streams, message passing, and task distribution.
 
-See [Storage Types](/reference/storage-types/) for the full API reference.
+See [Storage Types](/programming-model/storage-types/) for conflict semantics and usage guidance, or [Storage Types Reference](/reference/storage-types/) for the full API.
 
 ## HOG and the Capital Model
 
@@ -166,7 +164,8 @@ See [Storage & Scheduling Economics](/how-it-works/storage-economics/) for the f
 
 ## Related Documentation
 
+- [Programming Model](/programming-model/execution/): Contract-writing rules for snapshots, deltas, storage types, and commutativity
 - [Architecture](/how-it-works/architecture/): The big-picture design
 - [Transaction Lifecycle](/how-it-works/transaction-lifecycle/): How a transaction moves from submission to commit
 - [Contracts](/how-it-works/contracts/): Contract types, deployment, and address derivation
-- [Storage Types](/reference/storage-types/): Full API for all storage primitives
+- [Storage Types Reference](/reference/storage-types/): Full API for all storage primitives
