@@ -64,6 +64,6 @@ The non-negative invariant works the same way. If merged deltas would drive a ba
 
 ## Next Steps
 
-For storage type details (NNInt, Map, Bytestring, RetrocausalQueue) and their conflict semantics, see [Storage Types](/reference/storage-types/). For the full execution model, see [Execution Model](/how-it-works/execution-model/).
+For storage type details (NNInt, Map, Bytestring, RetrocausalQueue) and their conflict semantics, see [Programming Model: Storage Types](/programming-model/storage-types/). For the full execution model, see the [Programming Model](/programming-model/execution/).
 
 Ready to write code? [Getting Started](/start/getting-started/) walks you through the SDK setup and your first contract.
