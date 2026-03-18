@@ -3,74 +3,81 @@ title: Getting Started
 description: Set up the Groundhog SDK and write your first contract.
 ---
 
-## The Groundhog CLI
+## Install
 
-:::caution[Coming Soon]
-The Groundhog CLI is under development. When it ships, the full workflow below will work as written. For now, skip to [Early Access Setup](#early-access-setup) for the current manual path.
-:::
-
-The CLI handles the entire contract lifecycle in single commands:
-
-```bash
-# Install
-brew install groundhog
-
-# Create a new contract project
-groundhog new my-counter
-cd my-counter
-
-# Test locally (native execution, instant feedback)
-groundhog test
-
-# Build to WASM
-groundhog build
-
-# Create a testnet identity and fund it
-groundhog keys new --fund
-
-# Deploy
-groundhog deploy
-
-# Call your contract
-groundhog call my-counter increment 1
-groundhog call my-counter get        # => 1
-```
-
-No config files to manage. No toolchain flags to remember. The CLI wraps Rust compilation, WASM optimization, the test executor, and deployment into one tool.
-
----
-
-## Early Access Setup
-
-The SDK is available to early access developers as a Rust workspace. You'll need:
-
-- **Rust nightly** (the SDK pins a nightly toolchain for `build-std` support)
-- **wasm-opt** (from [Binaryen](https://github.com/WebAssembly/binaryen), for optimizing WASM output)
+You need Rust and the Groundhog CLI. The CLI wraps Rust compilation, WASM optimization, and the test executor into one tool.
 
 ```bash
 # Install Rust (if you don't have it)
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
-# Add the WASM target
-rustup target add wasm32-unknown-unknown
-
-# Install wasm-opt (macOS)
-brew install binaryen
+# Install the Groundhog CLI (from source, during early access)
+cargo install --path /path/to/groundhog-cli
 ```
 
-### Creating a Contract
+The CLI manages the nightly toolchain and WASM target automatically for generated projects.
 
-The fastest path: start from the `counter/` example in the SDK's `example-contracts/` directory. It contains a working Cargo.toml, contract code, and tests.
+## Authenticate
 
-For a new contract from scratch, you need three files:
+During early access, the SDK is distributed through a private Cargo registry. Log in before creating your first project:
 
-**`Cargo.toml`** with the WASM crate type and SDK dependency:
+```bash
+groundhog login
+```
+
+This configures registry credentials and access to the pre-compiled test executor library.
+
+## Create a Project
+
+```bash
+groundhog new my-counter
+cd my-counter
+```
+
+This scaffolds a counter contract with tests. Two templates are available:
+
+| Template | Command | What you get |
+|----------|---------|-------------|
+| `counter` (default) | `groundhog new my-counter` | Counter with increment/decrement and tests |
+| `stub` | `groundhog new my-contract --template stub` | Bare-bones contract with empty init |
+
+## Two Modes: cargo vs groundhog
+
+Generated projects work with both `cargo` and `groundhog`. They do different things:
+
+| Command | Target | Use for |
+|---------|--------|---------|
+| `cargo build` | Native (host) | IDE support, rust-analyzer |
+| `cargo test` | Native (host) | Fast iteration, step-through debugging |
+| `groundhog build` | WASM | Production contract binary |
+| `groundhog test` | WASM executor | Integration tests against the real runtime |
+
+The `dev` feature is on by default, so `cargo build` and `cargo test` work out of the box for native compilation. `groundhog build` passes `--no-default-features` to disable `dev` and cross-compiles to WASM with `build-std`.
+
+Use `cargo` for day-to-day development. Use `groundhog` when you need the WASM binary or want to test against the real executor.
+
+```bash
+# Iterate on logic (native, fast, debuggable)
+cargo test
+
+# Build the production WASM contract
+groundhog build
+
+# Test against the WASM executor
+groundhog test
+```
+
+## What You Get
+
+`groundhog new my-counter` generates three files:
+
+**`Cargo.toml`**:
 
 ```toml
 [package]
-name = "my-contract"
-version.workspace = true
-edition.workspace = true
+name = "my-counter"
+version = "0.1.0"
+edition = "2024"
 
 [lib]
 crate-type = ["cdylib", "rlib"]
@@ -78,30 +85,33 @@ doctest = false
 test = false
 
 [features]
+default = ["dev"]
 dev = ["sdk/dev"]
 
 [dependencies]
-sdk = { workspace = true, features = ["storage"] }
-thiserror = { workspace = true }
-xdrs = { workspace = true, features = ["derive"] }
+sdk = { version = "0.3", registry = "groundhog", features = ["storage"] }
+thiserror = { version = "2", default-features = false }
+xdrs = { version = "0.5", registry = "groundhog", features = ["derive"] }
 
 [dev-dependencies]
-my-contract = { path = ".", features = ["dev"] }
+my-counter = { path = ".", features = ["dev"] }
 ```
 
-**`src/lib.rs`** with the contract:
+**`src/lib.rs`**:
 
 ```rust
 #![cfg_attr(not(feature = "dev"), no_std)]
 
 mod implementation;
-pub use implementation::*;
+
+pub use implementation::CounterClient;
+pub use implementation::exports::*;
 
 #[cfg(feature = "dev")]
 pub use implementation::test_setup;
 ```
 
-**`src/implementation.rs`** with the contract logic:
+**`src/implementation.rs`**:
 
 ```rust
 use sdk::storage::NNInt;
@@ -142,56 +152,49 @@ impl Counter {
 }
 ```
 
-**`tests/test.rs`** with a basic test:
+**`tests/test.rs`**:
 
 ```rust
-use my_contract::CounterClient;
+use my_counter::CounterClient;
+use sdk::call::CallError;
 use sdk::*;
 
-static NONCE: SHA256Hash = sdk::sha256_static!("MY_CONTRACT_TEST");
+static NONCE: SHA256Hash =
+    sdk::sha256_static!("MY_COUNTER_NONCE");
 
 #[test]
-fn test_increment() {
+fn test_counter() {
     let mut env = sdk::TestEnvironment::no_cost();
-
-    let test_contract = my_contract::test_setup::register(&mut env);
-    let contract_hash = env.setup_create_contract(&test_contract);
+    let test_contract =
+        my_counter::test_setup::register(&mut env);
+    let contract_hash =
+        env.setup_create_contract(&test_contract);
 
     contract_exec(env, move || {
-        let addr = deploy_contract(&NONCE, &contract_hash);
+        let addr =
+            deploy_contract(&NONCE, &contract_hash);
         let mut client = CounterClient::new(&addr);
 
-        client.initialize(0);
-        client.increment(5);
-        assert_eq!(client.get(), 5);
+        client.initialize(10);
+        assert_eq!(client.get(), 10);
 
-        client.increment(3);
-        assert_eq!(client.get(), 8);
+        client.increment(5);
+        assert_eq!(client.get(), 15);
+
+        client.decrement(3);
+        assert_eq!(client.get(), 12);
     })
     .unwrap_or_else(|e| panic!("Test failed: {e}"));
 }
 ```
 
-### Building
+Run `cargo test` to verify everything works.
 
-```bash
-# Build to WASM
-cargo --config .cargo/contract.toml build --release
+## Deployment
 
-# Optimize (reduces binary size)
-wasm-opt -O3 --enable-bulk-memory target/wasm32-unknown-unknown/release/my_contract.wasm \
-  -o my_contract.wasm
-```
-
-### Testing
-
-Building to WASM only needs the Rust toolchain. Running tests uses the `native_exec` mock executor, which runs your contract logic natively (not in WASM) so you can use standard Rust debugging tools, set breakpoints, and iterate on business logic before deploying to testnet.
-
-```bash
-cargo test -- --show-output
-```
-
-On supported platforms (x86_64 Linux, aarch64 macOS), prebuilt test libraries are downloaded automatically.
+:::caution[Coming Soon]
+`groundhog deploy`, `groundhog call`, and `groundhog keys` are planned but not yet implemented. Testnet deployment instructions will be added when these commands ship.
+:::
 
 ---
 
