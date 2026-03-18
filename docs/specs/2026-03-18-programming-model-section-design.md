@@ -76,10 +76,10 @@ New Committed State
     +---> Excluded transactions returned to mempool
 ```
 
-**Exclusion** (~4 sentences)
+**Exclusion** (~5 sentences)
 - Conflicting transactions execute fully, then get excluded at reservation.
-- Excluded transactions are returned to the mempool.
-- No retry logic needed.
+- Excluded transactions are returned to the mempool and will be retried automatically. This is standard blockchain behavior, not a Groundhog-specific feature.
+- Your contract writes no retry logic. Client-side, the flow is normal: submit a transaction, get a hash, check whether it landed.
 - Forward pointer: "How conflicts are determined depends on the storage type."
 
 **Gas** (~5 sentences + snippet)
