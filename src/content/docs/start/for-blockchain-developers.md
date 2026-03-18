@@ -100,7 +100,7 @@ Under the hood, each NNInt maintains two pending values: a **set** (absolute bas
 
 NNInt is the workhorse, but it's not the only storage type. `Bytestring` stores up to 2KB of arbitrary data (config, metadata, serialized structs). For higher-level patterns, `Map<K, V>` gives you per-key independence (like `mapping` in Solidity), and `RetrocausalQueue` handles producer-consumer workflows where inserts commute but consumption needs sequencing.
 
-Not everything commutes. Order book matching, unique name registration, and some governance operations need sequencing. Groundhog doesn't force you to do acrobatics for these: `Bytestring` and `RetrocausalQueue` give you the tools to handle serialized workflows cleanly. Meanwhile, the vast majority of on-chain activity (payments, transfers, balance updates) flows with zero effort, giving you all the compute capacity you need to make your applications as rich as you want them to be. For the full API of each type, see [Storage Types](/reference/storage-types/).
+Not everything commutes. Order book matching, unique name registration, and some governance operations need sequencing. Groundhog doesn't force you to do acrobatics for these: `Bytestring` and `RetrocausalQueue` give you the tools to handle serialized workflows cleanly. Meanwhile, the vast majority of on-chain activity (payments, transfers, balance updates) flows with zero effort, giving you all the compute capacity you need to make your applications as rich as you want them to be. For the full treatment, see the [Programming Model](/programming-model/execution/) section.
 
 ---
 
@@ -116,6 +116,6 @@ Getting the primitive right at the most fundamental level (typed deltas with kno
 
 ## Next Steps
 
-For a detailed Solidity-to-Groundhog mapping, see the [EVM Migration Guide](/migration/evm-migration/). For the full execution model (snapshots, deltas, merge rules), see [Execution Model](/how-it-works/execution-model/).
+For a detailed Solidity-to-Groundhog mapping, see the [EVM Migration Guide](/migration/evm-migration/). For the full execution model (snapshots, deltas, merge rules), see the [Programming Model](/programming-model/execution/).
 
 Ready to write code? [Getting Started](/start/getting-started/) walks you through the SDK setup and your first contract.
