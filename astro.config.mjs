@@ -20,6 +20,14 @@ export default defineConfig({
           ],
         },
         {
+          label: 'Programming Model',
+          items: [
+            'programming-model/execution',
+            'programming-model/storage-types',
+            'programming-model/nnint',
+          ],
+        },
+        {
           label: 'Tutorials',
           items: [
             'start/getting-started',
