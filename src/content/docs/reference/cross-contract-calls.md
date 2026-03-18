@@ -24,6 +24,17 @@ let mut token = ERC20Client::new(&token_addr);
 
 The generated client provides two call styles for each method: direct calls and try calls.
 
+### Gas Limits
+
+Cross-contract calls accept an optional gas limit. Use `with_gas_limit` on the client to cap how much computation the callee can perform:
+
+```rust
+let mut token = ERC20Client::new(&token_addr);
+token.with_gas_limit(100_000).transfer(&recipient, 100);
+```
+
+Gas is free (metering, not billing), but limits prevent runaway computation. See [Execution Model](/programming-model/execution/#gas) for details.
+
 ## Direct Calls
 
 Direct calls return values directly and abort if the callee aborts or faults. Use these when you want failures to propagate up.

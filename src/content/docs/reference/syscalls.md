@@ -7,6 +7,8 @@ description: Complete reference for Groundhog contract syscalls.
 
 Syscalls are the interface between [contract](/how-it-works/contracts/) code running in WASM and the Groundhog runtime. Contracts call syscalls to read and write [storage](/reference/storage-types/), invoke other contracts, and interact with the ledger. Each syscall executes within an [invocation frame](/how-it-works/invocation-frames/). Most developers use the SDK, which wraps these calls. This reference is for those who need the low-level details.
 
+Most developers use `strict_inc`, `inc`, and `set` through the SDK's storage types. See [Programming Model: Storage Types](/programming-model/storage-types/) for the high-level API and [NNInt In Depth](/programming-model/nnint/) for how SDK methods map to the `NonnegativeIntSetAdd` syscall.
+
 `caller_address` refers to the address of the currently running contract. Unless otherwise noted, when a contract accesses a `StorageKey`, that key is converted into an `AddressAndKey` by concatenating `caller_address` with the `StorageKey`.
 
 ## Error Codes

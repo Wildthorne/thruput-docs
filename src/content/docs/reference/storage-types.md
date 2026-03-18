@@ -5,15 +5,15 @@ description: Reference for Groundhog's commutative storage types.
 
 Groundhog provides typed storage primitives with built-in commutativity rules. Instead of raw key-value writes, you use types that know how to merge concurrent modifications. This page documents each type's API and merge behavior.
 
-For a conceptual overview of how these types fit into the execution model, see [Execution Model](/how-it-works/execution-model/).
+For conflict semantics and usage guidance, see [Programming Model: Storage Types](/programming-model/storage-types/). For the execution model internals, see [How It Works: Execution Model](/how-it-works/execution-model/).
 
-## NonnegativeInt (NNInt)
+## NNInt
 
 Non-negative integer. The workhorse of Groundhog storage. Used for balances, counters, supply tracking.
 
 ### Commutativity
 
-Increments and decrements always commute as long as the result stays non-negative. Two transfers from the same account run in parallel if neither causes underflow. Setting a value does not commute with concurrent increments unless all concurrent writers supply the same base value.
+Increments (`strict_inc`, `inc`) always commute with each other. They all resolve to the same snapshot base, so their deltas merge by addition. If the merged result would be negative, the offending transaction is excluded at reservation. `set(value)` commutes only when all concurrent callers set the same value. For the full commutativity rules, see [NNInt In Depth](/programming-model/nnint/).
 
 ### API
 
@@ -246,4 +246,4 @@ pub struct MyContract {
 
 The `#[sdk::storage]` macro generates keypath routing so each field maps to a unique storage location. Nested types like `Map<K, Map<K2, V>>` extend the keypath automatically.
 
-For a hands-on introduction to using these types, see [Getting Started](/start/getting-started/). For the raw syscall interface that these types wrap, see [Syscalls](/reference/syscalls/).
+For a hands-on introduction to using these types, see [Getting Started](/start/getting-started/). For conflict semantics and when to use each type, see [Programming Model: Storage Types](/programming-model/storage-types/). For the raw syscall interface that these types wrap, see [Syscalls](/reference/syscalls/).
