@@ -13,7 +13,7 @@ Most parallel systems put the burden on the developer: declare your locks, speci
 
 Groundhog takes a different approach. Instead of asking developers to manage concurrency, it provides storage types that guarantee correctness under parallel execution:
 
-- **NonnegativeInt**: concurrent increments merge by addition. Two transfers to the same account produce two deltas that combine cleanly.
+- **NNInt**: concurrent increments merge by addition. Two transfers to the same account produce two deltas that combine cleanly.
 - **Map**: operations on different keys never interact. Operations on the same key follow the value type's rules.
 - **RetrocausalQueue**: multiple producers, always mergeable.
 - **Bytestring**: concurrent writes of different values conflict. Use for data written rarely.
@@ -24,7 +24,7 @@ This is not an optimization bolted onto a sequential design. It is the design. E
 
 The SDK provides convenience layers (`NNInt`, `Map`, `#[storage]` macros) that make common patterns easy, but these are optional. You can work directly with the raw syscall interface and build your own storage abstractions. The SDK is middleware, not a framework. See [Getting Started](/start/getting-started/#sdk-layers-use-what-you-need) for the full layering.
 
-For the mechanics of how this works (snapshots, deltas, merge rules), see [Execution Model](/how-it-works/execution-model/). For the full type API, see [Storage Types](/reference/storage-types/).
+For the contract-writing rules (snapshots, deltas, merge rules), see the [Programming Model](/programming-model/execution/) section. For the engine internals, see [Execution Model](/how-it-works/execution-model/). For the full type API, see [Storage Types Reference](/reference/storage-types/).
 
 ## What Other Chains Do Instead
 
@@ -61,7 +61,8 @@ Every transaction in the block runs steps 2-4 simultaneously. Step 5-6 is where 
 
 ## Related Documentation
 
-- [Execution Model](/how-it-works/execution-model/): Snapshots, deltas, and commutativity rules
+- [Programming Model](/programming-model/execution/): Contract-writing rules for snapshots, deltas, storage types, and commutativity
+- [Execution Model](/how-it-works/execution-model/): How the engine implements the programming model
 - [Transaction Lifecycle](/how-it-works/transaction-lifecycle/): The five stages from submission to commit
-- [Storage Types](/reference/storage-types/): Full API for NNInt, Map, Bytestring, and RetrocausalQueue
+- [Storage Types Reference](/reference/storage-types/): Full API for NNInt, Map, Bytestring, and RetrocausalQueue
 - [Storage & Scheduling Economics](/how-it-works/storage-economics/): The capital-based cost model

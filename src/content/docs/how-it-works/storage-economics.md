@@ -40,7 +40,7 @@ Contracts can sponsor execution for their callers. A contract with sufficient fr
 
 ## Storage: Refundable Deposits
 
-When your contract writes data to the ledger (using [typed storage primitives](/reference/storage-types/)), it locks HOG proportional to the size of that data. Delete the data and the HOG is returned. This is a deposit, not a burn.
+When your contract writes data to the ledger (using [typed storage primitives](/programming-model/storage-types/)), it locks HOG proportional to the size of that data. Delete the data and the HOG is returned. This is a deposit, not a burn.
 
 On Ethereum, you pay gas to write storage, and that cost is gone regardless of whether you later delete the data. The chain accumulates state forever with no incentive to clean it up. On Solana, accounts must hold a rent-exempt balance (conceptually similar to Groundhog's deposit model), but the mechanics differ: Solana accounts are fixed-size and require explicit reallocation to resize, while Groundhog's deposits adjust automatically as stored data grows or shrinks.
 
@@ -86,7 +86,8 @@ Groundhog replaces per-operation fees with capital requirements. You hold HOG to
 
 ## Related Documentation
 
+- [Programming Model](/programming-model/execution/): Contract-writing rules for execution, storage types, and gas
 - [Execution Model](/how-it-works/execution-model/): How the capital model fits into the execution pipeline
 - [Architecture](/how-it-works/architecture/): The big-picture design
-- [Storage Types](/reference/storage-types/): API for the typed primitives that storage deposits back
+- [Storage Types Reference](/reference/storage-types/): API for the typed primitives that storage deposits back
 - [Getting Started](/start/getting-started/): Write your first contract
