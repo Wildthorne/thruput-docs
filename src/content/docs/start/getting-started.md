@@ -12,7 +12,7 @@ That said, the CLI is a convenience, not a requirement. You can also:
 - Start from the example contracts in the SDK repository (`example-contracts/` in `sdk_rs`)
 - Build a project from scratch using the SDK crate directly
 
-The CLI and example contracts produce the same thing: a Rust crate that compiles to WASM and uses the SDK's storage types and macros.
+The CLI is just a consumer of the SDK. It generates the same Rust crate you'd write by hand: a standard Cargo project that depends on the SDK, compiles to WASM, and uses the SDK's storage types and macros.
 
 ## Install
 
