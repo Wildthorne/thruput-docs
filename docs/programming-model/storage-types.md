@@ -35,7 +35,7 @@ Maps can nest: `Map<K, Map<K2, NNInt>>` gives you composite keys with independen
 
 ## Bytestring
 
-Raw bytes. Last-write-wins. **Concurrent writes to the same key always conflict.**
+Raw bytes. Last-write-wins. **Concurrent writes of the same value commute. Concurrent writes of different values conflict.**
 
 ```rust
 self.owner.set(&new_owner);  // Tx A
@@ -76,5 +76,5 @@ From most concurrent to most exclusive:
 2. **Map with different keys** -- always independent (no interaction)
 3. **RetrocausalQueue inserts** -- always commute
 4. **RetrocausalQueue consumes** -- sequential
-5. **Bytestring writes** -- always conflict on same key
+5. **Bytestring writes** -- same value commutes, different values conflict
 6. **NNInt set()** -- conflicts when bases differ
