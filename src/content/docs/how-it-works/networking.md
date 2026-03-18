@@ -19,11 +19,13 @@ A Groundhog node is not a single process. It is a set of components that registe
            ┌────────┬───────┬───┴───┬──────────┐
            v        v       v       v          v
        Executors  DB      Event   Auth     Coordinator
-       (N procs) Shards  Server  Server   (chuckd-rs)
+       (N procs) Shards  Server  Server     (chuckd)
                  (N procs)
 ```
 
-No component discovers peers independently. The mempool is the registry. When a component registers, it gets back the addresses of everything else it needs to talk to.
+Within a node, no component discovers peers independently. The mempool is the registry for intra-node communication. When a component registers, it gets back the addresses of everything else it needs to talk to.
+
+Inter-node communication (consensus, transaction gossip) is managed by the coordinator, which maintains its own peer topology via configured quorum sets. The mempool knows nothing about other validators. See [Consensus](/how-it-works/consensus/) for how coordinators find and talk to each other.
 
 ## Component Registration
 
@@ -37,7 +39,7 @@ Startup order:
 4. **Auth server** registers via `mempoolauth_intro_auth`. Handles transaction signature verification.
 5. **Coordinator** registers via `schedulercoord_intro_coord`. Drives consensus and block production.
 
-All internal communication uses XDR-RPC over TCP. Protocol definitions live in `.x` files (XDR IDL) and are compiled to both C++ (hogd) and Rust (chuckd-rs) bindings.
+All internal communication uses XDR-RPC over TCP. Protocol definitions live in `.x` files (XDR IDL) and are compiled to both C++ (hogd), Go (chuckd), and Rust (groundhog-rpc) bindings.
 
 ## The Mempool as Orchestrator
 
@@ -55,7 +57,7 @@ The coordinator does not execute transactions or manage storage. It asks the mem
 
 ## Coordinator Connection
 
-The coordinator (chuckd-rs) is the consensus participant. It connects to the mempool and drives block production through these RPC calls:
+The coordinator (chuckd) is the consensus participant. It connects to the mempool and drives block production through these RPC calls:
 
 | Call | Purpose |
 |------|---------|
@@ -71,7 +73,7 @@ The mempool also calls back to the coordinator via a reverse RPC channel to noti
 
 Clients submit transactions and query state through two paths:
 
-**Wallet (current).** The coordinator includes an HTTP/REST wallet endpoint. Clients submit signed transactions, which the coordinator forwards to the mempool via `submit_unvetted`.
+**Wallet (current).** The coordinator includes an HTTP/REST wallet endpoint. Clients submit signed transactions, which the coordinator forwards to the mempool via `submit_unvetted`. This exists for testing, not real public usage.
 
 **JSON-RPC gateway (in progress).** A separate service (`groundhog-rpc`) that exposes a JSON-RPC 2.0 API. It connects to the mempool and indexer via x23 RPC. Phase 1 methods:
 

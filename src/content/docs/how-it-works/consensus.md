@@ -15,9 +15,11 @@ The result is **irrevocable finality**. Once a block is confirmed, it cannot be 
 
 ## The Coordinator
 
-Consensus is driven by the coordinator (chuckd-rs), which is separate from the execution engine (hogd). The coordinator's job is to get validators to agree on which block to commit. It does not execute transactions or manage storage. That is the mempool's job (see [Networking](/how-it-works/networking/)).
+Consensus is driven by the coordinator (chuckd), which is separate from the execution engine (hogd). The coordinator's job is to get validators to agree on which block to commit. It does not execute transactions or manage storage. That is the mempool's job (see [Networking](/how-it-works/networking/)).
 
-The coordinator embeds the SCP kernel directly (no child process or IPC). It runs a state machine called the **baton** that drives the consensus loop.
+Each coordinator is configured with its own quorum set: the list of other validators it trusts for consensus. This peer configuration is managed by the coordinator, not the mempool. The mempool handles intra-node component registration (executors, DB shards, etc.); the coordinator handles inter-node consensus topology. This separation keeps execution concerns and agreement concerns independent.
+
+It runs a state machine called the **baton** that drives the consensus loop.
 
 ## Block Production
 
