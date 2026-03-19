@@ -5,20 +5,6 @@ description: "Additional NNInt operations, exclusive writes, and early reservati
 
 These features exist in the SDK but are less commonly needed than `strict_inc` and the core storage types. They're documented here so you know they exist. Full explanations are coming as the APIs stabilize.
 
-## Resetting Pending State
-
-The `reset` operation clears any pending set and add values for an NNInt location, restoring it to its snapshot state. Internally this calls `set_add(None, 0)`.
-
-```rust
-non_negative_int_reset(key);
-```
-
-Use this when you need to abandon in-transaction changes to a storage location without aborting the entire transaction.
-
-:::caution[API In Flux]
-This was recently renamed from `revert` to `reset`. The name and semantics may continue to evolve.
-:::
-
 ## Negative Set Values
 
 NNInt allows setting a negative base value explicitly:
