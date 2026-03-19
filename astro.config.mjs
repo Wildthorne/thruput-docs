@@ -25,6 +25,7 @@ export default defineConfig({
             'programming-model/execution',
             'programming-model/storage-types',
             'programming-model/nnint',
+            'programming-model/testing',
             'programming-model/advanced',
           ],
         },
