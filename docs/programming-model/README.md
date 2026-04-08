@@ -22,7 +22,11 @@ Groundhog gets parallelism from simplicity: typed deltas with known merge semant
 
 When writing or editing content, verify claims against the SDK source at `~/code/gh/sdk/sdk_rs`. In particular:
 
-- NNInt API: `src/non_negative_int.rs` (public API), `src/internal/nnint.rs` (internal syscall wrapper). `src/storage/` is an optional convenience library (handle/keypath sugar) that should be its own crate.
-- RetrocausalQueue: `src/retrocausal_queue.rs`
-- Gas/invoke config: `src/invoke_config.rs`, `src/call/calls.rs`
-- Storage convenience layer: `src/storage/` (optional, wraps primitives with keypath-based handles and KV sugar)
+- NNInt storage API: `src/storage/nnint.rs`
+- NNInt syscall wrappers: `src/sys_exn/nnint.rs`
+- Map, Vector, Value, Bytestring, Node, Slot types: `src/storage/`
+- RetrocausalQueue: `src/sys_exn/rcq.rs`
+- Gas/invoke config: `src/invoke_config.rs`, `src/call/`
+- Error types: `src/exn/`, macros at `groundhog-macros/src/lib.rs`
+- Example contracts: `example-contracts/` (erc20, counter are the most current)
+- Protocol definitions: `~/code/gh/hogd/protocol/` (syscalls.yaml, syscall_error.x)
