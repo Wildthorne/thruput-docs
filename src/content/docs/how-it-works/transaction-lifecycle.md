@@ -18,7 +18,7 @@ A transaction passes through six stages:
 
 ## Stage 1: Submission
 
-The client signs a transaction and submits it via the wallet endpoint or JSON-RPC gateway. The coordinator receives it and forwards it to the mempool.
+The client signs a transaction and submits it via the JSON-RPC gateway. The gateway forwards it to the mempool.
 
 ## Stage 2: Authorization
 
