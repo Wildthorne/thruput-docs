@@ -111,7 +111,9 @@ These are real problems EVM developers deal with daily. They don't exist on Grou
 
 On the EVM, calling an external contract hands over execution control. That contract can call back into yours before your state updates are complete. Entire categories of exploits (DAO hack, read-only reentrancy) exist because of this.
 
-Groundhog's execution model eliminates reentrancy. Every transaction reads from a frozen snapshot and writes deltas. A child contract call reads from the same snapshot as the parent. There is no way for a callback to observe partial state updates, because partial state updates don't exist during execution. Deltas merge after all execution completes.
+Groundhog bans reentrancy at the runtime level. A contract cannot be called while it is already on the call stack. The runtime enforces this: if contract A calls contract B, and B tries to call back into A, the call fails. This is not a convention or a guard you add. It is a protocol-level guarantee.
+
+Beyond the ban, the snapshot/delta model means there is no partial state to observe even if reentrancy were allowed. Every contract reads from the same frozen snapshot and writes deltas. Deltas merge after all execution completes.
 
 You don't need reentrancy guards, checks-effects-interactions ordering, or `nonReentrant` modifiers.
 

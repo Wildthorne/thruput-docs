@@ -151,7 +151,7 @@ This matches the real-world contention profile. High-volume pairs see sequential
 The swap contract is functional but several features are still in development:
 
 - **Event emission.** Currently uses placeholder `log()` calls. Will use `#[derive(Event)]` with proper topic indexing.
-- **Flash swaps.** The callback mechanism for flash loans requires finalization of the reentrancy model.
+- **Flash swaps.** Not supported. Groundhog bans reentrancy at the runtime level (a contract cannot be called while it is already on the call stack), so the callback pattern used by flash loans on other chains does not apply. Alternative designs for flash-loan-like functionality are under exploration.
 - **Protocol fees.** Fee collection and distribution to a fee recipient.
 - **Router contract.** A higher-level contract that handles multi-hop swaps, slippage protection, and deadline enforcement.
 
