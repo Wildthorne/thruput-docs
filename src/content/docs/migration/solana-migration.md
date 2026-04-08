@@ -37,8 +37,8 @@ pub struct Token {
 fn transfer(&mut self, receiver: &ContractAddress, amount: Amount) {
     let caller = get_caller();
     let diff = amount_to_diff(amount);
-    self.balances.get(&caller).strict_inc(-diff);
-    self.balances.get(receiver).strict_inc(diff);
+    self.balances.at_mut(&caller).strict_inc(-diff);
+    self.balances.at_mut(receiver).strict_inc(diff);
 }
 ```
 
@@ -87,7 +87,7 @@ On Solana, a transaction contains instructions, each specifying a program ID, ac
 The SDK generates typed clients:
 
 ```rust
-let mut client = TokenClient::new(&token_addr);
+let client = TokenClient::new(&token_addr);
 client.transfer(&recipient, 100);
 ```
 
@@ -115,15 +115,15 @@ Groundhog has no account concept. Your contract method takes typed parameters (a
 
 ### Rent and Account Lifecycle
 
-Solana accounts must hold enough lamports to be rent-exempt (roughly 2 years of rent). Accounts below the threshold are garbage collected. This creates friction: every new piece of state costs lamports, and you need to handle the rent-exempt check in your program logic.
+Solana accounts must hold a minimum lamport balance (the rent-exempt minimum, calculated as roughly 2 years of rent). All accounts are now required to be rent-exempt at creation. This creates friction: every new piece of state costs lamports upfront, and you need to calculate the minimum balance for your account size.
 
 Groundhog uses a capital deposit model for storage. You hold HOG tokens as a deposit while storage is allocated, and the deposit is refundable when storage is freed. No rent clock, no garbage collection, no minimum balance calculations.
 
 ### Compute Unit Budgets
 
-Solana transactions have a compute budget (default 200k units, max 1.4M with priority fees). Complex operations require careful optimization. CPI calls are expensive. Developers routinely hit compute limits and restructure logic to stay under budget.
+Solana transactions have a compute budget (default 200k units per instruction, max 1.4M per transaction via `SetComputeUnitLimit`). Complex operations require careful optimization. CPI calls are expensive. Developers routinely hit compute limits and restructure logic to stay under budget.
 
-Groundhog has no per-operation compute cost. Your contract runs to completion or aborts. There is no compute budget to optimize against, no priority fees, and no "out of compute" failures.
+Groundhog has gas limits that meter computation, but gas costs zero tokens. Specify a gas limit to bound execution, but don't optimize for gas cost. There are no priority fees and no fee-related failures.
 
 ### PDA Seed Management
 
@@ -169,7 +169,7 @@ pub struct MyContract {
 }
 
 fn get_user_state(&self, user: &ContractAddress) -> UserState {
-    self.user_states.get(user).try_get().unwrap_or_default()
+    self.user_states.at(user).try_get().unwrap_or_default()
 }
 ```
 
@@ -195,8 +195,8 @@ token::transfer(cpi_ctx, amount)?;
 fn transfer(&mut self, receiver: &ContractAddress, amount: Amount) {
     let caller = get_caller();
     let diff = amount_to_diff(amount);
-    self.balances.get(&caller).strict_inc(-diff);
-    self.balances.get(receiver).strict_inc(diff);
+    self.balances.at_mut(&caller).strict_inc(-diff);
+    self.balances.at_mut(receiver).strict_inc(diff);
 }
 ```
 
@@ -225,7 +225,7 @@ token::mint_to(cpi_ctx, amount)?;
 **Groundhog:**
 
 ```rust
-let mut token = ERC20Client::new(&token_addr);
+let token = ERC20Client::new(&token_addr);
 token.mint(&recipient, amount);
 ```
 
@@ -251,15 +251,13 @@ require!(ctx.accounts.authority.key() == expected, MyError::NotAuthorized);
 **Groundhog:**
 
 ```rust
-#[derive(Error, Debug, Clone, PartialEq, ReadXDR, WriteXDR)]
-#[repr(i32)]
+#[contract_error]
 pub enum Error {
-    #[error("Not authorized")]
     NotAuthorized = 1,
 }
 
 // In method:
-ensure(&get_caller() == &self.contract_owner, Error::NotAuthorized);
+ensure(get_caller() == self.contract_owner.get(), Error::NotAuthorized);
 ```
 
 Similar pattern: define error variants, check conditions. Anchor uses `require!` macro, Groundhog uses `ensure()`. Both abort the transaction on failure. The difference: Groundhog errors are XDR-serialized (for cross-contract error inspection), and `NNInt` underflow aborts automatically without needing an explicit check.
