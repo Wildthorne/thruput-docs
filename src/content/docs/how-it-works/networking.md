@@ -97,7 +97,7 @@ Clients submit transactions and query state through two paths:
 
 A transaction moves through the system like this:
 
-1. Client signs and submits via the RPC gateway (or the wallet endpoint during development)
+1. Client signs and submits via the RPC gateway
 2. The gateway (or coordinator) forwards the transaction to the mempool (`submit_unvetted`)
 3. Mempool sends the transaction to the auth server for signature verification
 4. Verified transactions are queued by account with balance-proportional scheduling
