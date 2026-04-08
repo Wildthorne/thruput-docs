@@ -7,7 +7,7 @@ Reference rules for the Groundhog L1 programming model. These files are the sour
 **Start with NNInt.** It is the core unlock. The two-component (set, add) model and its commutativity rules are what make Groundhog's parallel execution possible. Everything else builds on this.
 
 1. **[nnint.md](./nnint.md)** -- The set_add primitive, commutativity rules, public API mapping. Read this first.
-2. **[storage-types.md](./storage-types.md)** -- All four storage types (NNInt, Map, Bytestring, RetrocausalQueue) and their conflict semantics. How to choose between them.
+2. **[storage-types.md](./storage-types.md)** -- All storage types (NNInt, Map, Vector, Value, Bytestring, RetrocausalQueue) and their conflict semantics. How to choose between them.
 3. **[execution.md](./execution.md)** -- Snapshot isolation, block lifecycle, exclusion model, gas (metering not billing), Balance-Proportional Scheduling.
 
 ## The Model in Five Sentences

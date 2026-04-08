@@ -73,9 +73,44 @@ The rule of thumb: if you'd use a CRDT in a distributed system, it will parallel
 
 [^commutativity-study]: This analysis covered Ethereum, Solana, Polygon, Arbitrum, Optimism, and Base. See the Groundhog whitepaper for methodology and per-chain breakdowns.
 
+## How Conflicts Are Resolved
+
+The programming model describes conflicts as "checked at block close." That is the correct mental model for contract developers. The engine resolves most conflicts earlier.
+
+### Eager Capacity Reservation
+
+When a transaction executes, each NNInt storage key gets a **capacity lock** initialized from the snapshot. If the snapshot value is 100, the lock starts with a subtraction budget of 100 and an addition budget up to `i128::MAX - 100`.
+
+When `strict_inc(-30)` runs, it atomically reserves 30 from the subtraction budget via compare-and-swap. If another transaction already consumed that capacity, the reservation fails immediately. The transaction is excluded right there, during execution, not at block close.
+
+```
+Snapshot: Alice balance = 10
+          Subtraction budget = 10
+
+Tx A: strict_inc(-8)
+      Reserve 8 from budget → budget = 2 → success
+
+Tx B: strict_inc(-5)
+      Reserve 5 from budget → budget would be -3 → fail (kConflict)
+```
+
+Whichever transaction reserves first wins. The lock is per-key, per-block: initialized once from the snapshot, consumed by reservations, never replenished within a block. Two transactions touching different keys never interact. Two transactions touching the same key contend for the same capacity lock.
+
+For operations that commute (two increments, or two decrements that fit within budget), both reservations succeed and both transactions land. Conflict only occurs when the combined demand exceeds the snapshot-derived capacity.
+
+### What Block Close Does
+
+By the time block close runs, all capacity conflicts have been resolved. Block close stages the already-finalized locks into a ChangeSet and computes the block hash. No conflict resolution happens at this stage for NNInt, Map, Value, or Bytestring operations.
+
+RetrocausalQueue is the exception: it has end-of-block invariant checks that the other storage types do not. RCQ entries from excluded transactions are removed during block finalization.
+
+### Why the Simplified Model Still Holds
+
+From a contract developer's perspective, the result is the same: your transaction either lands or is excluded. You don't manage locks, budgets, or reservation order. The programming model ("deltas that commute merge; deltas that conflict cause exclusion") is accurate for deciding how to structure your storage. The eager reservation is an engine optimization that makes the outcome deterministic without deferring all conflict resolution to a single serial phase.
+
 ## Storage Primitives
 
-Groundhog provides four typed storage primitives at the protocol level: **NNInt** (commutative integer), **Map** (independent keys), **Bytestring** (raw bytes), and **RetrocausalQueue** (multi-producer queue). Each type defines its own merge rules for concurrent writes.
+Groundhog provides typed storage primitives at the protocol level: **NNInt** (commutative integer), **Map** (independent keys), **Vector** (indexed collection), **Value** (typed slot), **Bytestring** (raw bytes), and **RetrocausalQueue** (multi-producer queue). Each type defines its own merge rules for concurrent writes.
 
 For the full treatment of each type, conflict semantics, and how to choose between them, see [Programming Model: Storage Types](/programming-model/storage-types/). For the underlying commutativity model, see [NNInt In Depth](/programming-model/nnint/). For API signatures, see [Storage Types Reference](/reference/storage-types/).
 

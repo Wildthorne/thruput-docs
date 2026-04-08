@@ -5,7 +5,7 @@ description: Map your Ethereum, Solana, or Move experience to Groundhog's progra
 
 If you've built on Ethereum, Solana, or any smart contract platform, here's what Groundhog looks like: easy things are still easy, whole classes of footguns are gone, the infrastructure tax disappears. 
 
-The same simplicity that makes your code correct is what makes makes Groundhog incredibly fast and effectively "free" to execute contracts on.
+The same simplicity that makes your code correct is what makes Groundhog incredibly fast and effectively "free" to execute contracts on.
 
 ---
 

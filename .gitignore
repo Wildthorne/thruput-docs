@@ -22,5 +22,4 @@ pnpm-debug.log*
 
 # local working files
 CLAUDE.md
-docs/specs/
 docs/plans/

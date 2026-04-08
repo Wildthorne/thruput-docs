@@ -31,7 +31,6 @@ pub struct MyContract {
 
 #[contract(throws = Error)]
 impl MyContract {
-    #[init]
     pub fn initialize(&mut self, starting_value: u64) {
         self.value.strict_inc(starting_value as i128);
     }
@@ -46,7 +45,7 @@ impl MyContract {
 }
 ```
 
-Where Solidity uses `constructor()`, Groundhog uses a method marked `#[init]` that runs once at deployment. Where Solidity uses `uint256` state variables, Groundhog uses typed storage fields (`NNInt`, `Map<K, V>`, `Bytestring`). The type you choose determines how concurrent writes merge. This is the core difference: storage types enforce parallelism rules, not the developer.
+Where Solidity uses `constructor()`, Groundhog uses a conventional `initialize` method that runs once during the deployment transaction. Where Solidity uses `uint256` state variables, Groundhog uses typed storage fields (`NNInt`, `Map<K, V>`, `Bytestring`). The type you choose determines how concurrent writes merge. This is the core difference: storage types enforce parallelism rules, not the developer.
 
 ### Compiling
 
@@ -67,7 +66,7 @@ On Ethereum, you send a transaction containing bytecode, the EVM executes the co
 
 This is closer to Ethereum's `CREATE2` than `CREATE`. The address is predictable before deployment.
 
-The `#[init]` method runs during instance creation, not during WASM upload. This means the same WASM binary can be instantiated multiple times with different initialization parameters, each at a different address.
+The `initialize` method runs during instance creation, not during WASM upload. This means the same WASM binary can be instantiated multiple times with different initialization parameters, each at a different address.
 
 ### Calling
 
@@ -76,7 +75,7 @@ On Ethereum, you send a transaction specifying a contract address, a function se
 The SDK generates entrypoint IDs from method names and the `#[contract]` macro handles encoding. From a developer's perspective, calling a contract looks like this:
 
 ```rust
-let mut client = MyContractClient::new(&contract_addr);
+let client = MyContractClient::new(&contract_addr);
 client.increment(42);
 let value = client.get();
 ```
@@ -95,12 +94,12 @@ The key difference: every read within a block sees the same snapshot. Two transa
 |----------------|-----------|-----|
 | `balance = newValue` | `balance.strict_inc(delta)` | Deltas merge in parallel. Absolute writes conflict. |
 | `mapping(address => uint256)` | `Map<Address, NNInt>` | Same concept. The value type enforces guarantees (e.g. non-negativity) and enables parallel execution. |
-| Gas per operation | No gas. HOG deposit for storage capacity. | You hold tokens for throughput, not pay per call. |
+| Gas per operation | Gas exists for metering but costs zero. HOG deposit for storage capacity. | Gas limits bound computation, but no tokens are burned. |
 | Sequential execution | Parallel by default | Every transaction in a block runs simultaneously against the same snapshot. |
 | `require(condition, "message")` | `ensure(condition, Error::Variant)` | Typed errors instead of string messages. |
 | `revert()` / `require()` | `abort(&error)` | Aborts the transaction. Cannot be caught within the same contract. |
 | Solidity + EVM bytecode | Rust + WebAssembly | WASM gives full-featured computation. No 24KB contract size limit. |
-| `constructor()` | `#[init] fn initialize()` | Runs at instance creation, not bytecode upload. |
+| `constructor()` | `fn initialize()` | Called during the deployment transaction, not bytecode upload. |
 | `msg.sender` | `get_caller()` | Same concept. |
 | `view` / `pure` | `&self` / no self | Read-only methods don't produce state changes. |
 | `public` / `external` / `internal` / `private` | `pub` / not pub | Rust visibility. Public methods are WASM exports. |
@@ -234,18 +233,17 @@ contract Token {
 ```rust
 #[contract(throws = Error)]
 impl Token {
-    #[init]
     pub fn initialize(&mut self, initial_supply: Amount) {
         let caller = get_caller();
-        self.contract_owner = caller.clone();
+        self.contract_owner.set(&caller);
         let diff = amount_to_diff(initial_supply);
-        self.balances.get(&caller).strict_inc(diff);
+        self.balances.at_mut(&caller).strict_inc(diff);
         log_transfer_event(CONTRACT_ADDR_ZERO, &caller, initial_supply);
     }
 }
 ```
 
-**What changes:** `#[init]` replaces `constructor`. It runs once when the contract instance is created (not when the WASM is uploaded). The deployer calls `initialize` as part of the deployment transaction. State initialization uses the same delta operations as everything else.
+**What changes:** Groundhog has no special constructor syntax. The deployer calls `initialize` as part of the deployment transaction. It runs once when the contract instance is created (not when the WASM is uploaded). State initialization uses the same delta operations as everything else.
 
 ### Events
 
@@ -370,7 +368,7 @@ These EVM features have no Groundhog equivalent. Set your expectations:
 | `selfdestruct` | Does not exist | Contracts are permanent |
 | `receive()` / `fallback()` | Does not exist | All methods must be explicitly defined |
 | `block.timestamp` / `block.number` | Available via syscalls | Different API, same concept |
-| `gasleft()` | Does not exist | No gas model |
+| `gasleft()` | Does not exist | Gas metering exists but costs zero. No need to check remaining gas. |
 | Contract inheritance | Does not exist | Use Rust traits and composition |
 | 24KB contract size limit | Does not exist | WASM binaries have no practical size limit |
 | Storage slot packing | Does not exist | Each storage field is independent |

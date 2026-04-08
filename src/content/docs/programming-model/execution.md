@@ -52,7 +52,7 @@ Previous block's committed state
 
 ## Exclusion
 
-Conflicting transactions are not aborted mid-execution. They execute fully, produce deltas, and are excluded at reservation time. Excluded transactions are returned to the mempool and will be retried automatically. This is standard blockchain behavior.
+From your contract's perspective, a conflicting transaction simply doesn't land. Your code runs, produces deltas, and the system determines whether those deltas are compatible with other transactions in the block. Incompatible transactions are excluded and returned to the mempool. (Under the hood, the engine resolves most conflicts eagerly during execution via capacity reservation. See [How Conflicts Are Resolved](/how-it-works/execution-model/#how-conflicts-are-resolved) for the engine-level details.)
 
 Your contract writes no retry logic. Client-side, the flow is the same as any other chain: submit a transaction, get a hash, check whether it landed. How conflicts are determined depends on the storage type you choose. See [Storage Types](/programming-model/storage-types/).
 
@@ -61,7 +61,7 @@ Your contract writes no retry logic. Client-side, the flow is the same as any ot
 Transactions and cross-contract calls specify a gas limit. Gas bounds computation (prevents infinite loops, caps cross-contract call depth) but costs zero tokens. No gas is burned.
 
 ```rust
-let mut client = TokenClient::new(&token_address);
+let client = TokenClient::new(&token_address);
 client.with_gas_limit(100_000).transfer(&to, amount);
 ```
 

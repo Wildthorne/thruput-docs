@@ -5,121 +5,209 @@ description: Calling other contracts from your contract.
 
 ## Client Generation
 
-The `#[contract]` macro generates a client struct for calling other [contracts](/how-it-works/contracts/) when you specify the `client` parameter:
+The `#[contract]` macro generates a client struct when you specify the `client` parameter. The client mirrors every public method on the trait or impl block.
+
+Single error type:
 
 ```rust
 #[contract(client = ERC20Client, throws = ERC20Error)]
 pub trait ERC20 {
     fn transfer(&mut self, receiver: &ContractAddress, amount: Amount);
-    fn get_balance(&self) -> Amount;
-    // ...
+    fn get_balance_of(&self, addr: &ContractAddress) -> Amount;
 }
 ```
 
-Construct the client with the target contract's address:
+Multiple error types:
 
 ```rust
-let mut token = ERC20Client::new(&token_addr);
+#[contract(client = MultiClient, throws(AlphaError, BetaError))]
+pub trait MultiThrows {
+    fn succeed() -> u32;
+    fn throw_alpha_not_found();
+    fn throw_beta_denied();
+}
 ```
 
-The generated client provides two call styles for each method: direct calls and try calls.
+For each method `foo`, the generated client provides:
 
-### Gas Limits
+| Method | Signature | On error |
+|--------|-----------|----------|
+| `foo(...)` | Same return type as the trait method | Re-throws. Your contract aborts too. |
+| `try_foo(...)` | `Result<T, {Client}Error>` | Returns the error for inspection. |
 
-Cross-contract calls accept an optional gas limit. Use `with_gas_limit` on the client to cap how much computation the callee can perform:
+## Making Calls
+
+Construct a client with the target contract's address, then call methods on it.
 
 ```rust
-let mut token = ERC20Client::new(&token_addr);
-token.with_gas_limit(100_000).transfer(&recipient, 100);
+let token = ERC20Client::new(&token_addr);
+let balance = token.get_balance_of(&account);
+token.transfer(&recipient, 100);
 ```
 
-Gas is free (metering, not billing), but limits prevent runaway computation. See [Execution Model](/programming-model/execution/#gas) for details.
+Client methods take `&self` (not `&mut self`). Clients are lightweight value types holding an address and configuration.
 
-## Direct Calls
+## Gas Limits
 
-Direct calls return values directly and abort if the callee aborts or faults. Use these when you want failures to propagate up.
+Use `with_gas_limit` to cap how much computation the callee can perform. It returns a new client instance (non-mutating).
 
 ```rust
-let mut token = ERC20Client::new(&token_addr);
-token.transfer(&recipient, 100);  // aborts if it fails
-let balance = token.get_balance(); // returns Amount directly
+let token = ERC20Client::new(&token_addr);
+let capped = token.with_gas_limit(500_000);
+capped.transfer(&recipient, 100);
 ```
 
-If the called contract aborts, your contract aborts too. No error handling needed or possible.
+The default gas limit is `u64::MAX` (no effective cap). Gas is metered but free. Limits prevent runaway computation. See [Execution Model](/programming-model/execution/#gas) for details.
 
-## Try Calls
+| Method | Signature | Description |
+|--------|-----------|-------------|
+| `new(address)` | `fn new(&ContractAddress) -> Self` | Create a client for the given contract address. |
+| `with_gas_limit(gas_limit)` | `fn with_gas_limit(&self, u64) -> Self` | Return a new client with the specified gas limit. |
 
-Try calls return `Result<T, CallError>`. Use these when you want to handle failures instead of propagating them.
+## Error Handling
+
+### Direct calls (re-throw)
+
+Direct calls propagate errors automatically. If the callee throws, your contract throws the same exception to its own caller. No error handling needed or possible.
 
 ```rust
-use sdk::call::CallError;
+let client = MultiClient::new(&addr);
 
-match client.try_transfer(&recipient, 100) {
+// If this throws AlphaError::NotFound, your contract
+// re-throws the same error to whoever called you.
+client.throw_alpha_not_found();
+```
+
+### try_ calls (inspect)
+
+Prefixing any method with `try_` returns a `Result` you can match on.
+
+```rust
+let client = MultiClient::new(&addr);
+
+match client.try_throw_alpha_not_found() {
     Ok(()) => { /* success */ }
-    Err(CallError::Abort(ref exn)) => {
-        // handle abort (see Inspecting Errors below)
+    Err(MultiClientError::AlphaError(AlphaError::NotFound)) => {
+        // Handle specific error variant
     }
-    Err(CallError::Fault(f)) => {
-        // contract panicked
-        println!("Fault: {}", f);
+    Err(other) => {
+        // Handle everything else
     }
 }
 ```
 
-## CallError Variants
+### The generated error enum
 
-| Variant | Meaning |
-|---------|---------|
-| `CallError::Abort(CrossExn<E>)` | Contract aborted with a structured error. `E` is the error type from `throws`. |
-| `CallError::Fault(FaultString)` | Contract panicked (unstructured error). |
+For a client named `FooClient`, the macro generates `FooClientError`. The enum contains one variant per declared `throws` type, plus three fixed variants.
 
-## Inspecting Errors
+Given `#[contract(client = MultiClient, throws(AlphaError, BetaError))]`, the generated enum is:
 
-`CrossExn<E>` provides methods to determine the error source:
+```rust
+pub enum MultiClientError {
+    // One variant per declared throws type (named after the type)
+    AlphaError(AlphaError),
+    BetaError(BetaError),
 
-| Method | Returns | When |
-|--------|---------|------|
-| `as_contract_exn() -> Option<&E>` | The contract's own error type | Error matches the `throws` type |
-| `as_library_exn() -> Option<&LibraryExn>` | An SDK-internal error | Error is from SDK operations (e.g. NNInt underflow) |
-| `is_unknown() -> bool` | `true` | Error type does not match the `throws` declaration |
+    // Fixed variants present on every client error enum
+    Library(LibraryExn),
+    Fault(FaultString),
+    Unknown(RawException),
+    BadDecode(RawException),
+}
+```
 
-Full match pattern:
+| Variant | When it appears |
+|---------|-----------------|
+| `{ErrorType}(ErrorType)` | The callee threw a declared error type. One variant per type in `throws`. |
+| `Library(LibraryExn)` | The SDK itself threw (e.g., NNInt underflow, encoding failure). |
+| `Fault(FaultString)` | The callee panicked. Contains a debug message when the `debugging` feature is enabled. |
+| `Unknown(RawException)` | The callee threw an error type not listed in `throws`. |
+| `BadDecode(RawException)` | The selector matched a declared type, but the payload could not be decoded. |
+
+### Matching on specific errors
 
 ```rust
 match client.try_transfer(&recipient, 100) {
-    Ok(()) => { /* success */ }
-    Err(CallError::Abort(ref exn)) => {
-        if let Some(err) = exn.as_contract_exn() {
-            // Typed contract error (e.g. ERC20Error::MustBeContractOwner)
-            println!("Contract error: {:?}", err);
-        }
-        if let Some(lib) = exn.as_library_exn() {
-            // SDK library error (syscall failure, NNInt overflow, etc.)
-            println!("Library error: {:?}", lib);
-        }
-        if exn.is_unknown() {
-            // Thrown type doesn't match `throws` declaration
-            println!("Unknown error");
+    Ok(()) => { /* transfer succeeded */ }
+    Err(ERC20ClientError::ERC20Error(ERC20Error::MustBeContractOwner)) => {
+        // Caller is not the owner
+    }
+    Err(ERC20ClientError::Library(_)) => {
+        // SDK-level failure (e.g., NNInt underflow during transfer)
+    }
+    Err(ERC20ClientError::Fault(f)) => {
+        // The callee panicked
+    }
+    Err(ERC20ClientError::Unknown(ref raw)) => {
+        // Undeclared error type. You can attempt manual decoding
+        // if you know the type:
+        if let Some(secret) = raw.try_as::<SecretError>() {
+            // decoded successfully
         }
     }
-    Err(CallError::Fault(f)) => {
-        // Contract panicked
-        println!("Fault: {}", f);
+    Err(ERC20ClientError::BadDecode(ref raw)) => {
+        // Selector matched but payload was malformed
     }
 }
 ```
 
-## Testing Error Cases
+### Decoding unknown errors
 
-Use `try_*` methods in tests to verify that operations fail as expected:
+`RawException` exposes `selector()` and `payload()` for raw inspection. If you know the concrete type, use `try_as`:
 
 ```rust
-match client.try_decrement(10) {
-    Err(CallError::Abort(ref exn)) => {
-        assert!(exn.as_library_exn().is_some());
+match client.try_call_something() {
+    Err(MyClientError::Unknown(ref raw)) => {
+        if let Some(err) = raw.try_as::<SomeKnownError>() {
+            // Successfully decoded
+        }
     }
-    other => panic!("Expected abort, got: {:?}", other),
+    _ => {}
 }
 ```
 
-See [Error Handling](/reference/error-handling/) for defining error types. For complete cross-contract call examples, see the [`caller/`](https://github.com/groundhogchain/sdk_rs/tree/main/example-contracts/caller) and [`exceptions/`](https://github.com/groundhogchain/sdk_rs/tree/main/example-contracts/exceptions) contracts in the SDK repository.
+## Error Forwarding
+
+When contract A calls contract B with a direct (non-try) call and B throws, the error propagates through A to A's caller with the original selector and payload intact. This means callers further up the chain can still decode the original error.
+
+```rust
+fn forward_alpha(target: ContractAddress) {
+    // If target throws AlphaError::NotFound, this contract
+    // re-throws it unchanged. Our caller sees AlphaError::NotFound.
+    MultiClient::new(&target).throw_alpha_not_found();
+}
+```
+
+## Full Example
+
+A contract that calls an ERC20 token contract:
+
+```rust
+#![cfg_attr(not(feature = "dev"), no_std)]
+
+pub use groundhog_erc20_if as erc20_if;
+
+use erc20_if::Amount;
+use erc20_if::ERC20Client;
+use sdk::storage::Value;
+use sdk::*;
+
+#[storage]
+pub struct Caller {
+    token_contract: Value<ContractAddress>,
+}
+
+#[contract(client = CallerClient)]
+impl Caller {
+    pub fn initialize(&mut self, token_contract: &ContractAddress) {
+        self.token_contract.set(token_contract);
+    }
+
+    pub fn check_balance(&self, account: &ContractAddress) -> Amount {
+        let token = ERC20Client::new(&self.token_contract.get());
+        token.get_balance_of(account)
+    }
+}
+```
+
+See [Error Handling](/reference/error-handling/) for defining error types with `#[contract_error]`.

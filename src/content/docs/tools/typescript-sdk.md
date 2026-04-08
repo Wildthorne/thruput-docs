@@ -1,14 +1,22 @@
 ---
 title: TypeScript SDK
-description: TypeScript SDK for Groundhog.
+description: TypeScript packages for interacting with Groundhog.
 ---
 
-:::caution[Coming Soon]
-This page is planned but not yet written.
+:::caution[Early Access]
+These packages are functional but the developer-facing SDK (transaction building, wallet integration, high-level contract interaction) is not yet available. What exists today is the protocol and transport layer.
 :::
 
-## What Will Go Here
+## Available Packages
 
-Installation, configuration, and usage of the TypeScript SDK. Transaction building, contract interaction, and key management from JavaScript/TypeScript.
+| Package | What it provides |
+|---------|-----------------|
+| `@groundhog/xdr` | XDR serialization framework. Encode and decode all Groundhog protocol types. |
+| `@groundhog/protocol` | Generated TypeScript definitions for all protocol types (transactions, blocks, storage, auth). Auto-generated from the same XDR source as hogd. |
+| `@groundhog/rpc` | ONC-RPC client. Connect directly to hogd's internal RPC interface over HTTP or WebSocket. |
 
-**Depends on:** TypeScript SDK development.
+These packages are auto-generated from the protocol definitions and stay in sync with the Rust and C++ implementations.
+
+## What's Coming
+
+A higher-level SDK for transaction building, contract interaction, key management, and wallet integration. See the [JSON-RPC API](/reference/json-rpc-api/) for the external API these tools will build on.

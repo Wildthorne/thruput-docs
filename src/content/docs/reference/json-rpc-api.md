@@ -48,14 +48,32 @@ Get the execution result and emitted events for a committed transaction.
 
 **Returns:** `TransactionReceipt` or `null` if not found. The receipt includes execution status, emitted events, and block height.
 
+**Receipt structure:**
+
+```json
+{
+  "txHash": "0x...",
+  "height": 42,
+  "status": { "result": "ok" },
+  "events": [
+    {
+      "contractAddress": "0x...",
+      "topics": ["0x..."],
+      "data": "0x..."
+    }
+  ]
+}
+```
+
 **Execution status values:**
 
 | Status | Meaning |
 |--------|---------|
-| `Ok` | Transaction executed and committed |
-| `Reverted` | Transaction executed but was reverted |
-| `DeterministicError` | Transaction failed deterministically |
-| `FailedGasSponsorship` | Gas sponsorship check failed |
+| `{"result": "ok"}` | Transaction executed and committed |
+| `{"result": "reverted", "message": "..."}` | Transaction executed but was reverted |
+| `{"result": "deterministicError", "kind": "..."}` | Transaction failed deterministically (e.g., WASM trap) |
+| `{"result": "failedGasSponsorship"}` | Gas sponsorship check failed |
+| `{"result": "other"}` | Unclassified execution outcome |
 
 ---
 
@@ -72,7 +90,7 @@ Check whether a transaction is pending, committed, or unknown.
 | Status | Meaning |
 |--------|---------|
 | `Pending` | Transaction is in the mempool, not yet committed |
-| `Committed` | Transaction has been included in a block |
+| `Committed` | Transaction has been included in a block (includes `height` and `blockHash`) |
 | `Invalid` | Transaction was rejected |
 | `Unknown` | Transaction not found in mempool or committed history |
 
@@ -98,7 +116,22 @@ Get block information by height.
 |-----------|------|-------------|
 | `height` | integer | Block height |
 
-**Returns:** `BlockInfo` or `null` if the block does not exist. Includes block hash, parent hash, timestamp, and transaction count.
+**Returns:** `BlockInfo` or `null` if the block does not exist.
+
+```json
+{
+  "networkId": 1,
+  "blockHeight": 42,
+  "txsetHash": "0x...",
+  "dbHash": "0x...",
+  "eventsHash": "0x...",
+  "prevBlockHash": "0x..."
+}
+```
+
+:::caution[Not Yet Implemented]
+This method returns error code `-32052`. The data source for block headers is being finalized.
+:::
 
 ---
 
@@ -109,6 +142,10 @@ Get the number of transactions currently in the mempool.
 **Parameters:** None.
 
 **Returns:** integer.
+
+:::caution[Not Yet Implemented]
+This method returns error code `-32052`. Requires a scheduler size RPC that is not yet available.
+:::
 
 ---
 
@@ -136,6 +173,28 @@ The gateway enforces a maximum block range per request (default: 1000 blocks).
 | Event topics | `0x`-prefixed lowercase hex, 64 characters |
 | Event data | `0x`-prefixed hex, variable length |
 | Block height, counts | Decimal JSON numbers |
+
+## Error Codes
+
+Standard JSON-RPC 2.0 error codes apply. The gateway also defines application-specific codes:
+
+| Code | Name | Meaning |
+|------|------|---------|
+| `-32602` | Invalid params | Standard JSON-RPC: malformed parameters |
+| `-32000` | TX_INVALID | Transaction XDR could not be decoded |
+| `-32001` | TX_REJECTED | Scheduler rejected the transaction |
+| `-32002` | TX_NOT_FOUND | Transaction not found in mempool or history |
+| `-32010` | BLOCK_NOT_FOUND | No block at the requested height |
+| `-32011` | RANGE_TOO_LARGE | Event query block range exceeds maximum |
+| `-32050` | BACKEND_UNAVAILABLE | Internal backend (indexer or scheduler) is not connected |
+| `-32051` | BACKEND_TIMEOUT | Internal backend did not respond in time |
+| `-32052` | NOT_IMPLEMENTED | Method exists but is not yet functional |
+
+## Client Libraries
+
+**TypeScript/JavaScript.** The `@groundhog/protocol` and `@groundhog/rpc` packages provide TypeScript type definitions and an ONC-RPC client generated from the same XDR protocol definitions used by hogd. These are lower-level than the JSON-RPC gateway and connect directly to hogd's internal RPC interface. See [TypeScript SDK](/tools/typescript-sdk/) for details.
+
+**Rust.** The `groundhog-rpc` crate includes a typed JSON-RPC client generated from the same trait that defines the gateway. Import `groundhog_rpc_client` for a ready-made client.
 
 ## Future Phases
 
