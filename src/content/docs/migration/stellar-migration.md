@@ -47,8 +47,8 @@ transaction.addOperation(payment);
 fn transfer(&mut self, receiver: &ContractAddress, amount: Amount) {
     let sender = get_caller();
     let diff = amount_to_diff(amount);
-    self.balances.get(&sender).strict_inc(-diff);
-    self.balances.get(receiver).strict_inc(diff);
+    self.balances.at_mut(&sender).strict_inc(-diff);
+    self.balances.at_mut(receiver).strict_inc(diff);
     log_transfer_event(&sender, receiver, amount);
 }
 ```
@@ -86,12 +86,12 @@ fn batch_payment_and_trust(
     let sender = get_caller();
 
     // These are delta operations on independent keys, so they commute
-    self.balances.get(&sender).strict_inc(-150);
-    self.balances.get(dest_a).strict_inc(100);
-    self.balances.get(dest_b).strict_inc(50);
+    self.balances.at_mut(&sender).strict_inc(-150);
+    self.balances.at_mut(dest_a).strict_inc(100);
+    self.balances.at_mut(dest_b).strict_inc(50);
 
     // Trust is just contract storage
-    self.trustlines.get(&sender).get(token).set(&true);
+    self.trustlines.at_mut(&sender).at_mut(token).set(&true);
 }
 ```
 
@@ -138,8 +138,8 @@ fn place_order(&mut self, venue: &StorageKey, amount: Amount, price: u64) {
     let diff = amount_to_diff(amount);
 
     // Lock funds
-    self.balances.get(&sender).strict_inc(-diff);
-    self.locked.get(&sender).strict_inc(diff);
+    self.balances.at_mut(&sender).strict_inc(-diff);
+    self.locked.at_mut(&sender).strict_inc(diff);
 
     // Submit order intent (multi-producer queue, inserts always commute)
     let order = serialize_order(&sender, amount, price);
@@ -151,8 +151,8 @@ fn cancel_order(&mut self, amount: Amount) {
     let sender = get_caller();
     let diff = amount_to_diff(amount);
 
-    self.locked.get(&sender).strict_inc(-diff);
-    self.balances.get(&sender).strict_inc(diff);
+    self.locked.at_mut(&sender).strict_inc(-diff);
+    self.balances.at_mut(&sender).strict_inc(diff);
 }
 ```
 
@@ -201,8 +201,8 @@ fn submit_swap(
     let diff = amount_to_diff(input_max);
 
     // Lock input tokens
-    self.balances.get(&sender).strict_inc(-diff);
-    self.locked.get(&sender).strict_inc(diff);
+    self.balances.at_mut(&sender).strict_inc(-diff);
+    self.locked.at_mut(&sender).strict_inc(diff);
 
     // Submit to queue
     let intent = serialize_swap(&sender, input_max, output_min);
@@ -247,12 +247,12 @@ Operation.setOptions({
 // Trust and account config are just contract storage
 fn set_trustline(&mut self, asset: &ContractAddress, limit: Amount) {
     let account = get_caller();
-    self.trustlines.get(&account).get(asset).set(&limit);
+    self.trustlines.at_mut(&account).at_mut(asset).set(&limit);
 }
 
 fn set_options(&mut self, home_domain: &[u8], flags: u32) {
     let account = get_caller();
-    self.config.get(&account).set(&serialize_options(home_domain, flags));
+    self.config.at_mut(&account).set(&serialize_options(home_domain, flags));
 }
 ```
 
@@ -291,8 +291,8 @@ impl TokenContract {
     fn transfer(&mut self, receiver: &ContractAddress, amount: Amount) {
         let sender = get_caller();
         let diff = amount_to_diff(amount);
-        self.balances.get(&sender).strict_inc(-diff);  // delta, not read-modify-write
-        self.balances.get(receiver).strict_inc(diff);
+        self.balances.at_mut(&sender).strict_inc(-diff);  // delta, not read-modify-write
+        self.balances.at_mut(receiver).strict_inc(diff);
     }
 }
 ```
@@ -304,10 +304,10 @@ impl TokenContract {
 | `env.storage().persistent().get/set` (read-modify-write) | `strict_inc(delta)` (delta operation, no read needed) |
 | Three storage tiers (Instance, Persistent, Temporary) | One storage model, no tiers |
 | TTLs on all storage; must call `extend_ttl()` or data expires | Permanent storage, no TTLs, no expiration |
-| `require_auth()` for caller authorization | `ensure(&caller == self.owner, err)` pattern |
+| `require_auth()` for caller authorization | `ensure(caller == self.owner.get(), err)` pattern |
 | `#[contractimpl]` | `#[contract]` with `#[sdk::storage]` |
 | `Env` passed to every function | `&self` / `&mut self` with `get_caller()` |
-| Resource limits constrain transaction complexity | No transaction size limits |
+| Resource limits constrain transaction complexity | Gas metering exists but costs zero tokens |
 | Sequence numbers enforce serial execution per account | No sequence numbers; transactions parallelize by default |
 | Fees per transaction (inclusion + resource fees) | No per-operation fees; available (unlocked) HOG balance determines throughput share |
 
