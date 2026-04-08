@@ -70,9 +70,9 @@ trusted logic, like management of the native token.
 
 It is (currently) impossible for a native contract to be deployed; instead, these contracts
 are predeployed at hardcoded addresses within the Groundhog chain.
-These contracts are identified by a single `u32` identifier.
+These contracts are identified by a value from the `HogexecPrecompiledNativeContracts` enum (a 32-bit identifier).
 
-Currently, the only native contract deployed is the contract that manages the native token of the Groundhog network.
+Currently, two native contracts are deployed at genesis: the **HOG token contract** (which manages the native token) and the **initial token claim contract** (which handles genesis token distribution).
 
 ### Test Mocks
 

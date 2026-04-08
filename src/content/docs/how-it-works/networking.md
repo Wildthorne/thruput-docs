@@ -39,7 +39,7 @@ Startup order:
 4. **Auth server** registers via `mempoolauth_intro_auth`. Handles transaction signature verification.
 5. **Coordinator** registers via `schedulercoord_intro_coord`. Drives consensus and block production.
 
-All internal communication uses XDR-RPC over TCP. Protocol definitions live in `.x` files (XDR IDL) and are compiled to both C++ (hogd), Go (chuckd), and Rust (groundhog-rpc) bindings.
+All internal communication uses XDR-RPC over TCP. Protocol definitions live in `.x` files (XDR IDL) and are compiled to C++ (hogd), Rust (groundhog-rpc), TypeScript, and Go bindings.
 
 ## The Mempool as Orchestrator
 
@@ -86,15 +86,14 @@ A transaction moves through the system like this:
 3. Mempool sends the transaction to the auth server for signature verification
 4. Verified transactions are queued by account with balance-proportional scheduling
 5. Coordinator asks mempool for a nomination (`nominate`)
-6. Mempool assembles a block from queued transactions and returns it
+6. Mempool selects transactions, dispatches them to executors for parallel execution, collects deltas, and resolves conflicts. The result is a block nomination.
 7. Coordinator runs consensus with peers (see [Consensus](/how-it-works/consensus/))
 8. On consensus, coordinator tells mempool to commit (`commit_block`)
-9. Mempool dispatches transactions to executors, collects deltas, resolves conflicts
-10. Committed state is written to DB shards
+9. Committed state is written to DB shards
 
 ## Related Documentation
 
 - [Consensus](/how-it-works/consensus/): How the coordinator reaches agreement with peers
 - [Execution Model](/how-it-works/execution-model/): How transactions execute against snapshots and produce deltas
-- [Transaction Lifecycle](/how-it-works/transaction-lifecycle/): The five stages from submission to commit
+- [Transaction Lifecycle](/how-it-works/transaction-lifecycle/): The six stages from submission to commit
 - [Architecture](/how-it-works/architecture/): The big-picture design

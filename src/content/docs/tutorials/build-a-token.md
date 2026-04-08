@@ -70,38 +70,29 @@ Notice `adjust_allowance` takes a signed `Difference`, not an absolute `Amount`.
 The interface crate also defines the error type and conversion helpers:
 
 ```rust
-use thiserror::Error;
-
-#[derive(Error, Debug, Clone, PartialEq, ReadXDR, WriteXDR)]
-#[repr(i32)]
+#[sdk::contract_error]
+#[non_exhaustive]
 pub enum ERC20Error {
-    #[error("Contract already initialized")]
     AlreadyInitialized = 1,
-
-    #[error("Caller must be contract owner")]
     MustBeContractOwner = 2,
-
-    #[error("Provided amount too large")]
     TooLarge = 3,
-
-    #[error("Internal error")]
     Internal = 100,
 }
 
 /// Convert unsigned Amount to signed Difference.
-/// Aborts if the value would overflow i128.
+/// Throws if the value would overflow i128.
 pub fn amount_to_diff(amount: Amount) -> Difference {
-    Difference::try_from(amount).unwrap_or_else(|_| abort(&ERC20Error::TooLarge))
+    amount.try_into().unwrap_or_else(|_| throw(ERC20Error::TooLarge))
 }
 ```
 
-`amount_to_diff` converts the unsigned `Amount` (u128) to a signed `Difference` (i128), aborting if the value overflows. This is called before every balance or allowance adjustment.
+The `#[contract_error]` macro generates serialization derives and XDR encoding. `amount_to_diff` converts the unsigned `Amount` (u128) to a signed `Difference` (i128), throwing if the value overflows. This is called before every balance or allowance adjustment.
 
 ## Step 2: Define Storage
 
 ```rust
 use crate::interface::*;
-use sdk::storage::{Map, NNInt};
+use sdk::storage::{Map, NNInt, Value};
 use sdk::*;
 
 type Balance = NNInt;
@@ -110,7 +101,7 @@ type Allowance = NNInt;
 #[derive(Debug)]
 #[sdk::storage]
 pub struct TokenContract {
-    contract_owner: ContractAddress,
+    contract_owner: Value<ContractAddress>,
     balances: Map<ContractAddress, Balance>,
     allowances: Map<ContractAddress, Map<ContractAddress, Allowance>>,
     total_supply: NNInt,
@@ -119,8 +110,8 @@ pub struct TokenContract {
 
 Four fields:
 
-- **`contract_owner`**: The address authorized to mint and burn.
-- **`balances`**: Maps each address to its token balance. The value type is `NNInt` (aliased as `Balance`), so increments and decrements commute. See [Storage Types](/reference/storage-types/) for the full `NNInt` API.
+- **`contract_owner`**: The address authorized to mint and burn, stored as a `Value<ContractAddress>`.
+- **`balances`**: Maps each address to its token balance. The value type is `NNInt` (aliased as `Balance`), so increments and decrements commute. See [Storage Types](/programming-model/storage-types/) for the full `NNInt` API.
 - **`allowances`**: Nested map. `allowances[owner][spender]` tracks how many tokens `spender` can transfer on behalf of `owner`.
 - **`total_supply`**: Total tokens in circulation. Also `NNInt`, so mints and burns commute with each other and with transfers.
 
@@ -133,28 +124,24 @@ These private methods abstract over raw storage access. The pattern: `try_get().
 ```rust
 impl TokenContract {
     fn _init(&mut self, contract_owner: &ContractAddress) {
-        self.contract_owner = contract_owner.clone();
+        self.contract_owner.set(contract_owner);
     }
 
-    fn _contract_owner(&self) -> &ContractAddress {
-        &self.contract_owner
+    fn _contract_owner(&self) -> ContractAddress {
+        self.contract_owner.get()
     }
 
     // Balance stored at given owner address, or zero if empty
     fn _balance_amount_of(&self, owner: &ContractAddress) -> Amount {
-        let balance_cell = self.balances.get(owner);
-
-        balance_cell.try_get().unwrap_or(0) as Amount
+        self.balances.at(owner).try_get().unwrap_or(0) as Amount
     }
 
     // Adjust balance at given owner address, from zero if empty
     fn _adjust_balance(&mut self, owner: &ContractAddress, diff: Difference) {
-        let mut balance = self.balances.get(owner);
-
         // For never-stored-to addresses, this acts as
         // if the value was zero.  If the resulting balance
         // would be negative, this aborts.
-        balance.strict_inc(diff)
+        self.balances.at_mut(owner).strict_inc(diff);
     }
 
     fn _allowance(
@@ -162,10 +149,7 @@ impl TokenContract {
         owner: &ContractAddress,
         spender: &ContractAddress,
     ) -> Amount {
-        let owner_allowances = self.allowances.get(owner);
-        let spender_allowance = owner_allowances.get(spender);
-
-        spender_allowance.try_get().unwrap_or(0) as Amount
+        self.allowances.at(owner).at(spender).try_get().unwrap_or(0) as Amount
     }
 
     // Adjust allowance for owner and spender, from zero if empty.
@@ -175,11 +159,11 @@ impl TokenContract {
         spender: &ContractAddress,
         diff: Difference,
     ) {
-        let owner_allowances = self.allowances.get(owner);
-        let mut spender_allowance = owner_allowances.get(spender);
-
         // This fails if the result would be negative
-        spender_allowance.strict_inc(diff);
+        self.allowances
+            .at_mut(owner)
+            .at_mut(spender)
+            .strict_inc(diff);
 
         log_approval_event(owner, spender, diff);
     }
@@ -196,6 +180,8 @@ impl TokenContract {
 
 Every mutation goes through `strict_inc`. No method reads a value, computes a new value, and writes it back. That read-modify-write pattern would create conflicts between concurrent transactions. `strict_inc` expresses intent ("add 50" or "subtract 30") without reading the current value, which is what makes it commutative.
 
+Map access uses `.at(key)` for reads and `.at_mut(key)` for writes. These return borrow guards that deref to the inner storage type. Nested maps chain naturally: `self.allowances.at_mut(owner).at_mut(spender)` walks through `Map<owner, Map<spender, NNInt>>` and returns a mutable reference to the inner `NNInt`.
+
 ## Step 4: Implement the Interface
 
 The implementation uses a few utility functions not shown here:
@@ -209,15 +195,14 @@ The `#[contract]` macro on the `impl` block generates the exported entrypoints. 
 ### Initialize
 
 ```rust
-#[contract(throws = ERC20Error)]
+#[contract(version = "0.1.0")]
 impl ERC20 for TokenContract {
-    #[init]
     fn initialize(&mut self, contract_owner: &ContractAddress) {
         self._init(contract_owner);
     }
 ```
 
-The `#[init]` attribute marks this as the constructor. It runs once at deploy time and sets the contract owner.
+The `version` parameter tags this implementation for compatibility tracking. `initialize` runs once at deploy time and sets the contract owner.
 
 ### Transfer
 
@@ -251,7 +236,7 @@ Two `strict_inc` calls: one negative (sender), one positive (receiver). Both are
         self._adjust_balance(owner, -diff);
         self._adjust_balance(receiver, diff);
 
-        log_transfer_event(&owner, receiver, amount);
+        log_transfer_event(owner, receiver, amount);
     }
 ```
 
@@ -279,7 +264,7 @@ This takes a signed `diff`, not an absolute value. To grant 100 tokens of spendi
     fn mint(&mut self, receiver: &ContractAddress, amount: Amount) {
         let caller = get_caller();
         ensure(
-            &caller == self._contract_owner(),
+            caller == self._contract_owner(),
             ERC20Error::MustBeContractOwner,
         );
 
@@ -293,7 +278,7 @@ This takes a signed `diff`, not an absolute value. To grant 100 tokens of spendi
     fn burn(&mut self, owner: &ContractAddress, amount: Amount) {
         let caller = get_caller();
         ensure(
-            &caller == self._contract_owner(),
+            caller == self._contract_owner(),
             ERC20Error::MustBeContractOwner,
         );
 
@@ -339,19 +324,38 @@ Read methods take `&self` (not `&mut self`) and read from the current snapshot. 
 
 ## Step 5: Test It
 
-The ERC-20 example uses a shared test suite (`erc20_native_test`) so that the same tests run against both native and guest execution. The test file is minimal:
+The ERC-20 example uses a shared test suite so that the same tests run against both native and WASM execution. A basic test:
 
 ```rust
-#[test]
-fn run_test() {
-    let mut env = sdk::TestEnvironment::no_cost();
-    let test_contract = erc20::test_setup::register(&mut env);
+use erc20::{register_mock_contract, ERC20Client};
+use sdk::*;
 
-    erc20_native_test::test_erc20_contract(env, &test_contract);
+static NONCE: SHA256Hash = sdk::sha256_static!("ERC20_NONCE");
+
+#[test]
+fn test_transfer() {
+    let env = TestEnvironment::no_cost();
+    let test_contract = register_mock_contract(&env);
+    let contract_hash = test_contract.as_hash().clone();
+
+    contract_exec(env, move || {
+        let addr = deploy_contract(&NONCE, &contract_hash);
+        let client = ERC20Client::new(&addr);
+        let owner = get_caller();
+        let receiver = ContractAddress::named("bob");
+
+        client.initialize(&owner);
+        client.mint(&owner, 1000);
+        client.transfer(&receiver, 100);
+
+        assert_eq!(client.get_balance_of(&owner), 900);
+        assert_eq!(client.get_balance_of(&receiver), 100);
+    })
+    .unwrap_or_else(|e| panic!("Test failed: {e:?}"));
 }
 ```
 
-`TestEnvironment::no_cost()` creates a test environment with no storage cost enforcement. `test_setup::register` deploys the contract. The `dev` feature flag (enabled via `[dev-dependencies]`) exposes the test setup module and mocking utilities.
+`TestEnvironment::no_cost()` creates a test environment with no storage cost enforcement. `register_mock_contract` registers the contract with the test environment (generated by `declare_mock_contract!()` in your `lib.rs`). The `dev` feature flag (enabled via `[dev-dependencies]`) exposes mocking utilities.
 
 Run tests with:
 
@@ -377,6 +381,6 @@ Every balance mutation in this contract uses `strict_inc`, which records a delta
 
 - [Build a Swap](/tutorials/build-a-swap/) to see cross-contract calls in action
 - [Execution Model](/programming-model/execution/) for the full snapshot/delta/merge pipeline
-- [Storage Types](/programming-model/storage-types/) for `NNInt`, `Map`, `Bytestring`, and `RetrocausalQueue`
+- [Storage Types](/programming-model/storage-types/) for `NNInt`, `Map`, `Vector`, `Value`, `Bytestring`, and `RetrocausalQueue`
 - [NNInt In Depth](/programming-model/nnint/) for the `set_add` primitive and commutativity rules
 - [Error Handling](/reference/error-handling/) for the `ensure()` pattern

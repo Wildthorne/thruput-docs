@@ -372,4 +372,4 @@ Order placement and cancellation are faster on Groundhog (parallel queue inserts
 - [Getting Started](/start/getting-started/): Set up the Rust SDK and write your first Groundhog contract
 - [Build a Token](/tutorials/build-a-token/): Full ERC-20 token walkthrough
 - [Execution Model](/how-it-works/execution-model/): How snapshot isolation and delta merge work
-- [Storage Types](/reference/storage-types/): NNInt, Map, Bytestring, RetrocausalQueue API reference
+- [Storage Types](/reference/storage-types/): NNInt, Map, Vector, Value, Bytestring, RetrocausalQueue API reference

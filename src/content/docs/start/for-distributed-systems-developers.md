@@ -40,6 +40,6 @@ That's fine. Groundhog doesn't require distributed systems knowledge. Use `stric
 
 ## Next Steps
 
-For the full execution model (snapshots, deltas, merge rules, reservation), see the [Programming Model](/programming-model/execution/). For the storage type API, see [Storage Types](/reference/storage-types/).
+For the full execution model (snapshots, deltas, merge rules, reservation), see the [Programming Model](/programming-model/execution/). For the storage type API, see [Storage Types](/programming-model/storage-types/).
 
 Ready to write code? [Getting Started](/start/getting-started/) walks you through the SDK setup and your first contract.

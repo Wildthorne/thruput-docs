@@ -22,7 +22,7 @@ If two transactions both increment a balance, the deltas merge. If two transacti
 
 This is not an optimization bolted onto a sequential design. It is the design. Every layer of Groundhog, from the ledger format to the syscall interface to the SDK, is built around typed, mergeable storage.
 
-The SDK provides convenience layers (`NNInt`, `Map`, `#[storage]` macros) that make common patterns easy, but these are optional. You can work directly with the raw syscall interface and build your own storage abstractions. The SDK is middleware, not a framework. See [Getting Started](/start/getting-started/#sdk-layers-use-what-you-need) for the full layering.
+The SDK provides convenience layers (`NNInt`, `Map`, `#[storage]` macros) that make common patterns easy, but these are optional. You can work directly with the raw syscall interface and build your own storage abstractions. The SDK is middleware, not a framework. See [Getting Started](/start/getting-started/#the-sdk-is-layered) for the full layering.
 
 For the contract-writing rules (snapshots, deltas, merge rules), see the [Programming Model](/programming-model/execution/) section. For the engine internals, see [Execution Model](/how-it-works/execution-model/). For the full type API, see [Storage Types Reference](/reference/storage-types/).
 
@@ -53,7 +53,7 @@ When execution is parallel and compute costs nothing (you hold HOG for capacity,
 1. A transaction arrives specifying a contract address and method arguments.
 2. The runtime creates an [invocation frame](/how-it-works/invocation-frames/) with a read snapshot of the current ledger state.
 3. The contract executes, reading from its snapshot and producing storage deltas.
-4. If the contract calls other contracts, child frames are created. Each child reads from the same snapshot.
+4. If the contract calls other contracts, child frames are created. Each child inherits the parent's view of storage (parent writes are visible), but all transactions in the block share the same underlying snapshot for unmodified keys.
 5. After execution, the runtime collects all deltas and checks for conflicts.
 6. Non-conflicting deltas merge into the ledger. Conflicting transactions are excluded and returned to the mempool.
 
@@ -63,6 +63,6 @@ Every transaction in the block runs steps 2-4 simultaneously. Step 5-6 is where 
 
 - [Programming Model](/programming-model/execution/): Contract-writing rules for snapshots, deltas, storage types, and commutativity
 - [Execution Model](/how-it-works/execution-model/): How the engine implements the programming model
-- [Transaction Lifecycle](/how-it-works/transaction-lifecycle/): The five stages from submission to commit
-- [Storage Types Reference](/reference/storage-types/): Full API for NNInt, Map, Bytestring, and RetrocausalQueue
+- [Transaction Lifecycle](/how-it-works/transaction-lifecycle/): The six stages from submission to commit
+- [Storage Types Reference](/reference/storage-types/): Full API for NNInt, Map, Vector, Value, Bytestring, and RetrocausalQueue
 - [Storage & Scheduling Economics](/how-it-works/storage-economics/): The capital-based cost model

@@ -21,7 +21,7 @@ The CLI is just a consumer of the SDK. It generates the same Rust crate you'd wr
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
 # Install the Groundhog CLI (from source, during early access)
-cargo install --path /path/to/groundhog-cli
+cargo install groundhog-cli  # exact instructions provided during early access onboarding
 ```
 
 ## Authenticate
@@ -95,7 +95,7 @@ The SDK is three layers, each building on the one below:
 
 | Layer | What it provides | When to use |
 |-------|-----------------|-------------|
-| **Macros** | `#[storage]`, `#[contract]`, `#[init]`. Generates storage wiring, WASM exports, and client stubs. | Default. Start here. |
+| **Macros** | `#[storage]`, `#[contract]`, `#[contract_error]`. Generates storage wiring, WASM exports, and client stubs. | Default. Start here. |
 | **Typed wrappers** | `NNInt`, `Map<K, V>`, `Handle<T>`. Type-safe storage access with auto-serialization. | When you need control over storage layout without writing raw syscalls. |
 | **Raw syscalls** | Direct `bytestring_set()`, `non_negative_int_strict_inc()` calls. | When you need full control or are building your own abstractions. |
 

@@ -36,7 +36,11 @@ No tokens are consumed in this process. HOGs cycle between ready and scheduled g
 
 ### Toll-Free Calls
 
-Contracts can sponsor execution for their callers. A contract with sufficient free HOGs can designate entry points as "toll-free," covering the scheduling cost so that end users don't need to hold HOG at all. This is how you build applications with zero user-facing costs.
+:::caution[Under Active Development]
+The gas sponsorship mechanism described here is under active development. The final API and semantics may change.
+:::
+
+Contracts can sponsor execution for their callers. A transaction can include gas claims that name a sponsoring contract, so the caller does not need to hold enough free HOGs to cover the full gas limit. This is how you build applications with zero user-facing costs.
 
 ## Storage: Refundable Deposits
 
@@ -50,7 +54,7 @@ Groundhog's deposit model creates a direct incentive to clean up unused state. I
 
 Every contract has a HOG balance that represents its unlocked (free) tokens. When a transaction commits, the runtime computes the storage delta for each piece of modified data and adjusts the contract's balance accordingly.
 
-- **Writing new data** deducts HOG from the contract's free balance, proportional to bytes stored.
+- **Writing new data** deducts HOG from the contract's free balance. The cost depends on the storage type: NNInt has a fixed per-key cost, bytestrings cost per byte, and other types have their own cost formulas.
 - **Modifying existing data** adjusts the deposit up or down based on the size difference.
 - **Deleting data** returns the locked HOG to the contract's free balance.
 
@@ -60,13 +64,17 @@ Your contract does not calculate storage costs or manage deposits manually. The 
 
 ### Dynamic Pricing
 
-The deposit amount per byte of storage is not fixed. It adjusts based on how much state the network is carrying.
+:::caution[Under Active Development]
+Dynamic pricing is under active development. The current implementation uses static cost constants. The mechanism described below is the target design.
+:::
+
+The deposit amount per unit of storage is not fixed. It will adjust based on how much state the network is carrying.
 
 The network defines a target state size. When total on-chain storage is below the target, deposit costs stay low. As state grows toward the target, deposits get more expensive, making it progressively costlier to add new data. If state growth slows or contracts delete data, prices come back down.
 
 This creates a self-regulating system. The network does not need to impose hard caps on state size. The price signal does the work: when storage is scarce, the market pays more for it. When storage is abundant, costs are low.
 
-Deletion returns HOG based on the current rate, so you always recover value by cleaning up state.
+Once dynamic pricing is active, deletion will return HOG based on the current rate.
 
 ### Sponsoring Users
 

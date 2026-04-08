@@ -51,6 +51,25 @@ With multiple validators:
 4. **Converge.** SCP envelope exchange continues until validators agree. The protocol guarantees that all honest validators converge on the same block, even under Byzantine faults (up to the quorum threshold).
 5. **Commit.** Once SCP externalizes a value, each validator commits the block locally via its mempool.
 
+### Execution During Block Production
+
+The proposer and validators execute transactions differently.
+
+**The proposer runs concurrent execution.** Transactions are fanned across multiple executors and coroutines in parallel. NNInt capacity locks resolve conflicts via atomic compare-and-swap (see [Execution Model: How Conflicts Are Resolved](/how-it-works/execution-model/#how-conflicts-are-resolved)). Which transaction wins a contested lock depends on thread scheduling. This is non-deterministic: two runs of the same transaction set on the same machine can produce different winners.
+
+**The proposer captures nondeterministic outcomes.** Each transaction's execution produces a `NondeterministicProposalData` payload: a bitstring of decisions made during execution (capacity reservation outcomes, retrocausal queue observations). This payload is packaged alongside the transaction hashes in the consensus nomination.
+
+**Validators replay deterministically.** Validators receive the proposer's nominated transaction list and the nondeterministic data. They reconstruct each transaction from their local mempool, pair it with the proposer's captured decisions, and replay execution using those decisions as input. Validators do not re-run the concurrent race. They verify that the transactions produce the claimed state transitions, recompute the block hash, and confirm it matches.
+
+| | Proposer | Validator |
+|---|---|---|
+| Execution | Concurrent across executors | Deterministic replay with proposer's data |
+| Conflict resolution | Non-deterministic thread race | Reproduced from captured decisions |
+| Transaction selection | Discretionary (from local mempool) | Fixed (from nomination) |
+| Output | Nomination: tx hashes + nondeterministic data + block hash | Accept or reject the nomination |
+
+The proposer has discretion over which transactions to include and which conflicting transaction wins. Validators verify the math of the proposed result, not the policy that produced it. This is sufficient for consensus safety: the network cannot fork because validators are replaying, not racing. Proposer fairness is an admission-control concern handled at the gateway layer, not in the consensus protocol.
+
 ## Dissemination: Dogwood
 
 Validators exchange three types of data during consensus:

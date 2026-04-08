@@ -3,39 +3,78 @@ title: Error Handling
 description: How errors work in Groundhog contracts.
 ---
 
-## Abort Model
+Groundhog contracts do not use `Result`. Methods return values directly. If something goes wrong, the contract throws an exception: the frame aborts, all state changes in that frame are discarded, and control returns to the caller.
 
-Groundhog contracts don't use `Result`. Methods return values directly. If something goes wrong, the frame aborts and all state changes in that frame are discarded.
+You cannot catch an exception within the same contract. To handle errors from another contract, use `try_*` client methods (see [Cross-Contract Calls](/reference/cross-contract-calls/)).
 
-You cannot catch an abort within the same contract. Once an abort fires, the frame is discarded and control returns to the caller. To handle errors from another contract, use `try_*` client methods (see [Cross-Contract Calls](/reference/cross-contract-calls/)).
+## Defining Errors
 
-## Automatic Aborts
+Use `#[contract_error]` to define error types. The macro generates all required derives (`Debug`, `Clone`, `PartialEq`, `ReadXDR`, `WriteXDR`) and the `Exn` trait implementation automatically.
 
-Several SDK operations abort on their own when preconditions fail:
+### Enum errors
 
-| Operation | Aborts when |
-|-----------|------------|
-| `strict_inc(delta)` | Result would be negative (NNInt underflow) |
-| `strict_inc(delta)` | Result would overflow |
-| Storage read | Key does not exist or type mismatch |
-
-You do not need to define error variants for these. The SDK produces descriptive `LibraryExn` errors automatically (e.g. `NonNegativeIntUnderflow`).
+Enum errors carry variant-level meaning. Each variant gets an explicit `i32` discriminant. The macro adds `#[repr(i32)]` for you.
 
 ```rust
-// This aborts automatically if balance would go below zero.
-// No error handling code needed.
-balance.strict_inc(-diff);
+use sdk::*;
+
+#[contract_error]
+pub enum ERC20Error {
+    AlreadyInitialized = 1,
+    MustBeContractOwner = 2,
+    TooLarge = 3,
+    Internal = 100,
+}
 ```
 
-## Manual Checks
+### Struct errors
 
-Use `ensure(condition, error)` for authorization and validation:
+Struct errors work when you only need a single error type with no variants.
 
 ```rust
+use sdk::*;
+
+#[contract_error]
+pub struct Unauthorized;
+```
+
+Structs with fields work too:
+
+```rust
+#[contract_error]
+pub struct InsufficientBalance {
+    pub balance: u64,
+}
+```
+
+## Throwing Errors
+
+### `throw(exn)`
+
+Aborts the current frame with the given error. Never returns.
+
+```rust
+use sdk::*;
+
+fn transfer(&mut self, receiver: &ContractAddress, amount: Amount) {
+    if amount == 0 {
+        throw(ERC20Error::TooLarge);
+    }
+    // ...
+}
+```
+
+### `ensure(condition, error)`
+
+Throws `error` if `condition` is false. A convenience wrapper around `throw`.
+
+```rust
+use sdk::*;
+
 fn mint(&mut self, receiver: &ContractAddress, amount: Amount) {
     let caller = get_caller();
     ensure(
-        &caller == self._contract_owner(),
+        caller == self._contract_owner(),
         ERC20Error::MustBeContractOwner,
     );
 
@@ -45,40 +84,140 @@ fn mint(&mut self, receiver: &ContractAddress, amount: Amount) {
 }
 ```
 
-`ensure` aborts with the given error if the condition is false. You can also call `abort(&error)` directly.
+### `result.or_throw(exn)`
 
-## Defining Error Types
-
-Error types need `#[repr(i32)]` and XDR derives for serialization across contract boundaries. Only define variants for your own business logic. SDK operations already abort with their own descriptive errors.
+Extension method on `Result`. Returns the `Ok` value, or throws `exn` on `Err`. Useful for converting fallible operations into contract exceptions.
 
 ```rust
-#[derive(Error, Debug, Clone, PartialEq, ReadXDR, WriteXDR)]
-#[repr(i32)]
-pub enum ERC20Error {
-    #[error("Contract already initialized")]
-    AlreadyInitialized = 1,
+use sdk::*;
 
-    #[error("Caller must be contract owner")]
-    MustBeContractOwner = 2,
-
-    #[error("Provided amount too large")]
-    TooLarge = 3,
-
-    #[error("Internal error")]
-    Internal = 100,
+pub fn amount_to_diff(n: u128) -> i128 {
+    n.try_into().unwrap_or_else(|_| throw(ERC20Error::TooLarge))
 }
 ```
 
-Each variant has an explicit `i32` discriminant. The `thiserror::Error` derive provides display strings. The `ReadXDR` and `WriteXDR` derives handle serialization.
+## Automatic Aborts
 
-## How Errors Propagate
+The SDK throws `LibraryExn` errors automatically when internal preconditions fail. You do not need to define error variants for these.
 
-When a contract aborts, the calling frame can catch the error through `try_*` client methods. Direct calls propagate the abort to the caller. Try calls return a `Result` so you can inspect and handle the failure.
+| Operation | Throws when |
+|-----------|------------|
+| `strict_inc(delta)` | Result would be negative (`NonNegativeIntUnderflow`) |
+| `strict_inc(delta)` | Result would overflow (`NonNegativeIntOverflow`) |
+| `bytestring_get_sized` | Stored length does not match expected (`BytestringWrongSize`) |
+| Storage read | Key does not exist (syscall error) |
 
-See [Cross-Contract Calls](/reference/cross-contract-calls/) for the full pattern. For a working example of `ensure()` in an authorization check, see [Build a Token](/tutorials/build-a-token/).
+```rust
+// Aborts automatically if balance would go below zero.
+// No error handling code needed.
+balance.strict_inc(-diff);
+```
 
-## Related Documentation
+## LibraryExn
 
-- [Programming Model: Execution Model](/programming-model/execution/) for how exclusion works at the block level
-- [Cross-Contract Calls](/reference/cross-contract-calls/) for the `try_*` pattern
-- [Build a Token](/tutorials/build-a-token/) for `ensure()` in a real contract
+`LibraryExn` is the SDK's built-in error enum. It covers all errors generated by SDK internals and runtime operations.
+
+| Variant | Trigger |
+|---------|---------|
+| `Syscall(SyscallExn)` | A host syscall returned an error (e.g. storage key not found) |
+| `Handling(HandlingError)` | Error while handling an incoming contract call (decoding args, encoding result) |
+| `Calling(CallingError)` | Error while making an outgoing contract call (encoding args, decoding result) |
+| `Called(FaultString)` | The called contract reverted |
+| `BytestringWrongSize { expected, found }` | `bytestring_get_sized` found a different length than expected |
+| `NonNegativeIntUnderflow` | `strict_inc` would make an NNInt negative |
+| `NonNegativeIntOverflow` | `strict_inc` would overflow an NNInt |
+| `Storage(StorageError)` | Error in the storage convenience layer (serialization, index out of bounds) |
+
+When calling another contract via a `try_*` method, `LibraryExn` errors appear in the `Library` variant of the generated client error enum:
+
+```rust
+match client.try_do_something() {
+    Err(FooClientError::Library(LibraryExn::NonNegativeIntUnderflow)) => {
+        // The called contract underflowed an NNInt
+    }
+    // ...
+}
+```
+
+## Cross-Contract Errors
+
+When you define a contract interface with `throws`, the `#[contract]` macro generates a client error enum named `{Client}Error`. This enum has one variant per declared error type, plus built-in variants for library errors, faults, and unknown errors.
+
+### Declaring thrown errors
+
+Single error type:
+
+```rust
+#[contract(client = CounterClient, throws = CounterError)]
+impl Counter {
+    // ...
+}
+```
+
+Multiple error types:
+
+```rust
+#[contract(client = MultiClient, throws(AlphaError, BetaError))]
+pub trait MultiThrows {
+    // ...
+}
+```
+
+### Generated client error enum
+
+For `throws(AlphaError, BetaError)` on a contract with `client = MultiClient`, the macro generates:
+
+```rust
+// Generated — you don't write this
+enum MultiClientError {
+    AlphaError(AlphaError),   // Declared error types
+    BetaError(BetaError),
+    Library(LibraryExn),      // SDK internal errors
+    Fault(FaultString),       // Panics from the called contract
+    Unknown(RawException),    // Errors with unrecognized selectors
+    BadDecode(RawException),  // Recognized selector but payload failed to decode
+}
+```
+
+### Catching errors with `try_*` methods
+
+Every method on the generated client has a `try_` variant that returns `Result<T, {Client}Error>` instead of aborting:
+
+```rust
+let client = MultiClient::new(&addr);
+
+match client.try_throw_alpha_not_found() {
+    Err(MultiClientError::AlphaError(AlphaError::NotFound)) => {
+        // Handle the expected error
+    }
+    Err(MultiClientError::Fault(f)) => {
+        // The called contract panicked
+    }
+    Ok(val) => {
+        // Success
+    }
+    _ => {}
+}
+```
+
+### Non-try calls and re-throwing
+
+Non-try client methods (e.g. `client.do_something()` without the `try_` prefix) automatically re-throw any exception from the called contract. The error propagates through the call chain with its original selector intact.
+
+### Undeclared errors
+
+If a contract throws an error type not listed in `throws`, callers receive it as `Unknown(RawException)`. You can still decode it if you know the type:
+
+```rust
+match client.try_throw_undeclared() {
+    Err(MultiClientError::Unknown(ref raw)) => {
+        // Decode manually if you know the type
+        if let Some(secret) = raw.try_as::<SecretError>() {
+            // Handle it
+        }
+    }
+    _ => {}
+}
+```
+
+See [Cross-Contract Calls](/reference/cross-contract-calls/) for the full calling patterns.

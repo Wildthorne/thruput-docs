@@ -104,8 +104,7 @@ A frame terminates in one of three ways:[^termination-syscall]
 
 The frame terminates abnormally due to:
 - WebAssembly trap (divide by zero, out of bounds access, etc.)
-- Explicit contract panic (e.g., Rust `panic!()`) . Due to installed panic handlers in WebAssembly, a `panic!()` macro in the Rust SDK may call Abort instead of Fault.
-- Exit syscall
+- Explicit contract panic (e.g., Rust `panic!()`). Due to installed panic handlers in WebAssembly, a `panic!()` macro in the Rust SDK may call Abort instead of Fault.
 - Out of gas
 
 When a frame **Faults**: No return buffer, all state changes discarded, gas still consumed
@@ -122,7 +121,7 @@ The contract explicitly aborts its execution, discarding state changes but retur
 
 When a frame **Aborts**: Return buffer passed to caller, state changes discarded, gas consumed
 
-[^termination-syscall]: Contracts control termination through the Return syscall, which takes an output buffer and a `revert_frame` flag (`false` for Commit, `true` for Abort). WebAssembly functions that exit normally without calling this syscall implicitly Commit.
+[^termination-syscall]: Contracts control termination through the Return syscall, which takes an output buffer and a `revert_frame` flag (`false` for Commit, `true` for Abort). WebAssembly functions that exit normally without calling this syscall implicitly Commit. In the protocol XDR, the frame status codes are `Return` (success), `Abort`, and `Fault`. This page uses "Commit" instead of "Return" for the success case to avoid ambiguity with the Return syscall name.
 
 ### 4. Merge into Parent (or Finalize for Root)
 
@@ -144,7 +143,7 @@ State changes:
 
 **For root frame:**
 
-The transaction terminates. The root frame's `state_changes` map is passed to the reservation and commit protocol (see [Transaction Lifecycle](/how-it-works/transaction-lifecycle/) Step 5).
+The transaction terminates. The root frame's `state_changes` map is passed to the conflict checking and commit protocol (see [Transaction Lifecycle](/how-it-works/transaction-lifecycle/)).
 
 ### 5. Pop and Return
 

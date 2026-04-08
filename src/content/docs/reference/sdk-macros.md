@@ -1,103 +1,389 @@
 ---
 title: SDK Macros
-description: "Reference for #[contract], #[storage], and #[init] macros."
+description: "Reference for #[contract], #[contract_error], #[storage], #[derive(Event)], and other SDK macros."
 ---
 
 ## `#[contract]`
 
-Generates C ABI exports (for WASM guest execution) and client stubs (for cross-contract calls).
+Generates WASM entrypoints, a client struct for cross-contract calls, and a client error enum.
 
-**Applies to:** trait implementations, inherent implementations, or free functions.
+### Applies to
+
+| Target | What it generates |
+|--------|-------------------|
+| Trait definition | Client struct, client error enum, entrypoints metadata |
+| Trait impl | Export functions, mock registration (dev builds) |
+| Inherent impl | Export functions, client struct, client error enum |
+| Free function | Export function only (no client) |
 
 ### Parameters
 
-| Parameter | Required | Description |
-|-----------|----------|-------------|
-| `throws = ErrorType` | No | Your error type. Enables `abort(&error)` and `ensure()` with that type. |
-| `client = ClientName` | No | Generates a client struct for cross-contract calls. |
-| `storage = "false"` | No | Disables automatic storage serialization. Use for low-level bytestring storage. Default is `"true"`. |
-| `exports = "mod_name"` | No | Rename the generated exports module. Default is `exports`. |
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `throws` | Type path or list | None | Error type(s) the contract may throw. Accepts `throws = MyError` or `throws(ErrorA, ErrorB)`. |
+| `client` | Identifier | `{Interface}Client` | Name of the generated client struct. On traits, defaults to trait name + `Client`. On inherent impls, defaults to self type + `Client`. |
+| `interface` | String | Trait name or self type name | Overrides the interface name used in entrypoint identifiers. |
+| `version` | String | `CARGO_PKG_VERSION` | Version used for entrypoint identifier computation. |
+| `storage` | Bool | `true` | When `true`, contract state is loaded from storage before method calls. Set to `false` for stateless contracts. |
+| `exports` | String | Auto-generated | Overrides the internal exports module name. Rarely needed. |
 
-### Example: Trait Implementation
+### `throws` rules
+
+- `throws` belongs on the trait definition or inherent impl, not on the trait impl. The compiler rejects `throws` on a trait impl.
+- Accepts a single type (`throws = MyError`) or a list (`throws(AlphaError, BetaError)`).
+- The last path segment becomes the variant name in the generated error enum. `throws(errors::MyError)` produces `ClientError::MyError(...)`.
+- Duplicate variant names (e.g. `foo::Error` and `bar::Error`) are rejected at compile time.
+- `Library`, `Fault`, and `Unknown` are reserved variant names.
+
+### Generated client
+
+The generated client struct provides:
+
+| Method | Description |
+|--------|-------------|
+| `ClientName::new(&ContractAddress)` | Constructor. |
+| `client.with_gas_limit(u64)` | Returns a new client with the specified gas limit. |
+| `client.method(args...)` | Calls the contract method. Re-throws on exception. |
+| `client.try_method(args...)` | Calls the contract method. Returns `Result<T, ClientError>` so exceptions can be inspected. |
+
+The names `new`, `with_gas_limit`, and any name starting with `try_` are reserved. Contract methods using these names are rejected at compile time.
+
+### Generated error enum
+
+When `throws` is specified, the macro generates a `{Client}Error` enum:
 
 ```rust
-#[contract(throws = ERC20Error)]
-impl ERC20 for TokenContract {
-    #[init]
-    fn initialize(&mut self, contract_owner: &ContractAddress) {
-        self._init(contract_owner);
-    }
-
-    fn transfer(&mut self, receiver: &ContractAddress, amount: Amount) {
-        let owner = get_caller();
-        let diff = amount_to_diff(amount);
-        self._adjust_balance(&owner, -diff);
-        self._adjust_balance(receiver, diff);
-    }
-
-    fn get_balance(&self) -> Amount {
-        let owner = get_caller();
-        self._balance_amount_of(&owner)
-    }
+pub enum CounterClientError {
+    MyError(MyError),       // one variant per thrown type
+    Library(LibraryExn),    // SDK-internal errors
+    Fault(FaultString),     // panics and host faults
+    Unknown(RawException),  // unrecognized exception selectors
+    BadDecode(RawException) // recognized selector, payload decode failed
 }
 ```
 
-### Example: Trait Definition with Client
+### Examples
+
+Trait definition with client and error:
 
 ```rust
 #[contract(client = ERC20Client, throws = ERC20Error)]
 pub trait ERC20 {
     fn transfer(&mut self, receiver: &ContractAddress, amount: Amount);
     fn get_balance(&self) -> Amount;
-    // ...
 }
 ```
 
-### Method Behavior
+Trait implementation (exports entrypoints):
 
-- `&mut self` methods persist state changes after the method completes.
-- `&self` methods are read-only. State is not written back.
-- Public methods are exported as WASM entry points. Private methods are not.
+```rust
+#[contract(version = "0.1.0")]
+impl ERC20 for TokenContract {
+    fn transfer(&mut self, receiver: &ContractAddress, amount: Amount) {
+        // ...
+    }
 
-## `#[storage]` / `#[sdk::storage]`
+    fn get_balance(&self) -> Amount {
+        // ...
+    }
+}
+```
 
-Marks a struct as contract state. Derives `WriteXDR` and `Storage`, which in turn generates implementations of `ReadXDRPath`, `LoadKeypath`, and `DefaultFromKeypath`. Fields are automatically persisted to and loaded from the key-value store.
+Inherent impl (self-contained contract):
+
+```rust
+#[contract(throws = Error)]
+impl Counter {
+    pub fn increment(&mut self, amount: u64) {
+        self.value.strict_inc(amount as i128);
+    }
+
+    pub fn get(&self) -> u64 {
+        self.value.try_get().unwrap_or(0) as u64
+    }
+}
+```
+
+Multiple error types:
+
+```rust
+#[contract(client = Client, throws(MyExn, BigExn))]
+pub trait Interface {
+    fn hello();
+    fn throws_my_exn() -> u32;
+}
+```
+
+### Method behavior
+
+- `&mut self` methods: state is loaded from storage before the call and written back on success. Exceptions and faults revert the frame.
+- `&self` methods: state is loaded read-only. Nothing is written back.
+- Public methods on inherent impls are exported. Private methods are not.
+- On trait impls, all trait methods are exported regardless of visibility.
+
+---
+
+## `#[contract_error]`
+
+Convenience macro for defining contract error types. Applies `#[repr(i32)]` (enums only), derives serialization traits, and implements `Exn` with a computed selector.
+
+### Applies to
+
+Enums and structs.
+
+### Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `version` | String | `CARGO_PKG_VERSION` | Overrides the version used for selector computation. |
+
+### What it generates
+
+For an enum:
+
+```rust
+// Input
+#[contract_error]
+pub enum Error {
+    NotAuthorized = 1,
+}
+
+// Generates equivalent of:
+#[derive(Debug, Clone, PartialEq, ReadXDR, WriteXDR)]
+#[repr(i32)]
+pub enum Error {
+    NotAuthorized = 1,
+}
+
+impl Exn for Error {
+    const SELECTOR: u64 = /* computed from crate name, version, type name */;
+}
+```
+
+For a struct:
+
+```rust
+// Input
+#[contract_error]
+pub struct MyExn;
+
+// Generates equivalent of:
+#[derive(Debug, Clone, PartialEq, ReadXDR, WriteXDR)]
+pub struct MyExn;
+
+impl Exn for MyExn {
+    const SELECTOR: u64 = /* computed */;
+}
+```
+
+### Selector computation
+
+The selector is derived from:
+1. The crate version (or `version` parameter)
+2. The crate name (`CARGO_PKG_NAME`)
+3. The type name
+
+Changing any of these changes the selector, which makes error types from different contract versions distinguishable.
 
 ### Example
 
 ```rust
+#[contract_error]
+#[non_exhaustive]
+pub enum ERC20Error {
+    AlreadyInitialized = 1,
+    MustBeContractOwner = 2,
+    TooLarge = 3,
+    Internal = 100,
+}
+```
+
+Struct errors carry data:
+
+```rust
+#[contract_error]
+pub struct BigExn {
+    pub payload: [u8; 600],
+}
+```
+
+---
+
+## `#[exn]`
+
+Low-level version of `#[contract_error]`. Implements `Exn` with a computed selector but does not add any derives. Use this when you handle your own `#[derive(...)]` and `#[repr(...)]`.
+
+### Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `version` | String | `CARGO_PKG_VERSION` | Overrides the version used for selector computation. |
+
+### Example
+
+```rust
+#[derive(Debug, Clone, PartialEq, ReadXDR, WriteXDR)]
+#[sdk::exn]
+#[repr(i32)]
+pub enum ERC20Error {
+    AlreadyInitialized = 1,
+    MustBeContractOwner = 2,
+}
+```
+
+---
+
+## `#[storage]` / `#[derive(Storage)]`
+
+Marks a struct as contract state. `#[storage]` is shorthand for `#[derive(Storage)]`.
+
+### Applies to
+
+Structs with named fields, or unit structs.
+
+### What it generates
+
+A `From<Keypath>` implementation that assigns a sub-keypath to each field. This is what allows the `#[contract]` macro to load and store your state automatically.
+
+All fields must be SDK storage types. Plain data must be wrapped in `Value<T>`.
+
+### Storage types
+
+| Type | Description |
+|------|-------------|
+| `Value<T>` | Single XDR-serializable value |
+| `NNInt` | Non-negative integer with commutative arithmetic |
+| `Bytestring` | Variable-length byte blob |
+| `Map<K, V>` | Key-addressed collection (entries not enumerable) |
+| `Node<T>` | Nested storage struct for use inside collections |
+
+### Example
+
+```rust
+use sdk::storage::{Map, NNInt, Value};
+
 #[derive(Debug)]
 #[sdk::storage]
 pub struct TokenContract {
-    contract_owner: ContractAddress,
+    contract_owner: Value<ContractAddress>,
     balances: Map<ContractAddress, NNInt>,
     allowances: Map<ContractAddress, Map<ContractAddress, NNInt>>,
     total_supply: NNInt,
 }
 ```
 
-Each field maps to a storage key path. `Map` fields create nested key-value namespaces. Operations on different keys within a `Map` commute.
+---
 
-## `#[init]`
+## `#[derive(Deletable)]`
 
-Marks the initialization method. Called once at deploy time. When called, the SDK asserts that no contract state has been stored yet, and provides a default value for the state object.
+Generates a `Deletable` implementation that calls `delete_internal()` on every field. Provides `delete()` and `delete_exclusive()` methods for clearing stored data.
 
-Must be placed on a method inside a `#[contract]` block.
+### Applies to
+
+Structs with named fields, or unit structs. Every field type must implement `Deletable`. If a field's type is not `Deletable` (e.g. `Map`), the derive produces a compile error.
 
 ### Example
 
 ```rust
-#[contract(throws = ERC20Error)]
-impl ERC20 for TokenContract {
-    #[init]
-    fn initialize(&mut self, contract_owner: &ContractAddress) {
-        self._init(contract_owner);
-    }
+#[sdk::storage]
+#[derive(Deletable)]
+struct Counters {
+    a: NNInt,
+    b: Value<u64>,
+}
+// Counters::delete() will delete both `a` and `b`.
+```
 
-    // other methods...
+---
+
+## `#[derive(Event)]`
+
+Generates an `Event` implementation for emitting on-chain events.
+
+### Applies to
+
+Structs with named fields.
+
+### Field attributes
+
+| Attribute | Description |
+|-----------|-------------|
+| `#[topic]` | Marks a field as an indexed topic. Topics are searchable. Fields without `#[topic]` go into the serialized payload. |
+
+There is a maximum number of topics per event. Topic index 0 is always the event signature (computed automatically from crate name, version, and type name). User-defined `#[topic]` fields occupy the remaining slots.
+
+### What it generates
+
+| Item | Description |
+|------|-------------|
+| `SIGNATURE` const | A `&'static Topic` containing the event's computed signature bytes. |
+| `Event` impl | Provides `num_topics()`, `topic(index)`, and `decode_payload()`. |
+| `WriteXDR` impl | Serializes only the non-topic (payload) fields. |
+| `{Name}Payload` struct | A companion struct with `ReadXDR` for decoding the payload from raw event data. |
+
+### Example
+
+```rust
+#[derive(Event, Clone, Debug)]
+pub struct TransferEvent<'a> {
+    #[topic]
+    pub from: &'a ContractAddress,
+    #[topic]
+    pub to: &'a ContractAddress,
+    pub amount: u128,
 }
 ```
 
-If the `#[init]` method takes `&mut self`, the initialized state is stored after the method completes. This is the standard pattern: initialize state in the `#[init]` method, then interact with it through other methods.
+Emitting:
 
-For a working example of all three macros together, see the counter contract in [Getting Started](/start/getting-started/) or the full ERC-20 walkthrough in [Build a Token](/tutorials/build-a-token/).
+```rust
+let event = TransferEvent { from: &sender, to: &receiver, amount: 100 };
+log_event(&event);
+```
+
+Decoding from raw event data:
+
+```rust
+if sig == TransferEvent::SIGNATURE {
+    let from: &ContractAddress = event.topic(1).unwrap().into();
+    let to: &ContractAddress = event.topic(2).unwrap().into();
+    let payload: TransferEventPayload = TransferEvent::decode_payload(event.payload())?;
+}
+```
+
+---
+
+## Utility Macros
+
+### `static_key!`
+
+Computes a `StorageKey` from a string literal at compile time (SHA-256 hash).
+
+```rust
+let key: StorageKey = static_key!("my_storage_slot");
+```
+
+### `sha256_static!`
+
+Computes a `SHA256Hash` from a string literal at compile time.
+
+```rust
+let hash: SHA256Hash = sha256_static!("some_string");
+```
+
+### `hash_to_array!`
+
+Computes the SHA-256 hash of a string or byte-string literal and returns it as a `[u8; 32]` array at compile time.
+
+```rust
+let bytes: [u8; 32] = hash_to_array!("my_data");
+let bytes: [u8; 32] = hash_to_array!(b"raw bytes");
+```
+
+### `declare_mock_contract!`
+
+Registers the current crate as a mock contract for the test environment. Place this at crate root. Only active when the `dev` feature is enabled.
+
+```rust
+sdk::declare_mock_contract!();
+```

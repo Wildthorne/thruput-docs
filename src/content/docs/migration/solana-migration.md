@@ -66,7 +66,7 @@ Solana programs are written in Rust with Anchor (or native). Groundhog contracts
 | `#[derive(Accounts)]` | *(not needed)* | Account validation. Groundhog has no account arrays. |
 | `#[account]` | `#[sdk::storage]` | Marks state structure |
 | `#[instruction]` | Method parameters | Instruction data. Groundhog methods take typed parameters directly. |
-| `init` constraint | `#[init]` | Initialization. Groundhog's runs once at instance creation. |
+| `init` constraint | `fn initialize()` | Conventional method called during the deployment transaction. |
 
 ### Compiling
 
@@ -99,7 +99,7 @@ client.transfer(&recipient, 100);
 | `#[derive(Accounts)]` validation | Nothing. Types handle it. | No access list to declare or validate. |
 | PDAs (seeds + bump) | Deterministic address (deployer + nonce + hash) | Simpler derivation. No seed discovery. |
 | Rent exemption (2 years of lamports) | HOG deposit (refundable) | Hold tokens for storage capacity. No rent clock. |
-| 200k compute units per TX | No compute budget | Free execution. Hold HOG for throughput capacity. |
+| 200k compute units per TX | Gas limits exist but cost zero | Metering bounds computation. No tokens burned. Hold HOG for throughput capacity. |
 | CPI (cross-program invocation) | Cross-contract calls | Same concept, simpler API, snapshot isolation. |
 | `Signer<'info>` propagation | `get_caller()` | Caller identity. No signer array to thread through CPIs. |
 | `balance -= amount; balance += amount` | `strict_inc(-diff); strict_inc(diff)` | Deltas merge in parallel. Assignments conflict. |
@@ -272,7 +272,7 @@ Similar pattern: define error variants, check conditions. Anchor uses `require!`
 | `#[derive(Accounts)]` | Does not exist | No account validation needed |
 | PDAs and bump seeds | Does not exist | Deterministic address from deployer + nonce |
 | Rent / rent exemption | Does not exist | Refundable HOG deposit for storage |
-| Compute unit budget | Does not exist | No gas, no compute limits |
+| Compute unit budget | Gas limits (cost zero) | Metering exists for bounding computation. No per-operation fees. |
 | Priority fees | Does not exist | Throughput via HOG token holding |
 | `Signer<'info>` propagation | Does not exist | `get_caller()` for identity |
 | Associated Token Accounts | Does not exist | `Map<Address, NNInt>` in contract storage |

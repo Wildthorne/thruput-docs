@@ -1,9 +1,9 @@
 ---
 title: Storage Types
-description: "The four storage types, their conflict semantics, and how to choose between them."
+description: "The six storage types, their conflict semantics, and how to choose between them."
 ---
 
-Groundhog has four storage types. The type you choose determines whether concurrent writes merge, conflict, or ignore each other.
+Groundhog has six storage types. The type you choose determines whether concurrent writes merge, conflict, or ignore each other.
 
 ## NNInt
 
@@ -48,12 +48,12 @@ pub struct Token {
 
 ```rust
 // Different keys: always independent, never conflict
-self.balances.get(&alice).strict_inc(10);  // Tx A
-self.balances.get(&bob).strict_inc(20);    // Tx B -- no interaction
+self.balances.at_mut(&alice).strict_inc(10);  // Tx A
+self.balances.at_mut(&bob).strict_inc(20);    // Tx B -- no interaction
 
 // Same key: follows NNInt rules (concurrent increments merge)
-self.balances.get(&alice).strict_inc(10);  // Tx A
-self.balances.get(&alice).strict_inc(20);  // Tx B -- merges to +30
+self.balances.at_mut(&alice).strict_inc(10);  // Tx A
+self.balances.at_mut(&alice).strict_inc(20);  // Tx B -- merges to +30
 ```
 
 Maps can nest: `Map<K, Map<K2, NNInt>>` gives composite keys with independent conflict domains at each level. The ERC-20 allowance pattern uses this: `Map<owner, Map<spender, NNInt>>`.
@@ -94,13 +94,80 @@ let entry = retrocausal_queue_consume_sized::<N>(&key);
 
 Use RetrocausalQueue when producers are concurrent but consumers process items in order.
 
+## Vector\<S\>
+
+Ordered collection. Each element is an independent storage slot. Internally backed by a `Map<u32, S>` for elements and a length counter.
+
+```rust
+use sdk::storage::{Vector, Node, Value};
+
+#[derive(Storage)]
+pub struct Item {
+    value: Value<u64>,
+}
+
+#[derive(Debug)]
+#[sdk::storage]
+pub struct Registry {
+    items: Vector<Node<Item>>,
+}
+```
+
+```rust
+// Push a new element
+self.items.push_with(|item| {
+    item.value.set(&42);
+});
+
+// Read by index (bounds-checked)
+let val = self.items.at(0).value.get();
+
+// Mutate by index
+*self.items.at_mut(0).value.load_mut() = 99;
+
+// Iterate
+for item in &self.items {
+    let v = item.value.get();
+}
+```
+
+Different indices are independent and never conflict (same as Map). Same-index writes follow the element type's rules. Pushes conflict with other pushes (the length counter is not an NNInt, so concurrent length changes are mutually exclusive).
+
+Use Vector for ordered collections where elements are accessed by index. Wrap compound structs in `Node<T>` so storage derivation works through the nesting. For hot concurrent writes, Map with application-managed keys is more parallelism-friendly than Vector with pushes.
+
+## Value\<T\>
+
+Typed storage slot. Stores any XDR-serializable value. Conflict semantics are the same as Bytestring: concurrent writes of the same value commute, different values conflict.
+
+```rust
+use sdk::storage::Value;
+
+#[derive(Debug)]
+#[sdk::storage]
+pub struct Config {
+    owner: Value<ContractAddress>,
+    threshold: Value<u64>,
+}
+```
+
+```rust
+let owner = self.owner.get();             // read (aborts if unset)
+let maybe = self.threshold.try_get();     // read (returns Option)
+self.owner.set(&new_owner);               // write
+*self.threshold.load_mut() = 10;          // read-modify-write
+```
+
+Use `Value<T>` for typed single-slot storage. Use `Bytestring` when you need raw byte access or variable-length data without a fixed schema.
+
 ## Choosing a Type
 
 | If your write pattern is... | Use | Why |
 |-----------------------------|-----|-----|
 | `col = col + delta` | NNInt | Deltas merge. Concurrent increments land. |
 | `INSERT INTO ... (key, value)` with unique keys | Map | Different keys are independent. |
-| `col = absolute_value` | Bytestring | Accept that concurrent writes conflict. |
+| Ordered list, accessed by index | Vector | Per-element independence. Pushes are exclusive. |
+| Store a typed value | Value\<T\> | Typed Bytestring. Same conflict rules. |
+| `col = absolute_value` (raw bytes) | Bytestring | Accept that concurrent writes conflict. |
 | Append to a log or work queue | RetrocausalQueue | Inserts merge, consumers are sequential. |
 
 :::tip[Exclusive Write Flag]
