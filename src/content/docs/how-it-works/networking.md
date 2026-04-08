@@ -91,7 +91,7 @@ Clients submit transactions and query state through two paths:
 
 **JSON-RPC gateway.** A separate service (`groundhog-rpc`) that exposes a JSON-RPC 2.0 API over HTTP. It connects to the mempool (for transaction submission and status) and the indexer (for receipts, events, and history) via x23 RPC. The gateway is architecturally separate from the validator. It does not participate in consensus and can be scaled independently. See [JSON-RPC API](/reference/json-rpc-api/) for the method reference.
 
-**Wallet endpoint.** The coordinator includes an HTTP wallet endpoint for transaction submission. This exists for development and testing. Production traffic should go through the RPC gateway.
+**Wallet endpoint (deprecated).** The coordinator includes an HTTP wallet endpoint for transaction submission. This is being replaced by the RPC gateway and will be removed in a future release.
 
 ## Transaction Flow
 
