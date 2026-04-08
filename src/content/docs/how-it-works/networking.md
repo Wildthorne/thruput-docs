@@ -3,27 +3,43 @@ title: Networking
 description: "Node topology, component registration, and how transactions reach the mempool."
 ---
 
-:::caution[Draft]
-This page describes the current architecture. Some details (particularly the RPC gateway) are still being finalized.
-:::
-
 ## Topology
 
-A Groundhog node is not a single process. It is a set of components that register with a central scheduler (the mempool). The mempool acts as the hub: every component connects to it, registers itself, and receives the network addresses of all other components.
+A Groundhog node is not a single process. It is a set of components organized in two layers.
+
+The **coordinator** (chuckd, written in Go) sits above the execution layer. It drives consensus with other validators, manages peer topology, and tells the local mempool when to produce and commit blocks.
+
+The **mempool** (scheduler, part of hogd) is the hub of the execution layer. All execution components register with it: executors, DB shards, event server, auth server. The mempool orchestrates block production, transaction execution, and state commits.
+
+Separately, the **RPC gateway** (groundhog-rpc) provides external API access. It connects to the mempool and indexer but does not participate in consensus. It can be scaled independently of the validator.
 
 ```
-                         ┌──────────────┐
-                         │   Mempool    │
-                         │  (scheduler) │
-                         └──────┬───────┘
-           ┌────────┬───────┬───┴───┬──────────┐
-           v        v       v       v          v
-       Executors  DB      Event   Auth     Coordinator
-       (N procs) Shards  Server  Server     (chuckd)
-                 (N procs)
+                    ┌─────────────────┐
+                    │   Coordinator   │    ← consensus, peer gossip
+                    │    (chuckd)     │
+                    └────────┬────────┘
+                             │
+    ┌────────────────────────┼────────────────────────┐
+    │                        v                        │
+    │               ┌──────────────┐                  │
+    │               │   Mempool    │                  │
+    │               │  (scheduler) │                  │
+    │               └──────┬───────┘                  │
+    │    ┌────────┬────────┼────────┬─────────┐       │
+    │    v        v        v        v         v       │
+    │ Executors  DB     Event     Auth     Indexer    │
+    │ (N procs) Shards  Server   Server               │
+    │           (N procs)                             │
+    │                                          hogd   │
+    └─────────────────────────────────────────────────┘
+
+    ┌─────────────────┐
+    │  RPC Gateway    │    ← external JSON-RPC API
+    │ (groundhog-rpc) │──── connects to mempool + indexer
+    └─────────────────┘
 ```
 
-Within a node, no component discovers peers independently. The mempool is the registry for intra-node communication. When a component registers, it gets back the addresses of everything else it needs to talk to.
+Within the execution layer, no component discovers peers independently. The mempool is the registry for intra-node communication. When a component registers, it gets back the addresses of everything else it needs to talk to.
 
 Inter-node communication (consensus, transaction gossip) is managed by the coordinator, which maintains its own peer topology via configured quorum sets. The mempool knows nothing about other validators. See [Consensus](/how-it-works/consensus/) for how coordinators find and talk to each other.
 
@@ -73,16 +89,16 @@ The mempool also calls back to the coordinator via a reverse RPC channel to noti
 
 Clients submit transactions and query state through two paths:
 
-**Wallet (current).** The coordinator includes an HTTP/REST wallet endpoint. Clients submit signed transactions, which the coordinator forwards to the mempool via `submit_unvetted`. This exists for testing, not real public usage.
+**JSON-RPC gateway.** A separate service (`groundhog-rpc`) that exposes a JSON-RPC 2.0 API over HTTP. It connects to the mempool (for transaction submission and status) and the indexer (for receipts, events, and history) via x23 RPC. The gateway is architecturally separate from the validator. It does not participate in consensus and can be scaled independently. See [JSON-RPC API](/reference/json-rpc-api/) for the method reference.
 
-**JSON-RPC gateway (in progress).** A separate service (`groundhog-rpc`) that exposes a JSON-RPC 2.0 API. It connects to the mempool and indexer via x23 RPC. The gateway is architecturally separate from the validator. It does not participate in consensus and can be scaled independently. See [JSON-RPC API](/reference/json-rpc-api/) for the method reference.
+**Wallet endpoint.** The coordinator includes an HTTP wallet endpoint for transaction submission. This exists for development and testing. Production traffic should go through the RPC gateway.
 
 ## Transaction Flow
 
 A transaction moves through the system like this:
 
-1. Client signs and submits via wallet or RPC gateway
-2. Coordinator receives the transaction and forwards it to the mempool (`submit_unvetted`)
+1. Client signs and submits via the RPC gateway (or the wallet endpoint during development)
+2. The gateway (or coordinator) forwards the transaction to the mempool (`submit_unvetted`)
 3. Mempool sends the transaction to the auth server for signature verification
 4. Verified transactions are queued by account with balance-proportional scheduling
 5. Coordinator asks mempool for a nomination (`nominate`)
