@@ -16,10 +16,8 @@ If you've deployed and called contracts on Ethereum, the Groundhog lifecycle wil
 Groundhog contracts are written in Rust and compiled to WebAssembly (not EVM bytecode). The SDK provides optional convenience macros, but you can also work directly with raw syscalls. A minimal contract looks like this:
 
 ```rust
-#[derive(Error, Debug, Clone, PartialEq, ReadXDR, WriteXDR)]
-#[repr(i32)]
+#[contract_error]
 pub enum Error {
-    #[error("Not authorized")]
     NotAuthorized = 1,
 }
 
@@ -97,7 +95,7 @@ The key difference: every read within a block sees the same snapshot. Two transa
 | Gas per operation | Gas exists for metering but costs zero. HOG deposit for storage capacity. | Gas limits bound computation, but no tokens are burned. |
 | Sequential execution | Parallel by default | Every transaction in a block runs simultaneously against the same snapshot. |
 | `require(condition, "message")` | `ensure(condition, Error::Variant)` | Typed errors instead of string messages. |
-| `revert()` / `require()` | `abort(&error)` | Aborts the transaction. Cannot be caught within the same contract. |
+| `revert()` / `require()` | `throw(error)` | Aborts the transaction. Cannot be caught within the same contract. |
 | Solidity + EVM bytecode | Rust + WebAssembly | WASM gives full-featured computation. No 24KB contract size limit. |
 | `constructor()` | `fn initialize()` | Called during the deployment transaction, not bytecode upload. |
 | `msg.sender` | `get_caller()` | Same concept. |
@@ -125,7 +123,7 @@ On Groundhog, commutative operations produce the same result regardless of execu
 
 ### Gas Estimation and Out-of-Gas Failures
 
-EVM developers spend significant effort estimating gas, setting gas limits, and handling out-of-gas reverts. Groundhog has no per-operation gas. You hold HOG tokens for capacity (compute throughput and storage). Your contract executes to completion or aborts. There is no partial execution due to resource exhaustion.
+EVM developers spend significant effort estimating gas, setting gas limits, and handling out-of-gas reverts. Groundhog has gas limits for metering (bounding computation, preventing infinite loops), but gas costs zero tokens. You hold HOG tokens for capacity (compute throughput and storage). There are no gas fees to estimate and no fee-related reverts to handle.
 
 ### Nonce Management
 
@@ -168,8 +166,8 @@ pub struct Token {
 fn transfer(&mut self, receiver: &ContractAddress, amount: Amount) {
     let caller = get_caller();
     let diff = amount_to_diff(amount);
-    self.balances.get(&caller).strict_inc(-diff);
-    self.balances.get(receiver).strict_inc(diff);
+    self.balances.at_mut(&caller).strict_inc(-diff);
+    self.balances.at_mut(receiver).strict_inc(diff);
 }
 ```
 
@@ -198,14 +196,14 @@ function mint(address to, uint256 amount) external onlyOwner {
 ```rust
 #[sdk::storage]
 pub struct Token {
-    contract_owner: ContractAddress,
+    contract_owner: Value<ContractAddress>,
     // ...
 }
 
 fn mint(&mut self, receiver: &ContractAddress, amount: Amount) {
-    ensure(&get_caller() == &self.contract_owner, Error::NotOwner);
+    ensure(get_caller() == self.contract_owner.get(), Error::NotOwner);
     let diff = amount_to_diff(amount);
-    self.balances.get(receiver).strict_inc(diff);
+    self.balances.at_mut(receiver).strict_inc(diff);
 }
 ```
 
@@ -313,35 +311,34 @@ contract ERC20 {
 ```rust
 #[sdk::storage]
 pub struct TokenContract {
-    contract_owner: ContractAddress,
+    contract_owner: Value<ContractAddress>,
     balances: Map<ContractAddress, NNInt>,
     allowances: Map<ContractAddress, Map<ContractAddress, NNInt>>,
     total_supply: NNInt,
 }
 
-#[contract(throws = ERC20Error)]
+#[contract(version = "0.1.0")]
 impl ERC20 for TokenContract {
     fn transfer(&mut self, receiver: &ContractAddress, amount: Amount) {
         let owner = get_caller();
         let diff = amount_to_diff(amount);
-        self.balances.get(&owner).strict_inc(-diff);
-        self.balances.get(receiver).strict_inc(diff);
+        self.balances.at_mut(&owner).strict_inc(-diff);
+        self.balances.at_mut(receiver).strict_inc(diff);
         log_transfer_event(&owner, receiver, amount);
     }
 
     fn adjust_allowance(&mut self, spender: &ContractAddress, diff: Difference) {
         let owner = get_caller();
-        let owner_allowances = self.allowances.get(&owner);
-        owner_allowances.get(spender).strict_inc(diff);
+        self.allowances.at_mut(&owner).at_mut(spender).strict_inc(diff);
         log_approval_event(&owner, spender, diff);
     }
 
     fn transfer_from(&mut self, owner: &ContractAddress, receiver: &ContractAddress, amount: Amount) {
         let spender = get_caller();
         let diff = amount_to_diff(amount);
-        self.allowances.get(owner).get(&spender).strict_inc(-diff);
-        self.balances.get(owner).strict_inc(-diff);
-        self.balances.get(receiver).strict_inc(diff);
+        self.allowances.at_mut(owner).at_mut(&spender).strict_inc(-diff);
+        self.balances.at_mut(owner).strict_inc(-diff);
+        self.balances.at_mut(receiver).strict_inc(diff);
         log_transfer_event(owner, receiver, amount);
     }
 }
