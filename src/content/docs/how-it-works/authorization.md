@@ -197,7 +197,6 @@ The current SDK exposes attestation consumption as a positional array: `get_auth
 
 Several mechanics are being pinned down and will land here as they settle:
 
-- **Minter accessor on consume.** The runtime tracks `mint_address` and propagates it through nested unwrapping, but `ConsumeAuthToken` does not currently surface it back to the consuming contract. The model above assumes `signed.minter` is readable; the SDK and syscall surface need to expose it. Without this, consumers cannot use the unforgeable runtime attribution and would have to fall back to trusting payload-supplied identity fields, which defeats the security model.
 - **Minting from user signatures.** How an off-chain signature becomes an on-chain attestation. Expected path: an account contract verifies the signature against its own policy and mints, ERC-1271-style.
 - **Expiry domain.** Whether expiry is measured in block height, timestamp, or transaction sequence.
 - **RCQ revert semantics.** What happens to an attestation embedded in an RCQ entry if the resumer reverts and retries.
