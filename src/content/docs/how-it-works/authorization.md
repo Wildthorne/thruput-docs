@@ -1,19 +1,19 @@
 ---
 title: Authorization
-description: How authorization works in Groundhog — signature verification, caller identity, address policy, and capability tokens.
+description: How authorization works in Groundhog. Signature verification, caller identity, address policy, and signed instructions.
 ---
 
 :::note[Active design]
-The capability-token model below is the v2 authorization design, under active development and feasibility testing. The current SDK exposes a provisional v1 positional API; v2 is expected to land before the SDK is publicly stable. This page will evolve as the model settles.
+The model below is the v2 authorization design, under active development and feasibility testing. The current SDK exposes a provisional v1 positional API; v2 is expected to land before the SDK is publicly stable. This page is the working specification and will evolve as it settles.
 :::
 
-Groundhog treats every address uniformly — there is no distinction between externally-owned accounts and contracts. Authorization decomposes into four orthogonal concerns, with a clean split between contract and protocol:
+Groundhog treats every address uniformly. There is no distinction between externally-owned accounts and contracts. Authorization decomposes into four orthogonal concerns, with a clean split between contract and protocol:
 
 | # | Concern | Who does it |
 |---|---|---|
 | 1 | Signature & claim verification | Protocol, at transaction admission |
 | 2 | Caller identity (`msg.sender`) | Runtime query from contract |
-| 3 | Authorized operations (capability tokens) | Contract, via typed method arguments |
+| 3 | Signed instructions (attestations) | Contract, via typed method arguments |
 | 4 | Address auth policy | Contract declares, protocol enforces |
 
 #1 and #4 are paired: an address uses #4 to configure what the protocol enforces in #1. #2 and #3 are runtime queries that never touch the protocol's admission-time checks.
@@ -22,19 +22,19 @@ Groundhog treats every address uniformly — there is no distinction between ext
 
 The v2 model targets four properties that differentiate it from existing authorization frameworks:
 
-1. **Statically computable signatures.** A wallet can determine what the user is signing from the target method's signature alone — no transaction simulation required. This is, hopefully, significantly more ergonomic than Ethereum's EIP-4337 or Soroban's "simulate to build an auth tree" pattern.
+1. **Statically computable signatures.** A wallet can determine what the user is signing from the target method's signature alone, without transaction simulation. This is, hopefully, significantly more ergonomic than Ethereum's EIP-4337 or Soroban's "simulate to build an auth tree" pattern.
 
-2. **Authorization expressed in method signatures.** A reader of a function's Rust signature can see exactly what capabilities it requires. No deep reading of the function body is needed to locate `require_auth` calls or their equivalent.
+2. **Authorization expressed in method signatures.** A reader of a function's Rust signature can see exactly what attestations it requires. No deep reading of the function body is needed to locate `require_auth` calls or their equivalent.
 
 3. **Clear to both contract developers and end users.** What is and is not authorized is explicit at the type level for contracts, and derivable from typed payloads for wallet display.
 
-4. **Native support for asynchronous continuations.** Capability tokens survive across RCQ suspensions — the same capability can authorize an operation whose execution spans a deferred continuation. This replaces the need for token-specific permit patterns.
+4. **Native support for asynchronous continuations.** Attestations survive across RCQ suspensions. The same attestation can authorize an operation whose execution spans a deferred continuation, replacing the need for token-specific permit patterns.
 
 ## Signature verification (concern #1)
 
-At transaction admission, the protocol verifies every signature — the envelope signature that authorizes the transaction itself, and any detached signatures attached as auth claims. Signatures are checked against keys stored in the sending address's `AddressAuthData`.
+At transaction admission, the protocol verifies every signature: the envelope signature that authorizes the transaction, and any detached signatures attached as auth claims. Signatures are checked against keys stored in the sending address's `AddressAuthData`.
 
-Contracts do not run signature-verification code. By the time a contract is executing, the protocol has already validated every cryptographic proof associated with the transaction.
+Contracts do not run signature-verification code. By the time a contract is executing, the protocol has already validated every cryptographic proof on the transaction.
 
 ## Address auth policy (concern #4)
 
@@ -44,7 +44,7 @@ An address's `AddressAuthData` records what the protocol should enforce for tran
 - Nonce policy (monotonic, windowed, etc.)
 - Gas permission policy (who may sponsor gas from this address)
 
-Contracts declare policy via syscalls — `change_public_key_registration`, `set_nonce_config`, `set_gas_permission_config`. The protocol reads; the contract writes.
+Contracts declare policy via syscalls (`change_public_key_registration`, `set_nonce_config`, `set_gas_permission_config`). The protocol reads; the contract writes.
 
 A fresh address has no `AddressAuthData`; transactions from it fail with `kAuthFailed` until policy is installed.
 
@@ -58,105 +58,150 @@ use sdk::contract_op::get_caller;
 let caller = get_caller();
 ```
 
-This always returns the immediate caller of the current frame. For anything beyond "the address immediately above me initiated this call," authorization must be expressed explicitly as a capability.
+This always returns the immediate caller of the current frame. For anything beyond "the address immediately above me initiated this call," authorization must be expressed explicitly as a signed instruction.
 
-## Capability tokens (concern #3)
+## Signed instructions (concern #3)
 
-A capability token represents an authorization to perform a specific operation. Tokens live as opaque handles in the trusted runtime — contract code never sees the underlying bytes directly. In the SDK, they appear as `Signer<T>`:
+A `Signed<T>` is an **attestation**: a typed statement made by an address and vouched for by the runtime. The runtime guarantees the named minter actually made the statement but does not interpret it. The consuming contract reads both the minter's identity and the payload, and decides what authority to grant based on both.
+
+This is not a capability in the object-capability sense. Possessing a `Signed<T>` does not by itself confer authority; it is an attribution, and the consumer is the interpreter.
+
+In the SDK, attestations appear as `Signed<T>`:
 
 ```rust
 pub fn transfer_from(
     amount: i128,
     to: Address,
-    from: Address,
-    signer: Signer<Erc20Transfer>,
+    signed: Signed<Erc20Transfer>,
 );
 ```
 
-The method signature declares, at the type level, what authorization the function requires. A contract that does not accept a `Signer<T>` argument cannot consume one.
+The method signature declares, at the type level, what attestation the function expects. A function that does not accept a `Signed<T>` argument cannot read one.
 
-### Properties of a capability token
+### Properties of an attestation
 
-Every token carries four pieces of metadata:
+Every `Signed<T>` carries:
 
-- **Minter** — the address whose authority the token represents
-- **Consumer** — the single contract address permitted to unwrap it
-- **Expiry** — after which consumption fails
-- **Payload** — the signed data describing what is authorized (e.g. an `Erc20Transfer` struct)
+- **Minter**: the address that made the attestation. Set by the runtime from the calling frame at mint time and **unforgeable**. The consuming contract treats the minter as the source of authority.
+- **Payload**: the typed statement (e.g. an `Erc20Transfer` struct), supplied by the minter.
+- **Consumer**: the contract address permitted to read the attestation. A scope constraint; the runtime refuses to deliver the payload to any other contract.
+- **Expiry**: the block height after which the attestation can no longer be read.
 
-Tokens are **single-use**: consumption invalidates them.
+Attestations are **single-use**: reading consumes them.
 
-### Consumption and argument validation
+Handles are **ephemeral by default**. They exist for the duration of the transaction frame in which they're minted, and are discarded if not read. Persistence across an asynchronous continuation is supported by embedding the handle in an RCQ entry; this is the planned path for attestations whose use needs to outlive the minting transaction.
 
-The consuming contract unwraps the token to read its payload, then compares the payload against the call's actual arguments:
+### Reading and validation
+
+The consuming contract extracts both the minter and the payload, then validates the call's actual arguments against what the minter said:
 
 ```rust
 pub fn transfer_from(
     amount: i128,
     to: Address,
-    from: Address,
-    signer: Signer<Erc20Transfer>,
+    signed: Signed<Erc20Transfer>,
 ) {
-    let authorized: Erc20Transfer = signer.consume();
-    assert!(amount <= authorized.amount, "exceeds authorized amount");
-    assert!(to == authorized.to, "unauthorized recipient");
-    assert!(from == authorized.from, "unauthorized sender");
+    let sender = signed.minter;          // VM-attested authorizer
+    let instruction = signed.consume();  // typed payload
 
-    // perform the transfer
+    // The minter said: transfer up to `instruction.amount` to `instruction.recipient`.
+    // The contract enforces actual args fit within those bounds.
+    assert!(amount <= instruction.amount, "exceeds authorized amount");
+    assert!(to == instruction.recipient, "unauthorized recipient");
+
+    // Move funds from the attesting party.
+    self.transfer(sender, to, amount);
 }
 ```
 
-The payload defines what was signed; the contract defines the comparison relation. This is deliberately more flexible than exact-argument matching — contracts can encode `≤`, subset relations, or any domain-specific equivalence appropriate to the call.
+The minter is who; the payload is what; the contract enforces the relationship between what was attested and what's being asked. **Identity comes from the runtime, never from a payload field.** A field like `from` in the payload would be ambient data the minter could lie about; `signed.minter` cannot be forged.
+
+The contract's check is not constrained to exact-argument matching. Contracts can encode `≤`, subset relations, deadline checks, or any domain-specific equivalence appropriate to the call. The payload sets the bound; the contract sets the relation.
 
 ### Passing and forwarding
 
-Capability tokens never flow implicitly. A cross-contract call does not inherit tokens from the caller's frame. To delegate a capability to a sub-call, pass it explicitly as an argument.
+Attestations never flow implicitly. A cross-contract call does not inherit attestations from the caller's frame. To delegate an attestation to a sub-call, pass it explicitly as an argument.
 
-This is what makes "the method signature is the auth story" enforceable: a function that does not declare a `Signer<T>` parameter has no way to consume one.
+This is what makes "the method signature is the auth story" enforceable: a function that does not declare a `Signed<T>` parameter has no way to read one.
 
-### Nested capabilities and routing gates
+### Nested attestations
 
-A token's payload can itself be a token. The Rust encoding is `Signer<OuterConsumer<T>>`:
+A payload type can contain `Signed<U>` fields. When the outer attestation is consumed, the inner attestations remain valid handles: fresh entries in the runtime, with the outer's minter propagated to them.
 
 ```rust
-pub fn swap(
-    ...,
-    signer: Signer<DexContract<Erc20Transfer>>,
-);
+#[contracttype]
+pub struct DexIntent {
+    pub pool: Address,
+    pub deadline: BlockHeight,
+    pub min_received: i128,
+    pub transfer: Signed<Erc20Transfer>,
+}
+
+pub fn execute_swap(signed: Signed<DexIntent>) {
+    let trader = signed.minter;
+    let intent = signed.consume();
+    // intent.transfer is a fresh Signed<Erc20Transfer>, still attributed to `trader`.
+
+    // ...swap logic, slippage checks, pool interactions...
+
+    // Forward the inner attestation to the token to settle the input transfer.
+    let erc20 = Erc20Client::new(&token);
+    erc20.transfer_from(amount_in, intent.pool, intent.transfer);
+}
 ```
 
-The outer token's consumer is `DexContract`. Unwrapping it yields a fresh `Signer<Erc20Transfer>` that Dex can consume itself or forward to another contract (for example, the ERC-20 token).
+The outer attestation has `consumer = DexContract`; only the DEX can read it. The inner has `consumer = the ERC-20 token`; only the token can read it. Attribution stays intact through the chain: when the token reads `intent.transfer`, it sees `minter = trader`.
 
-The effect is a routing constraint: the `Erc20Transfer` authorization can only reach a token contract via `DexContract`. Other contracts cannot unwrap the outer token.
+The effect is a **scope chain**: Alice's `Signed<DexIntent>` is meaningful only to the DEX, and the inner `Signed<Erc20Transfer>` it carries is meaningful only to the token. A snooper extracting the outer from calldata cannot read it without invoking the DEX, and the DEX is the only entity that can extract the inner.
 
-### Returning capabilities
+This is how **mempool-extraction safety** is achieved for context-sensitive attestations. A bare `Signed<Erc20Transfer>` is safe in isolation: the runtime ensures only the token can read it, and the token uses `signed.minter` as the source of funds. But in isolation it provides no guarantee about the *context* in which the transfer happens. Wrapping it in a `Signed<DexIntent>` constrains the transfer to fire only as part of a DEX swap.
 
-Contracts can also mint tokens and return them. This generalizes ERC-1271: any contract can serve as a signature-verification authority by accepting inputs, running its own policy, and returning a `Signer<T>` on success. The caller takes that capability onward.
+### Issuing attestations from contracts
 
-A wallet contract can verify a multisig quorum or a passkey attestation, for example, and return a `Signer<Transfer>` that the rest of the transaction consumes.
+Contracts can mint attestations and return them to their callers. This generalizes ERC-1271: any contract can act as a signature-verification authority by accepting inputs, running its own policy, and minting a `Signed<T>` on success.
+
+A wallet contract can verify a multisig quorum or a passkey attestation, then mint a `Signed<Transfer>` in its own name. Any downstream consumer reads `minter = wallet_address`, which in Groundhog's uniform-address model *is* the user's identity.
+
+```rust
+fn verify_and_attest(msg: Bytes, sig: Bytes) -> Signed<Transfer> {
+    require(self.verify_signature(&msg, &sig));
+    sdk::mint_auth_token(
+        block_height + 100,
+        SignerPreimage {
+            consumer: some_token_address,
+            data: transfer_from_msg(&msg),
+        },
+    )
+}
+```
+
+The returned attestation carries `minter = wallet_address`, set unforgeably by the runtime.
 
 ## What this enables
 
-**Sponsored transactions.** The authorizer and the fee-payer are independent. A user mints a capability authorizing a specific call; a sponsor wraps it in a transaction paid from their own account.
+**Sponsored transactions.** The authorizer and the fee-payer are independent. A user mints an attestation authorizing a specific call; a sponsor wraps it in a transaction paid from their own account.
 
-**Portable authorizations.** A capability is bound to its minter, consumer, and expiry — not to a particular enclosing transaction. A signed capability can be generated off-line and submitted later by any party, subject to reaching the named consumer before expiry.
+**Portable authorizations.** An attestation is bound to its minter, consumer, and expiry, not to a particular enclosing transaction. A signed attestation can be generated off-line and submitted later by any party, subject to reaching the named consumer before expiry.
 
-**Atomic multi-party operations.** Multiple parties each mint independent capabilities. A coordinator submits a transaction feeding all of them into a single call. Either every capability validates and the call succeeds, or it reverts atomically.
+**Atomic multi-party operations.** Multiple parties each mint independent attestations. A coordinator submits a transaction feeding all of them into a single call. Either every attestation validates and the call succeeds, or it reverts atomically.
 
-**Replacing token permits.** A `transferFrom` taking a `Signer<Erc20Transfer>` argument is strictly more general than EIP-2612-style permits, requires no token-standard specialization, and survives asynchronous continuations — a property RCQ flows depend on.
+**Replacing token permits.** A `transferFrom` taking a `Signed<Erc20Transfer>` argument is strictly more general than EIP-2612-style permits, requires no token-standard specialization, and survives asynchronous continuations, a property RCQ flows depend on.
+
+**Bounded delegation in place of `approve`.** ERC-20-style approve has unbounded staleness as its core footgun: an open allowance lingers until explicitly revoked. An expiring, single-use, typed signed instruction removes that whole class of issue without sacrificing any of approve's functionality.
 
 ## Provisional v1 API
 
-The current SDK exposes capability consumption as a positional array: `get_auth_claim(index)` and `get_auth_claim_count()`. This is provisional and will be superseded by the typed `Signer<T>` model before the SDK is publicly stable. Positional access is expected to remain as a debug-only affordance.
+The current SDK exposes attestation consumption as a positional array: `get_auth_claim(index)` and `get_auth_claim_count()`. This is provisional and will be superseded by the typed `Signed<T>` model before the SDK is publicly stable. Positional access is expected to remain as a debug-only affordance.
 
 ## Not yet specified on this page
 
 Several mechanics are being pinned down and will land here as they settle:
 
-- **Minting from user signatures.** How an off-chain signature becomes an on-chain capability. Expected path: an account contract verifies the signature against its own policy and mints, ERC-1271-style.
+- **Minter accessor on consume.** The runtime tracks `mint_address` and propagates it through nested unwrapping, but `ConsumeAuthToken` does not currently surface it back to the consuming contract. The model above assumes `signed.minter` is readable; the SDK and syscall surface need to expose it. Without this, consumers cannot use the unforgeable runtime attribution and would have to fall back to trusting payload-supplied identity fields, which defeats the security model.
+- **Minting from user signatures.** How an off-chain signature becomes an on-chain attestation. Expected path: an account contract verifies the signature against its own policy and mints, ERC-1271-style.
 - **Expiry domain.** Whether expiry is measured in block height, timestamp, or transaction sequence.
-- **RCQ lifetime.** How capability lifetime interacts with RCQ suspension, and what happens to outstanding capabilities if a resumer reverts.
-- **Failed sub-call semantics.** The expected behavior is that forwarded capabilities are returned unconsumed on revert, consistent with "reverted call is a state no-op" elsewhere in the protocol.
+- **RCQ revert semantics.** What happens to an attestation embedded in an RCQ entry if the resumer reverts and retries.
+- **Failed sub-call semantics.** The expected behavior is that forwarded attestations are returned unread on revert, consistent with "reverted call is a state no-op" elsewhere in the protocol.
 
 ## See also
 
