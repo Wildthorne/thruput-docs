@@ -162,6 +162,8 @@ This protection lands hardest in batch-auction and solver-driven exchange design
 
 Wrapping does not replace trust in the auction or DEX itself. The user still depends on it to honor slippage and deadline. The wrapping constrains *where* the transfer fires, not how the swap settles.
 
+**Where the binding earns its keep.** The routing protection above lives in the *outer* attestation's consumer-binding, not the inner's. Once `consumer = DexContract` keeps the solver out, the inner `Signed<Erc20Transfer>` never materializes for them. The inner's consumer-binding is hygienic but not what's holding the line: even without it, a random contract reading "Alice authorizes 100 USDC to P" cannot act on it, because moving USDC requires the USDC contract's balance state and only the token has that. Consumer-binding does load-bearing work on **composite** attestations that carry inner attestations; on **leaf** attestations whose payloads are bounded data, it is defense-in-depth. We keep it on leaves anyway because there is no useful pattern in which a non-token contract should be reading a transfer attestation.
+
 A `Signed<T>` is a runtime handle, not a portable bearer token. There is no "extract the handle from the mempool and clone it" attack to defend against, because the handle doesn't exist at mempool time. What exists at mempool time is the transaction and any off-chain signatures it carries; those are subject to the signing-scope reasoning above.
 
 ### Issuing attestations from contracts
