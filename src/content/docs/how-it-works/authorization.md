@@ -215,6 +215,7 @@ Several mechanics are being pinned down and will land here as they settle:
 - **Expiry domain.** Whether expiry is measured in block height, timestamp, or transaction sequence.
 - **RCQ revert semantics.** What happens to an attestation embedded in an RCQ entry if the resumer reverts and retries.
 - **Failed sub-call semantics.** The expected behavior is that forwarded attestations are returned unread on revert, consistent with "reverted call is a state no-op" elsewhere in the protocol.
+- **Storable attestations vs. portable auth claims.** Open question whether `Signed<T>` should persist in arbitrary contract storage rather than only inside RCQ entries. If it can, an "all-on-chain" publish-then-consume pattern (Alice submits a transaction that mints an intent into a registry; sponsors or solvers pick it up later) covers the sponsored / batch-auction use cases without any off-chain detached-signature machinery, and the "portable authorization" enabler may collapse into that pattern.
 
 ## See also
 
