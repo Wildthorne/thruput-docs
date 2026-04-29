@@ -152,9 +152,15 @@ pub fn execute_swap(signed: Signed<DexIntent>) {
 
 The outer attestation has `consumer = DexContract`; only the DEX can read it. The inner has `consumer = the ERC-20 token`; only the token can read it. Attribution stays intact through the chain: when the token reads `intent.transfer`, it sees `minter = trader`.
 
-The effect is a **scope chain**: Alice's `Signed<DexIntent>` is meaningful only to the DEX, and the inner `Signed<Erc20Transfer>` it carries is meaningful only to the token. A snooper extracting the outer from calldata cannot read it without invoking the DEX, and the DEX is the only entity that can extract the inner.
+The effect is a **scope chain**: the outer attestation is meaningful only to the DEX, the inner only to the token. The protection this gives is at two levels:
 
-This is how **mempool-extraction safety** is achieved for context-sensitive attestations. A bare `Signed<Erc20Transfer>` is safe in isolation: the runtime ensures only the token can read it, and the token uses `signed.minter` as the source of funds. But in isolation it provides no guarantee about the *context* in which the transfer happens. Wrapping it in a `Signed<DexIntent>` constrains the transfer to fire only as part of a DEX swap.
+**Signing scope.** When the outer attestation comes from a user's off-chain signature, that signature covers the whole `DexIntent`. An attacker who replays the signature runs the swap Alice intended; they cannot pull out a bare `Erc20Transfer` authorization, because Alice never made one.
+
+**In-execution routing.** Inside a transaction, a contract that receives `Signed<DexIntent>` cannot lift the inner `Signed<Erc20Transfer>` and call the token directly, because only `consumer = DexContract` can unwrap the outer. The inner only materializes after the DEX has accepted the call. This is a meaningful guarantee when the path from wallet to DEX passes through any contract you don't fully trust.
+
+Wrapping does not replace trust in the DEX itself. The user still depends on the DEX to honor slippage and deadline. The wrapping constrains *where* the transfer fires, not how the swap settles.
+
+A `Signed<T>` is a runtime handle, not a portable bearer token. There is no "extract the handle from the mempool and clone it" attack to defend against, because the handle doesn't exist at mempool time. What exists at mempool time is the transaction and any off-chain signatures it carries; those are subject to the signing-scope reasoning above.
 
 ### Issuing attestations from contracts
 
