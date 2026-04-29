@@ -158,7 +158,9 @@ The effect is a **scope chain**: the outer attestation is meaningful only to the
 
 **In-execution routing.** Inside a transaction, a contract that receives `Signed<DexIntent>` cannot lift the inner `Signed<Erc20Transfer>` and call the token directly, because only `consumer = DexContract` can unwrap the outer. The inner only materializes after the DEX has accepted the call. This is a meaningful guarantee when the path from wallet to DEX passes through any contract you don't fully trust.
 
-Wrapping does not replace trust in the DEX itself. The user still depends on the DEX to honor slippage and deadline. The wrapping constrains *where* the transfer fires, not how the swap settles.
+This protection lands hardest in batch-auction and solver-driven exchange designs, where the user signs an intent that an off-chain network of solvers competes to fill. The user can audit the auction contract; they cannot audit the solvers. Wrapping the inner transfer in a `Signed<DexIntent>` means a solver who sees the intent cannot pull the transfer authorization out and use it outside the auction's settlement path.
+
+Wrapping does not replace trust in the auction or DEX itself. The user still depends on it to honor slippage and deadline. The wrapping constrains *where* the transfer fires, not how the swap settles.
 
 A `Signed<T>` is a runtime handle, not a portable bearer token. There is no "extract the handle from the mempool and clone it" attack to defend against, because the handle doesn't exist at mempool time. What exists at mempool time is the transaction and any off-chain signatures it carries; those are subject to the signing-scope reasoning above.
 
