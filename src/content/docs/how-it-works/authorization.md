@@ -154,7 +154,11 @@ The outer attestation has `consumer = DexContract`; only the DEX can read it. Th
 
 The effect is a **scope chain**: the outer attestation is meaningful only to the DEX, the inner only to the token. The protection this gives is at two levels:
 
-**Signing scope.** When the outer attestation comes from a user's off-chain signature, that signature covers the whole `DexIntent`. An attacker who replays the signature runs the swap Alice intended; they cannot pull out a bare `Erc20Transfer` authorization, because Alice never made one.
+**Signing scope.** Two flows are possible, and both close the same abuse channel.
+
+*All-on-chain.* Alice's wallet builds the transaction and signs the envelope. The wallet contract executes inside that transaction and mints `Signed<DexIntent>` directly from the call arguments. No per-intent signature exists in calldata — there is only the envelope sig, which is bound 1:1 to that specific transaction by its nonce. Replay is impossible at the signature level.
+
+*Portable / sponsored.* Alice signs an off-chain message describing the intent, and a sponsor or solver packages that signature as a detached auth claim inside *their* transaction. A signature now exists in calldata, and someone could extract it. But it covers the whole `DexIntent`, so a replayer can only resubmit Alice's full intent at the named consumer before expiry; nonce policy in `AddressAuthData` makes it single-use, and the signature cannot be decomposed into a bare `Erc20Transfer` authorization, because Alice never signed one.
 
 **In-execution routing.** Inside a transaction, a contract that receives `Signed<DexIntent>` cannot lift the inner `Signed<Erc20Transfer>` and call the token directly, because only `consumer = DexContract` can unwrap the outer. The inner only materializes after the DEX has accepted the call. This is a meaningful guarantee when the path from wallet to DEX passes through any contract you don't fully trust.
 
