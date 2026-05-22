@@ -36,11 +36,11 @@ No tokens are consumed in this process. HOGs cycle between ready and scheduled g
 
 ### Toll-Free Calls
 
-:::caution[Under Active Development]
-The gas sponsorship mechanism described here is under active development. The final API and semantics may change.
+:::caution[Planned, Not Implemented]
+Gas sponsorship is on the roadmap but no implementation currently ships. The previous prototype was removed and is being redesigned. The description below is the intent, not current behaviour.
 :::
 
-Contracts can sponsor execution for their callers. A transaction can include gas claims that name a sponsoring contract, so the caller does not need to hold enough free HOGs to cover the full gas limit. This is how you build applications with zero user-facing costs.
+The goal is to let contracts sponsor execution for their callers: a transaction would include a claim naming a sponsoring contract, so the caller would not need to hold enough free HOGs to cover the full gas limit. This is how you would build applications with zero user-facing costs once sponsorship lands.
 
 ## Storage: Refundable Deposits
 

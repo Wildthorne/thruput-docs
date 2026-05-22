@@ -31,8 +31,9 @@ The core shift from a database: instead of `UPDATE accounts SET balance = 50`, y
 
 ```rust
 fn transfer(&mut self, receiver: &ContractAddress, amount: Amount) {
-    self.balances.get(&get_caller()).strict_inc(-amount);  // delta: subtract
-    self.balances.get(receiver).strict_inc(amount);         // delta: add
+    let diff = amount_to_diff(amount);                       // u128 -> i128
+    self.balances.at_mut(&get_caller()).strict_inc(-diff);   // delta: subtract
+    self.balances.at_mut(receiver).strict_inc(diff);         // delta: add
 }
 ```
 

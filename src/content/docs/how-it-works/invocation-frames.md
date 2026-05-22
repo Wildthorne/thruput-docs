@@ -34,13 +34,13 @@ struct InvocationFrame {
 
 struct ChildResultState {
     buffer: Vec<u8>,           // Return data from child (empty if **Fault**)
-    status: FrameTerminationStatus,      // **Commit**, **Abort**, or **Fault**
+    status: FrameTerminationStatus,      // **Return**, **Abort**, or **Fault**
 }
 
 enum FrameTerminationStatus {
-    Commit,   // Child **Committed** successfully (preserves state)
-    Abort,    // Child **Aborted** (discards state)
-    Fault,    // Child hit a **Fault** (discards state)
+    Return = 0,   // Child returned successfully (preserves state)
+    Fault  = 1,   // Child hit a **Fault** (discards state)
+    Abort  = 2,   // Child **Aborted** (discards state, but returns data)
 }
 
 // State changes can be writes, deletes, or other operations
@@ -113,7 +113,7 @@ When a frame **Faults**: No return buffer, all state changes discarded, gas stil
 
 The contract completes successfully, preserving its state changes.
 
-When a frame **Commits**: Return buffer (may be empty) passed to caller, state changes preserved, gas consumed
+When a frame **Returns**: Return buffer (may be empty) passed to caller, state changes preserved, gas consumed
 
 **c) Abort**
 
@@ -121,7 +121,7 @@ The contract explicitly aborts its execution, discarding state changes but retur
 
 When a frame **Aborts**: Return buffer passed to caller, state changes discarded, gas consumed
 
-[^termination-syscall]: Contracts control termination through the Return syscall, which takes an output buffer and a `revert_frame` flag (`false` for Commit, `true` for Abort). WebAssembly functions that exit normally without calling this syscall implicitly Commit. In the protocol XDR, the frame status codes are `Return` (success), `Abort`, and `Fault`. This page uses "Commit" instead of "Return" for the success case to avoid ambiguity with the Return syscall name.
+[^termination-syscall]: Contracts control termination through the Return syscall, which takes an output buffer and a `revert_frame` flag (`false` for Return, `true` for Abort). WebAssembly functions that exit normally without calling this syscall implicitly Return. The status codes used on this page (`Return = 0`, `Fault = 1`, `Abort = 2`) match `FrameTerminationStatus` in `protocol/transaction.x`.
 
 ### 4. Merge into Parent (or Finalize for Root)
 
@@ -131,11 +131,11 @@ The parent frame is updated:
 - Gas: Parent's `gas_used` increases by child's `gas_used`
 - Result state: Parent's `most_recent_child_result` is set to child's result
   - If child hit a **Fault**: status = Fault, buffer = empty
-  - If child **Committed**: status = Commit, buffer = child's return buffer
+  - If child **Returned**: status = Commit, buffer = child's return buffer
   - If child **Aborted**: status = Abort, buffer = child's return buffer
 
 State changes:
-- If child **Committed**: Parent merges child's `state_changes`, `deployed_contracts`, and `events` into its own
+- If child **Returned**: Parent merges child's `state_changes`, `deployed_contracts`, and `events` into its own
   - Child writes overwrite parent writes on the same `(ContractAddress, StorageKey)` pair
   - This ensures each frame has at most one delta per storage key
   - Child events are appended to parent's event list
@@ -155,7 +155,7 @@ The frame is removed from the call stack:
 
 ## Example: Nested Contract Calls
 
-This example shows a transaction invoking contract A, which calls contracts B, C, and D. The three different frame termination states (**Fault**, **Commit**, **Abort**) are demonstrated.
+This example shows a transaction invoking contract A, which calls contracts B, C, and D. The three different frame termination states (**Fault**, **Return**, **Abort**) are demonstrated.
 
 **1. Root frame - ContractA.method() created**
 

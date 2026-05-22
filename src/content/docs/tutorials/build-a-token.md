@@ -70,7 +70,7 @@ Notice `adjust_allowance` takes a signed `Difference`, not an absolute `Amount`.
 The interface crate also defines the error type and conversion helpers:
 
 ```rust
-#[sdk::contract_error]
+#[sdk::contract_exception]
 #[non_exhaustive]
 pub enum ERC20Error {
     AlreadyInitialized = 1,
@@ -86,7 +86,7 @@ pub fn amount_to_diff(amount: Amount) -> Difference {
 }
 ```
 
-The `#[contract_error]` macro generates serialization derives and XDR encoding. `amount_to_diff` converts the unsigned `Amount` (u128) to a signed `Difference` (i128), throwing if the value overflows. This is called before every balance or allowance adjustment.
+The `#[contract_exception]` macro generates serialization derives and XDR encoding. `amount_to_diff` converts the unsigned `Amount` (u128) to a signed `Difference` (i128), throwing if the value overflows. This is called before every balance or allowance adjustment.
 
 ## Step 2: Define Storage
 
@@ -117,6 +117,8 @@ Four fields:
 
 The `#[sdk::storage]` macro generates the serialization and storage-access code. See [SDK Macros](/reference/sdk-macros/) for details.
 
+The production `groundhog-erc20` standard interface in the SDK uses a single `config: Value<Config>` field that bundles the administrator address with optional metadata (name, symbol, decimals) behind feature flags. This tutorial keeps the four flat fields for clarity; the trade-offs are the same.
+
 ## Step 3: Helper Methods
 
 These private methods abstract over raw storage access. The pattern: `try_get().unwrap_or(0)` returns zero for addresses that have never been written to, so you don't need explicit initialization of every balance or allowance.
@@ -124,7 +126,9 @@ These private methods abstract over raw storage access. The pattern: `try_get().
 ```rust
 impl TokenContract {
     fn _init(&mut self, contract_owner: &ContractAddress) {
-        self.contract_owner.set(contract_owner);
+        // One-time initialization. Calling `initialize` twice is a bug.
+        ensure(self.contract_owner.try_get().is_none(), ERC20Error::AlreadyInitialized);
+        self.contract_owner.set_exclusive(contract_owner);
     }
 
     fn _contract_owner(&self) -> ContractAddress {

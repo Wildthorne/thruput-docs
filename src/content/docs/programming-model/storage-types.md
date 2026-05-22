@@ -170,8 +170,12 @@ Use `Value<T>` for typed single-slot storage. Use `Bytestring` when you need raw
 | `col = absolute_value` (raw bytes) | Bytestring | Accept that concurrent writes conflict. |
 | Append to a log or work queue | RetrocausalQueue | Inserts merge, consumers are sequential. |
 
-:::tip[Exclusive Write Flag]
-If you need mutex-like semantics (guarantee that only one transaction can write to a storage location per block), the `set_exclusive` method is available on NNInt, Map, and Bytestring. It acquires an exclusive lock at reservation time. If two transactions both use `set_exclusive` on the same location, one is excluded.
+:::tip[Exclusive Writes]
+If you need mutex-like semantics (only one transaction can write to a storage location per block), each type exposes exclusivity differently:
+
+- `Value<T>::set_exclusive(&v)` — typed slot, exclusive write.
+- `Map::at_mut_exclusive(&key)` — exclusive mutator on a Map entry.
+- `NNInt` and `Bytestring` honour the **exclusive keypath flag** set on the field at storage-derivation time, or via the lower-level free functions `non_negative_int_set_exclusive` / `bytestring_set_exclusive`.
 
 This is a blunt instrument. Prefer NNInt deltas on hot paths. Reserve exclusive writes for operations that genuinely cannot tolerate concurrent access.
 :::

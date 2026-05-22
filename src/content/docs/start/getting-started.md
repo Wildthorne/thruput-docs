@@ -69,7 +69,7 @@ cargo --config .cargo/contract.toml build \
 
 You can call cargo directly with these flags if you prefer. The CLI just makes the default `cargo build` / `cargo test` be the native path and provides `groundhog build` / `groundhog test` for the WASM path.
 
-Neither test mode uses a live network. Testing against a local node or testnet is not yet available.
+Both modes above run in-process without a live network. For end-to-end testing, `groundhog test --integration` starts an ephemeral local node (`hogd-dev`), deploys the contract, and runs the integration test target with RPC environment variables set. `groundhog node` runs a standalone local development node you can target with the `--profile` flag.
 
 ## What the CLI Generated
 
@@ -95,8 +95,8 @@ The SDK is three layers, each building on the one below:
 
 | Layer | What it provides | When to use |
 |-------|-----------------|-------------|
-| **Macros** | `#[storage]`, `#[contract]`, `#[contract_error]`. Generates storage wiring, WASM exports, and client stubs. | Default. Start here. |
-| **Typed wrappers** | `NNInt`, `Map<K, V>`, `Handle<T>`. Type-safe storage access with auto-serialization. | When you need control over storage layout without writing raw syscalls. |
+| **Macros** | `#[storage]`, `#[contract]`, `#[contract_exception]`. Generates storage wiring, WASM exports, and client stubs. | Default. Start here. |
+| **Typed wrappers** | `NNInt`, `Map<K, V>`, `Value<T>`, `Bytestring`, `RetrocausalQueue`, `Vector<T>`. Type-safe storage access with auto-serialization. | When you need control over storage layout without writing raw syscalls. |
 | **Raw syscalls** | Direct `bytestring_set()`, `non_negative_int_strict_inc()` calls. | When you need full control or are building your own abstractions. |
 
 The `erc20_low_level/` example in the SDK implements a full ERC-20 token using only raw syscalls. It works identically to the macro-based version. The macros reduce boilerplate, they don't restrict what you can build.
@@ -105,9 +105,20 @@ If the provided storage types don't fit your use case, drop down a layer. The sy
 
 ## Deployment
 
-:::caution[Coming Soon]
-`groundhog deploy`, `groundhog call`, and `groundhog keys` are planned but not yet implemented. Testnet deployment instructions will be added when these commands ship.
-:::
+The CLI handles the full deploy/call/inspect flow:
+
+```bash
+groundhog keys generate              # create an Ed25519 signing key
+groundhog node                       # start a local hogd-dev node on :9545
+groundhog deploy                     # compile, sign, and submit the contract
+groundhog call <addr> increment 1    # send a signed transaction
+groundhog view <addr> get            # sandboxed read-only simulation
+groundhog storage <addr> 0x<key>     # read raw committed storage
+```
+
+`--profile` selects which network the command targets. Profiles live in `groundhog.toml` and `~/.config/groundhog/`; keys are stored globally at `~/.config/groundhog/keys/`. Run `groundhog status` for a non-interactive diagnostic of toolchain, keys, credentials, and project config.
+
+A hosted testnet faucet is not yet available; for now, fund accounts via the local dev node.
 
 ## Next Steps
 
