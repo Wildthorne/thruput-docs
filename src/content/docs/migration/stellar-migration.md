@@ -19,7 +19,7 @@ Before diving into specific patterns, understand these fundamental differences:
 | **State model** | Account-centric (balances, trustlines, offers built in) | Contract-centric (you define storage with typed primitives) |
 | **Error handling** | Transaction result codes | Typed abort with structured errors |
 | **DEX execution** | Synchronous (immediate result) | Async (intent submission, later execution) |
-| **Multi-operation** | Bundle up to 100 ops in one transaction | Single contract invocation with cross-contract calls |
+| **Multi-operation** | Bundle multiple ops in one transaction (Stellar Classic caps at 100 ops/tx) | Single contract invocation with cross-contract calls |
 
 **The good news:** The majority of Stellar traffic is payments and token operations, which map directly to parallel Groundhog primitives with minimal adaptation. The pattern that requires the most rethinking is DEX trading, which moves from synchronous execution to an intent-queue model.
 

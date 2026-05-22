@@ -110,7 +110,9 @@ From a contract developer's perspective, the result is the same: your transactio
 
 ## Storage Primitives
 
-Groundhog provides typed storage primitives at the protocol level: **NNInt** (commutative integer), **Map** (independent keys), **Vector** (indexed collection), **Value** (typed slot), **Bytestring** (raw bytes), and **RetrocausalQueue** (multi-producer queue). Each type defines its own merge rules for concurrent writes.
+The protocol defines three user-facing storage primitives: **NNInt** (commutative integer), **Bytestring** (raw bytes), and **RetrocausalQueue** (multi-producer queue). Each has its own merge rules for concurrent writes.
+
+The SDK layers typed conveniences on top: **Map** (keypath-prefixed access to a child primitive), **Value** (typed Bytestring slot with auto-serialization), and **Node** (compound-struct wrapper for nested storage). These are not separate primitives at the protocol level, but the conflict semantics they inherit are those of the underlying primitive.
 
 For the full treatment of each type, conflict semantics, and how to choose between them, see [Programming Model: Storage Types](/programming-model/storage-types/). For the underlying commutativity model, see [NNInt In Depth](/programming-model/nnint/). For API signatures, see [Storage Types Reference](/reference/storage-types/).
 

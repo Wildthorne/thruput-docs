@@ -9,7 +9,7 @@ This page describes the current architecture. Some details may change as the pro
 
 ## Overview
 
-Groundhog uses the Stellar Consensus Protocol (SCP) for agreement. SCP is a federated Byzantine agreement protocol: validators choose which other validators they trust (quorum slices), and the protocol converges on a single value without a leader or fixed committee.
+Groundhog uses the Stellar Consensus Protocol (SCP) for agreement. SCP is a federated Byzantine agreement protocol: each validator picks its own **quorum slices** (the sets of validators it trusts), and the network converges on a single value without a fixed committee or rotating leader. Nomination uses a priority function to bias which validator's proposed value is considered first per round, but no validator can unilaterally decide a block; agreement comes from overlapping quorum slices, not from a designated proposer.
 
 The result is **irrevocable finality**. Once a block is confirmed, it cannot be reversed. No reorgs, no probabilistic confirmation, no waiting for additional blocks. A confirmed transaction is final.
 

@@ -16,7 +16,7 @@ If you've deployed and called contracts on Ethereum, the Groundhog lifecycle wil
 Groundhog contracts are written in Rust and compiled to WebAssembly (not EVM bytecode). The SDK provides optional convenience macros, but you can also work directly with raw syscalls. A minimal contract looks like this:
 
 ```rust
-#[contract_error]
+#[contract_exception]
 pub enum Error {
     NotAuthorized = 1,
 }
@@ -96,7 +96,7 @@ The key difference: every read within a block sees the same snapshot. Two transa
 | Sequential execution | Parallel by default | Every transaction in a block runs simultaneously against the same snapshot. |
 | `require(condition, "message")` | `ensure(condition, Error::Variant)` | Typed errors instead of string messages. |
 | `revert()` / `require()` | `throw(error)` | Aborts the transaction. Cannot be caught within the same contract. |
-| Solidity + EVM bytecode | Rust + WebAssembly | WASM gives full-featured computation. No 24KB contract size limit. |
+| Solidity + EVM bytecode | Rust + WebAssembly | WASM gives full-featured computation. No EIP-170 24KB contract size cap. |
 | `constructor()` | `fn initialize()` | Called during the deployment transaction, not bytecode upload. |
 | `msg.sender` | `get_caller()` | Same concept. |
 | `view` / `pure` | `&self` / no self | Read-only methods don't produce state changes. |
@@ -129,7 +129,7 @@ EVM developers spend significant effort estimating gas, setting gas limits, and 
 
 ### Nonce Management
 
-Every Ethereum transaction requires a sequential nonce. Sending transactions in parallel requires careful nonce tracking, and a stuck transaction blocks all subsequent ones. Groundhog has no transaction nonces. Send as many concurrent transactions as you want.
+Every Ethereum transaction requires a sequential nonce per account. Sending transactions in parallel requires careful nonce tracking, and a stuck transaction blocks all subsequent ones. Groundhog has no sequential nonces. Replay protection uses a `Uniquifier` (a per-address value made of a block expiry height and an arbitrary nonce); it just has to be unique, not monotonic, so transactions from the same address can execute concurrently and out of order.
 
 ### Integer Overflow/Underflow
 

@@ -1,30 +1,13 @@
 ---
 title: Syscalls
-description: Complete reference for Groundhog contract syscalls.
+description: Authoritative reference for the host functions exposed to Groundhog contracts, generated from the protocol's syscalls.yaml.
 ---
 
 These are the host functions available to WASM contracts. Most developers use the SDK rather than calling syscalls directly. See [Programming Model: Storage Types](/programming-model/storage-types/) for the high-level API.
 
-All syscalls share a single imported function. The first argument is the syscall number. The remaining 7 slots carry input and output arguments as `u64` values (pointers into WASM linear memory for non-primitive types, `(offset, length)` pairs for variable-length buffers). The return value is a `SyscallErrorCode`.
+All syscalls share a single imported function. The first argument is the syscall number. The remaining slots carry typed inputs and outputs as `u64` values: primitive integers are passed directly, larger value types are passed as pointers into WASM linear memory, and variable-length buffers are passed as `(offset, length)` pairs (spans). The protocol fixes the total argument count at 10 (one syscall number plus nine input/output slots). Syscalls that need fewer slots pad the unused ones with arbitrary values.
 
-Any syscall can return `Fault` (1) if a pointer argument is out of WASM memory bounds, or `NoSyscall` (2) if the syscall number is not supported.
-
-## Error Codes
-
-| Code | Name | Description |
-|------|------|-------------|
-| 0 | `None` | Success. |
-| 1 | `Fault` | A pointer argument is out of WASM memory bounds. Any syscall can return this. |
-| 2 | `NoSyscall` | The syscall number is not supported. Any syscall can return this. |
-| 3 | `IsRootTransaction` | Called from a root call frame with no parent contract. |
-| 4 | `Reentrance` | The invoked address is already on the call stack. |
-| 5 | `ContractAlreadyDeployed` | A contract with the same nonce and hash is already deployed at the target address. |
-| 6 | `NoReturnBufferAvailable` | No return buffer from a child call frame. Either the most recent subcall failed or there have been no subcalls. |
-| 7 | `InvalidSyscallInput` | Invalid argument (type mismatch, value out of range, data too long, etc.). |
-| 8 | `StorageKeyNotExist` | The storage key does not exist in the current view. |
-| 9 | `NoRetrocausalQueueEntry` | The retrocausal queue is empty. |
-| -1 | `DeterministicWasm` | The called WASM frame hit a trap (e.g. divide by zero, out of gas). |
-| -2 | `FrameReverted` | The child call frame manually reverted itself. |
+The return value is a `SyscallErrorCode`. Any syscall can return `Fault` (1) if a pointer argument is out of WASM memory bounds, or `NoSyscall` (2) if the syscall number is not supported. Per-syscall error codes are listed with each entry below, and the full enum is at the bottom of this page.
 
 ## Hashing
 
@@ -33,21 +16,21 @@ Any syscall can return `Fault` (1) if a pointer argument is out of WASM memory b
 | | |
 |---|---|
 | **Number** | 0 |
-| **Description** | Returns the SHA-256 hash of the input buffer. |
 
 | Direction | Name | Type |
 |-----------|------|------|
 | in | `buffer` | `[u8]` (span) |
 | out | `hash` | `SHA256Hash` |
 
-No syscall-specific errors.
+Errors: none beyond the universal `Fault` / `NoSyscall`.
+
+Returns the SHA-256 hash of the input buffer.
 
 ### SHA256Update
 
 | | |
 |---|---|
-| **Number** | 27 |
-| **Description** | Feeds data into a streaming SHA-256 computation at the specified index. If `reset` is true, the hash state is cleared before updating. Use with `SHA256Finalize` when the input is too large for a single `SHA256` call. |
+| **Number** | 26 |
 
 | Direction | Name | Type |
 |-----------|------|------|
@@ -55,221 +38,227 @@ No syscall-specific errors.
 | in | `buffer` | `[u8]` (span) |
 | in | `reset` | `bool` |
 
-| Error | Condition |
-|-------|-----------|
-| `InvalidSyscallInput` | The hash buffer at `index` does not exist and `reset` is false, the buffer becomes too large, or there are too many active hash buffers. |
+Errors:
+- `InvalidSyscallInput` if the indexed hash buffer does not exist and `reset` is false, the buffer becomes too large, or there are too many active hash buffers.
+
+Updates the SHA-256 hash computation at the specified index with the supplied bytes. If `reset` is true, the hash state is cleared before the update.
 
 ### SHA256Finalize
 
 | | |
 |---|---|
-| **Number** | 28 |
-| **Description** | Finalizes the streaming SHA-256 computation at the specified index and returns the hash. Removes the hash buffer after finalization. |
+| **Number** | 27 |
 
 | Direction | Name | Type |
 |-----------|------|------|
 | in | `index` | `u32` |
 | out | `output` | `SHA256Hash` |
 
-| Error | Condition |
-|-------|-----------|
-| `InvalidSyscallInput` | The hash buffer at `index` does not exist (e.g. finalize called twice without an intervening reset). |
+Errors:
+- `InvalidSyscallInput` if the queried hash buffer does not exist (for example, calling finalize twice on the same buffer without an intervening reset).
 
-## Identity
+Finalizes the SHA-256 hash computation at the specified index, returns the digest, and removes the buffer.
 
-### GetMsgSender
-
-| | |
-|---|---|
-| **Number** | 1 |
-| **Description** | Returns the contract address of the contract that invoked the current call frame. |
-
-| Direction | Name | Type |
-|-----------|------|------|
-| out | `sender` | `ContractAddress` |
-
-| Error | Condition |
-|-------|-----------|
-| `IsRootTransaction` | Called from a root transaction. There is no caller address. |
-
-### GetCurrentAddress
-
-| | |
-|---|---|
-| **Number** | 19 |
-| **Description** | Returns the contract address of the current call frame. |
-
-| Direction | Name | Type |
-|-----------|------|------|
-| out | `address` | `ContractAddress` |
-
-No syscall-specific errors.
-
-### GetSourceTransactionHash
-
-| | |
-|---|---|
-| **Number** | 11 |
-| **Description** | Returns the hash of the transaction that initiated the current execution. |
-
-| Direction | Name | Type |
-|-----------|------|------|
-| out | `source_tx_hash` | `SHA256Hash` |
-
-No syscall-specific errors.
-
-## Contract Lifecycle
-
-### Invoke
-
-| | |
-|---|---|
-| **Number** | 5 |
-| **Description** | Invokes the specified method of the contract at the given address. Creates a new invocation frame that terminates when the invoked contract returns or exits. The frame is limited to the minimum of `gas_limit` and the remaining gas in the current frame. Unused gas is returned to the caller. The `entrypoint_id` is passed as a `u64` (the little-endian interpretation of a `ContractEntrypointID`). |
-
-| Direction | Name | Type |
-|-----------|------|------|
-| in | `address` | `ContractAddress` |
-| in | `entrypoint_id` | `u64` |
-| in | `gas_limit` | `GasAmount` |
-| in | `calldata` | `[u8]` (span) |
-| in | `flags` | `InvokeFlagSet` |
-| out | `return_buffer_len` | `RuntimeMemoryLength` |
-
-| Error | Condition |
-|-------|-----------|
-| `InvalidSyscallInput` | The target contract was not found. |
-| `DeterministicWasm` | The invoked contract hit a trap or ran out of gas. |
-| `FrameReverted` | The invoked contract manually reverted. |
-| `Reentrance` | The invoked address is already on the call stack. |
-
-### Return
-
-| | |
-|---|---|
-| **Number** | 6 |
-| **Description** | Returns data from the current call frame and optionally marks the frame for revert. The return buffer is available to the caller via `GetReturnedBuffer`. Immediately terminates execution. If the buffer is too large, the entire invocation reverts with a deterministic error. Does not return to the caller. |
-
-| Direction | Name | Type |
-|-----------|------|------|
-| in | `buffer` | `[u8]` (span) |
-| in | `revert_frame` | `bool` |
-
-No syscall-specific errors (does not return).
-
-### Exit
-
-| | |
-|---|---|
-| **Number** | 8 |
-| **Description** | Terminates execution of the current call frame immediately. The frame reverts, returning a deterministic error to the caller with no return buffer available. Equivalent to the WASM `unreachable` instruction. Does not return. |
-
-No inputs or outputs. No syscall-specific errors (does not return).
-
-### DeployContract
-
-| | |
-|---|---|
-| **Number** | 10 |
-| **Description** | Deploys a contract with the specified nonce and contract hash. The contract must be provided in the transaction's `contracts_to_deploy` field or already exist on chain. |
-
-| Direction | Name | Type |
-|-----------|------|------|
-| in | `nonce` | `SHA256Hash` |
-| in | `contract_hash` | `SHA256Hash` |
-| out | `deployed_address` | `ContractAddress` |
-
-| Error | Condition |
-|-------|-----------|
-| `InvalidSyscallInput` | The contract was not available for deployment, or the contract is a native precompiled contract that cannot be deployed. |
-| `ContractAlreadyDeployed` | A contract with the same nonce and hash has already been deployed at the computed address (in a previous block or earlier in this transaction). |
-
-### GetDeployAddress
-
-| | |
-|---|---|
-| **Number** | 9 |
-| **Description** | Computes the address that would result from deploying a contract with the given deployer address, nonce, and contract hash. Pure computation, does not deploy. If `caller_address` is not provided, the current contract's address is used. |
-
-| Direction | Name | Type |
-|-----------|------|------|
-| in | `caller_address` | `ContractAddress` (optional) |
-| in | `nonce` | `SHA256Hash` |
-| in | `contract_hash` | `SHA256Hash` |
-| out | `to_be_deployed` | `ContractAddress` |
-
-No syscall-specific errors.
-
-## Data Passing
+## Calldata
 
 ### GetCalldataLen
 
 | | |
 |---|---|
 | **Number** | 2 |
-| **Description** | Returns the length of the calldata supplied to the current call frame. |
 
 | Direction | Name | Type |
 |-----------|------|------|
 | out | `len` | `RuntimeMemoryLength` |
+| out | `auth_token_count` | `u32` |
 
-No syscall-specific errors.
+Errors: none beyond the universal `Fault` / `NoSyscall`.
+
+Returns the length of the calldata supplied to the invocation associated with the current call frame, plus the number of auth tokens supplied to that invocation.
 
 ### GetCalldata
 
 | | |
 |---|---|
 | **Number** | 3 |
-| **Description** | Returns the calldata supplied to the current call frame. Written into a contract-allocated buffer. |
 
 | Direction | Name | Type |
 |-----------|------|------|
 | out | `buffer` | `[u8]` (span) |
 | out | `written_len` | `RuntimeMemoryLength` |
+| out | `auth_token_list` | `[u8]` (span, interpreted as `[u32]`) |
+| out | `auth_token_written_len` | `RuntimeMemoryLength` |
 
-No syscall-specific errors.
+Errors:
+- `InvalidSyscallInput` if the `auth_token_list` output span byte length is not a multiple of the size of a `u32`.
+
+Returns the calldata and the auth-token id list supplied to the invocation associated with the current call frame.
+
+## Logging
+
+### ConsoleLog
+
+| | |
+|---|---|
+| **Number** | 4 |
+
+| Direction | Name | Type |
+|-----------|------|------|
+| in | `buffer` | `[u8]` (span) |
+
+Errors: none beyond the universal `Fault` / `NoSyscall`.
+
+Logs the input buffer to the console. No-op on release builds and on-chain; calling it from a production contract is harmless but pointless.
+
+### LogEvent
+
+| | |
+|---|---|
+| **Number** | 24 |
+
+| Direction | Name | Type |
+|-----------|------|------|
+| in | `topic0` | `Option<Topic>` (`[u8; 32]`) |
+| in | `topic1` | `Option<Topic>` (`[u8; 32]`) |
+| in | `topic2` | `Option<Topic>` (`[u8; 32]`) |
+| in | `data` | `[u8]` (span) |
+
+Errors:
+- `InvalidSyscallInput` if the event data exceeds the maximum event length, or if topics are not supplied as a continuous prefix (e.g., supplying `topic0` and `topic2` but not `topic1`).
+
+Emits an event with up to three 32-byte topics and a data payload. The serialized event is `topic0 || topic1 || topic2 || data`, with a separate `num_topics` field that lets downstream indexers filter on the leading topic chunks. Events are accumulated into a per-block merkle-patricia trie.
+
+## Invocation
+
+### Invoke
+
+| | |
+|---|---|
+| **Number** | 5 |
+
+| Direction | Name | Type |
+|-----------|------|------|
+| in | `address` | `ContractAddress` |
+| in | `entrypoint_id` | `u64` (little-endian `ContractEntrypointID`, `[u8; 8]`) |
+| in | `gas_limit` | `GasAmount` |
+| in | `calldata` | `[u8]` (span) |
+| in | `flags` | `InvokeFlagSet` |
+| in | `owned_auth_token_ids_list` | `[u8]` (span, interpreted as `[u32]`) |
+| out | `return_buffer_len` | `RuntimeMemoryLength` |
+| out | `returned_auth_token_len` | `RuntimeMemoryLength` |
+
+Errors:
+- `InvalidSyscallInput` if the target contract is not found, or if any auth-token id in `owned_auth_token_ids_list` is duplicated or not owned by the current frame.
+- `DeterministicWasm` if the callee terminates with an unspecified internal error (including running out of gas).
+- `FrameReverted` if the callee reverts itself.
+- `Reentrance` if the invoked address is already on the call stack.
+
+Invokes the specified entrypoint of the contract at `address` with the supplied calldata and auth tokens, creating a new call frame. The new frame is capped at `min(gas_limit, remaining gas in current frame)`; unused gas is returned to the caller. The SDK defaults `gas_limit` to `u64::MAX` so the child inherits everything the parent has left.
+
+`entrypoint_id` is the little-endian interpretation of an 8-byte `ContractEntrypointID`, passed as a `u64` so a clever compiler can keep it on the WASM stack rather than spilling it to linear memory.
+
+### GetMsgSender
+
+| | |
+|---|---|
+| **Number** | 1 |
+
+| Direction | Name | Type |
+|-----------|------|------|
+| out | `sender` | `ContractAddress` |
+
+Errors:
+- `IsRootTransaction` if there is no caller (the syscall was made from a root transaction frame).
+
+Returns the contract address of the contract that invoked the current call frame.
+
+### GetCurrentAddress
+
+| | |
+|---|---|
+| **Number** | 19 |
+
+| Direction | Name | Type |
+|-----------|------|------|
+| out | `address` | `ContractAddress` |
+
+Errors: none beyond the universal `Fault` / `NoSyscall`.
+
+Returns the contract address of the current call frame.
+
+## Return
+
+### Return
+
+| | |
+|---|---|
+| **Number** | 6 |
+
+| Direction | Name | Type |
+|-----------|------|------|
+| in | `buffer` | `[u8]` (span) |
+| in | `revert_frame` | `bool` |
+| in | `returned_auth_token_ids` | `[u8]` (span, interpreted as `[u32]`) |
+
+Errors: none beyond the universal `Fault` / `NoSyscall`. Does not return to the caller (terminates execution of the current WASM invocation).
+
+Returns data and a set of auth-token ids from the current call frame and optionally marks the frame for revert. The return buffer is made available to the caller via `GetReturnedBuffer`. If the supplied buffer is too large, the entire invocation is reverted with a deterministic error (equivalent to a WASM `unreachable`).
 
 ### GetReturnedBuffer
 
 | | |
 |---|---|
 | **Number** | 7 |
-| **Description** | Returns the return buffer from the most recent successful subcall invocation. |
 
 | Direction | Name | Type |
 |-----------|------|------|
 | out | `buffer` | `[u8]` (span) |
 | out | `written_len` | `RuntimeMemoryLength` |
+| out | `restored_auth_token_ids` | `[u8]` (span, interpreted as `[u32]`) |
+| out | `restored_auth_token_ids_written_len` | `RuntimeMemoryLength` |
 
-| Error | Condition |
-|-------|-----------|
-| `NoReturnBufferAvailable` | The most recent subcall failed, or there have been no subcalls within this call frame. |
+Errors:
+- `NoReturnBufferAvailable` if no return buffer is available (either the most recent subcall failed, or no subcall has been made in this frame).
+- `InvalidSyscallInput` if the `restored_auth_token_ids` output span byte length is not a multiple of the size of a `u32`.
 
-## Storage: Bytestring
+Returns the return buffer and any restored auth-token ids from the most recent successful subcall invocation.
+
+### Exit
+
+| | |
+|---|---|
+| **Number** | 8 |
+
+No inputs. No outputs. Does not return.
+
+Errors: none beyond the universal `Fault` / `NoSyscall`.
+
+Terminates the current call frame immediately. The frame reverts and the caller sees a deterministic error with no return buffer available. Equivalent to a WASM `unreachable` instruction.
+
+## Storage
 
 ### BytestringGetLen
 
 | | |
 |---|---|
 | **Number** | 13 |
-| **Description** | Returns the length of the bytestring stored at the specified key. |
 
 | Direction | Name | Type |
 |-----------|------|------|
 | in | `key` | `StorageKeyContractData` |
 | out | `length` | `RuntimeMemoryLength` |
 
-| Error | Condition |
-|-------|-----------|
-| `StorageKeyNotExist` | The storage key does not exist in the current view. |
-| `InvalidSyscallInput` | The key exists but contains a different type. |
+Errors:
+- `StorageKeyNotExist` if the storage key does not exist in the current transaction view.
+- `InvalidSyscallInput` if the key exists but holds a different storage type (e.g. NNInt rather than bytestring).
+
+Returns the length of the bytestring stored at `key`.
 
 ### BytestringGet
 
 | | |
 |---|---|
 | **Number** | 14 |
-| **Description** | Retrieves the bytestring stored at the specified key. Written into a contract-allocated buffer. |
 
 | Direction | Name | Type |
 |-----------|------|------|
@@ -277,17 +266,17 @@ No syscall-specific errors.
 | out | `bytestring` | `[u8]` (span) |
 | out | `written_len` | `RuntimeMemoryLength` |
 
-| Error | Condition |
-|-------|-----------|
-| `StorageKeyNotExist` | The storage key does not exist or has been deleted. |
-| `InvalidSyscallInput` | The key exists but contains a different type. |
+Errors:
+- `StorageKeyNotExist` if the storage key does not exist or has been deleted.
+- `InvalidSyscallInput` if the key exists but holds a different storage type.
+
+Retrieves the bytestring stored at `key`.
 
 ### BytestringSet
 
 | | |
 |---|---|
 | **Number** | 15 |
-| **Description** | Sets the bytestring value at the specified storage key. Overwrites any existing value at that key, even if the existing value has a different type. |
 
 | Direction | Name | Type |
 |-----------|------|------|
@@ -295,18 +284,16 @@ No syscall-specific errors.
 | in | `bytestring` | `[u8]` (span) |
 | in | `flags` | `StorageDeltaFlagSet` |
 
-| Error | Condition |
-|-------|-----------|
-| `InvalidSyscallInput` | The bytestring is too long, or the storage flags are invalid. |
+Errors:
+- `InvalidSyscallInput` if the bytestring is too long or the storage flags are invalid.
 
-## Storage: NonnegativeInt
+Writes the bytestring value at `key`. Overwrites any existing value, even if that value has a different storage type.
 
 ### NonnegativeIntGet
 
 | | |
 |---|---|
 | **Number** | 16 |
-| **Description** | Retrieves the nonnegative integer value at the specified storage key. Behavior depends on `force_load_from_snapshot`. When true, `current_set` is always populated from the snapshot (returns errors on type mismatch or missing key). When false, returns the parameters of the prior NNInt write if one exists, or `(nullopt, 0)` if no prior NNInt write. |
 
 | Direction | Name | Type |
 |-----------|------|------|
@@ -316,71 +303,73 @@ No syscall-specific errors.
 | out | `current_set_opt` | `bool` |
 | out | `current_add` | `i128` |
 
-| Error | Condition |
-|-------|-----------|
-| `StorageKeyNotExist` | The key does not exist or has been deleted. Only returned when `force_load_from_snapshot` is true. |
-| `InvalidSyscallInput` | The key contains a different type. Only returned when `force_load_from_snapshot` is true. |
+Errors:
+- `StorageKeyNotExist` if the storage key does not exist or has been deleted (only returned when `force_load_from_snapshot` is true).
+- `InvalidSyscallInput` if the key exists but holds a different storage type (only returned when `force_load_from_snapshot` is true).
+
+Retrieves the NNInt value at `key`.
+
+If `force_load_from_snapshot` is true, `current_set` will never be null: the syscall reads the snapshot value. A snapshot that is not an NNInt, or a prior write on this key that is not an NNInt, returns `InvalidSyscallInput`. A snapshot that does not exist, or was deleted by a prior write, returns `StorageKeyNotExist`.
+
+If `force_load_from_snapshot` is false, the prior snapshot state is ignored unless the prior write on `key` is itself an NNInt write (in which case the parameters of that write are returned). If the prior write is not an NNInt or was a deletion, the syscall returns `(None, 0)` without error.
 
 ### NonnegativeIntSetAdd
 
 | | |
 |---|---|
 | **Number** | 17 |
-| **Description** | Sets or modifies a nonnegative integer at the specified storage key. `set_value` (if provided) sets the base value. `add_value` is applied as a delta. The final value must remain nonnegative. Overwrites any existing value at that key, even if the existing value has a different type. |
 
 | Direction | Name | Type |
 |-----------|------|------|
 | in | `key` | `StorageKeyContractData` |
-| in | `set_value` | `i128` (optional) |
+| in | `set_value` | `Option<i128>` |
 | in | `add_value` | `i128` |
 | in | `flags` | `StorageDeltaFlagSet` |
 
-| Error | Condition |
-|-------|-----------|
-| `InvalidSyscallInput` | The operation would always produce a negative value (e.g. `set_add(1, -2)`), or the storage flags are invalid. |
+Errors:
+- `InvalidSyscallInput` if the operation would always result in a negative value (for example `set_add(1, -2)`) or the storage flags are invalid.
 
-## Storage: Delete
+Sets or modifies the NNInt at `key`. `set_value` (if `Some`) supplies the base, and `add_value` is added as a delta. The resolved value must remain nonnegative. Overwrites any existing value, even if that value has a different storage type. See [Programming Model: NNInt](/programming-model/nnint/) for commutativity rules.
 
 ### DeleteObject
 
 | | |
 |---|---|
 | **Number** | 18 |
-| **Description** | Deletes the object at the specified storage key. |
 
 | Direction | Name | Type |
 |-----------|------|------|
 | in | `key` | `StorageKeyContractData` |
 | in | `flags` | `StorageDeltaFlagSet` |
 
-| Error | Condition |
-|-------|-----------|
-| `InvalidSyscallInput` | The storage flags are invalid or incompatible with the current storage state. |
+Errors:
+- `InvalidSyscallInput` if the storage flags are invalid or incompatible with the current storage state.
 
-## Storage: RetrocausalQueue
+Deletes the object at `key`.
+
+## Retrocausal Queue
 
 ### RetrocausalQueueInsert
 
 | | |
 |---|---|
 | **Number** | 20 |
-| **Description** | Inserts an entry into the retrocausal queue at the specified storage key. |
 
 | Direction | Name | Type |
 |-----------|------|------|
 | in | `key` | `StorageKeyContractData` |
 | in | `queue_entry` | `[u8]` (span) |
 
-| Error | Condition |
-|-------|-----------|
-| `InvalidSyscallInput` | The key contains a different type, the entry is too large, or too many entries were inserted in the current transaction. |
+Errors:
+- `InvalidSyscallInput` if the key exists but holds a different storage type that cannot be converted to a retrocausal queue, if the entry is too large, or if too many entries are inserted in the current transaction.
+
+Inserts an entry into the retrocausal queue at `key`.
 
 ### RetrocausalQueueConsume
 
 | | |
 |---|---|
 | **Number** | 21 |
-| **Description** | Consumes (or peeks at) the next entry from the retrocausal queue at the specified storage key. If `peek` is true, the entry is not removed. |
 
 | Direction | Name | Type |
 |-----------|------|------|
@@ -389,185 +378,36 @@ No syscall-specific errors.
 | out | `queue_entry` | `[u8]` (span) |
 | out | `written_len` | `RuntimeMemoryLength` |
 
-| Error | Condition |
-|-------|-----------|
-| `NoRetrocausalQueueEntry` | The queue is empty. |
-| `InvalidSyscallInput` | The key contains a different type. |
+Errors:
+- `NoRetrocausalQueueEntry` if the queue is empty.
+- `InvalidSyscallInput` if the key exists but holds a different storage type.
+
+Consumes (or with `peek = true`, only inspects) the next entry from the retrocausal queue at `key`.
 
 ### RetrocausalQueuePeekLen
 
 | | |
 |---|---|
-| **Number** | 32 |
-| **Description** | Returns the length of the next entry in the retrocausal queue at the specified storage key. |
+| **Number** | 30 |
 
 | Direction | Name | Type |
 |-----------|------|------|
 | in | `key` | `StorageKeyContractData` |
 | out | `len` | `RuntimeMemoryLength` |
 
-| Error | Condition |
-|-------|-----------|
-| `InvalidSyscallInput` | The key contains a different type. |
-| `NoRetrocausalQueueEntry` | The queue is empty. |
+Errors:
+- `InvalidSyscallInput` if the key exists but holds a different storage type.
+- `NoRetrocausalQueueEntry` if the queue is empty.
 
-## Events
+Returns the length (in bytes) of the next entry in the retrocausal queue at `key`.
 
-### LogEvent
-
-| | |
-|---|---|
-| **Number** | 24 |
-| **Description** | Logs an event with up to 3 topics and additional data. Topics are 32-byte values prepended to the data in the serialized event. The `num_topics` field tells indexers how many leading 32-byte chunks are topics. Events are stored in the transaction's event log and accumulated into a per-block Merkle-Patricia trie. |
-
-| Direction | Name | Type |
-|-----------|------|------|
-| in | `topic0` | `Topic` ([u8; 32], optional) |
-| in | `topic1` | `Topic` ([u8; 32], optional) |
-| in | `topic2` | `Topic` ([u8; 32], optional) |
-| in | `data` | `[u8]` (span) |
-
-| Error | Condition |
-|-------|-----------|
-| `InvalidSyscallInput` | The event data exceeds the maximum allowed length, or topics are not supplied in a continuous sequence (e.g. `topic0` and `topic2` provided without `topic1`). |
-
-## Diagnostics
-
-### ConsoleLog
-
-| | |
-|---|---|
-| **Number** | 4 |
-| **Description** | Logs the input buffer to the console. No-op on release builds and on-chain execution. Safe to leave in production contracts. |
-
-| Direction | Name | Type |
-|-----------|------|------|
-| in | `buffer` | `[u8]` (span) |
-
-No syscall-specific errors.
-
-### GetTransactionStatistics
-
-| | |
-|---|---|
-| **Number** | 22 |
-| **Description** | Returns a transaction statistic value. Statistics may be disabled in release builds or production execution. May return nondeterministic values in test configurations (those stats will be disabled in production). |
-
-| Direction | Name | Type |
-|-----------|------|------|
-| in | `statistic` | `TransactionStatistic` |
-| out | `result` | `u64` |
-
-| Error | Condition |
-|-------|-----------|
-| `InvalidSyscallInput` | The requested statistic does not exist or is not available in this configuration. |
-
-## Authorization
-
-### GetAuthClaimCount
-
-| | |
-|---|---|
-| **Number** | 25 |
-| **Description** | Returns the number of authentication claims associated with the current transaction. |
-
-| Direction | Name | Type |
-|-----------|------|------|
-| out | `count` | `u32` |
-
-No syscall-specific errors.
-
-### GetAuthClaim
-
-| | |
-|---|---|
-| **Number** | 26 |
-| **Description** | Returns the authentication claim at the specified index (0-indexed). |
-
-| Direction | Name | Type |
-|-----------|------|------|
-| in | `index` | `u32` |
-| out | `auth_claim` | `AuthClaim` |
-
-| Error | Condition |
-|-------|-----------|
-| `InvalidSyscallInput` | The index is out of bounds (>= the number of authentication claims). |
-
-### ChangePublicKeyRegistration
-
-| | |
-|---|---|
-| **Number** | 23 |
-| **Description** | Changes the public key registration for the current contract address at the specified key index. If `key_scheme` is None, the key is removed. Otherwise, the key is set with the provided scheme, bytes, and weight. |
-
-| Direction | Name | Type |
-|-----------|------|------|
-| in | `key_index` | `u32` |
-| in | `key_scheme` | `i32` (optional) |
-| in | `key_bytes` | `[u8]` (span) |
-| in | `key_weight` | `u32` (optional) |
-
-| Error | Condition |
-|-------|-----------|
-| `InvalidSyscallInput` | The registration is invalid or the key index is out of bounds. |
-
-### WriteAddressNonceConfig
-
-| | |
-|---|---|
-| **Number** | 29 |
-| **Description** | Writes the nonce configuration for the current contract address. |
-
-| Direction | Name | Type |
-|-----------|------|------|
-| in | `nonce_config` | `NonceConfig` |
-
-| Error | Condition |
-|-------|-----------|
-| `InvalidSyscallInput` | `nonce_config.accepted_keys` has a bit set beyond the maximum signer count. |
-
-### WriteAddressGasPermissionConfigs
-
-| | |
-|---|---|
-| **Number** | 30 |
-| **Description** | Writes gas permission configurations for the current contract address. Up to 5 configurations can be set. Permissions must be supplied as a contiguous sequence starting from `permission_0`. |
-
-| Direction | Name | Type |
-|-----------|------|------|
-| in | `permission_0` | `GasPermissionConfig` (optional) |
-| in | `permission_1` | `GasPermissionConfig` (optional) |
-| in | `permission_2` | `GasPermissionConfig` (optional) |
-| in | `permission_3` | `GasPermissionConfig` (optional) |
-| in | `permission_4` | `GasPermissionConfig` (optional) |
-
-| Error | Condition |
-|-------|-----------|
-| `InvalidSyscallInput` | The configurations are invalid, or permissions are not supplied as a contiguous sequence (e.g. `permission_1` supplied without `permission_0`). |
-
-## Block Info
-
-### GetBlockHeight
-
-| | |
-|---|---|
-| **Number** | 31 |
-| **Description** | Returns the current block height. |
-
-| Direction | Name | Type |
-|-----------|------|------|
-| out | `result` | `BlockHeight` |
-
-No syscall-specific errors.
-
-## Cryptography
+## Auth
 
 ### VerifySignature
 
 | | |
 |---|---|
 | **Number** | 12 |
-| **Description** | Verifies a cryptographic signature against a public key and message. Returns `None` (0) on success. |
 
 | Direction | Name | Type |
 |-----------|------|------|
@@ -576,6 +416,196 @@ No syscall-specific errors.
 | in | `public_key` | `[u8]` (span) |
 | in | `message` | `[u8]` (span) |
 
-| Error | Condition |
-|-------|-----------|
-| `InvalidSyscallInput` | Verification failed, or the parameters are invalid (wrong key/signature size for the scheme, unsupported scheme). |
+No outputs: the result is the `SyscallErrorCode` itself (`None` on success).
+
+Errors:
+- `InvalidSyscallInput` if verification fails or the inputs are malformed (wrong key/signature size for the chosen scheme, unsupported scheme, etc.).
+
+Verifies a cryptographic signature against a public key and message.
+
+### GetAuthClaim
+
+| | |
+|---|---|
+| **Number** | 25 |
+
+| Direction | Name | Type |
+|-----------|------|------|
+| out | `auth_claim` | `AuthClaim` |
+
+Errors: none beyond the universal `Fault` / `NoSyscall`.
+
+Returns the authentication claim associated with the current transaction. Takes no input.
+
+### ChangePublicKeyRegistration
+
+| | |
+|---|---|
+| **Number** | 23 |
+
+| Direction | Name | Type |
+|-----------|------|------|
+| in | `key_index` | `u32` |
+| in | `key_scheme` | `Option<i32>` (CryptographicScheme) |
+| in | `key_bytes` | `[u8]` (span) |
+| in | `key_weight` | `Option<u32>` |
+
+Errors:
+- `InvalidSyscallInput` if the registration is invalid or `key_index` is out of bounds.
+
+Changes the public key registration for the current contract address at `key_index`. If `key_scheme` is `None`, the key is removed. Otherwise the key is set with the supplied scheme, bytes, and weight.
+
+### WriteAddressRequiredWeight
+
+| | |
+|---|---|
+| **Number** | 28 |
+
+| Direction | Name | Type |
+|-----------|------|------|
+| in | `required_weight` | `Weight` (`u32`, by value) |
+
+Errors: none beyond the universal `Fault` / `NoSyscall`.
+
+Writes the required-weight threshold for the current contract address. This is the minimum total weight of signing keys needed to authorize a transaction from this address.
+
+### MintAuthToken
+
+| | |
+|---|---|
+| **Number** | 31 |
+
+| Direction | Name | Type |
+|-----------|------|------|
+| in | `expiry_height` | `BlockHeight` |
+| in | `serialized_auth_token` | `[u8]` (span) |
+| out | `token_id` | `u32` |
+
+Errors:
+- `InvalidSyscallInput` if the serialized token fails to parse as a valid `AuthToken`, `expiry_height` is in the past, or minting would exceed the per-transaction auth-token cap.
+
+Mints an authentication token for the current contract address.
+
+### ConsumeAuthToken
+
+| | |
+|---|---|
+| **Number** | 32 |
+
+| Direction | Name | Type |
+|-----------|------|------|
+| in | `token_id` | `u32` |
+| out | `auth_payload` | `[u8]` (span) |
+| out | `token_minter` | `ContractAddress` |
+| out | `auth_payload_written_len` | `RuntimeMemoryLength` |
+| out | `unwrapped_token_id_start` | `u32` |
+| out | `unwrapped_token_id_count` | `u32` |
+
+Errors:
+- `InvalidSyscallInput` if the token is not owned by the current contract address, or the token has expired.
+
+Consumes an authentication token owned by the current contract address. Returns the token's auth payload, its minter, and the id range of any nested tokens unwrapped as a side effect.
+
+## Address
+
+### GetDeployAddress
+
+| | |
+|---|---|
+| **Number** | 9 |
+
+| Direction | Name | Type |
+|-----------|------|------|
+| in | `caller_address` | `Option<ContractAddress>` |
+| in | `nonce` | `SHA256Hash` |
+| in | `contract_hash` | `SHA256Hash` |
+| out | `to_be_deployed` | `ContractAddress` |
+
+Errors: none beyond the universal `Fault` / `NoSyscall`.
+
+Computes the address that would be deployed for a contract with the given deployer address, nonce, and contract hash. Pure computation; does not deploy anything.
+
+### DeployContract
+
+| | |
+|---|---|
+| **Number** | 10 |
+
+| Direction | Name | Type |
+|-----------|------|------|
+| in | `nonce` | `SHA256Hash` |
+| in | `contract_hash` | `SHA256Hash` |
+| out | `deployed_address` | `ContractAddress` |
+
+Errors:
+- `InvalidSyscallInput` if the requested contract is not available for deployment, or the contract is a special precompiled (native) contract that cannot be deployed. A contract must either already exist on chain or be supplied in the transaction's `contracts_to_deploy` field.
+- `ContractAlreadyDeployed` if a contract with the same nonce and contract hash has already been deployed at the computed address in a previous block or earlier in this transaction. A contract can be deployed multiple times concurrently in the same block; if a contract must initialize only once, gate the initialization on a semaphore.
+
+Deploys a contract with the specified nonce and contract hash at the computed address.
+
+## Block
+
+### GetBlockHeight
+
+| | |
+|---|---|
+| **Number** | 29 |
+
+| Direction | Name | Type |
+|-----------|------|------|
+| out | `result` | `BlockHeight` |
+
+Errors: none beyond the universal `Fault` / `NoSyscall`.
+
+Returns the current block height.
+
+## Transaction
+
+### GetSourceTransactionHash
+
+| | |
+|---|---|
+| **Number** | 11 |
+
+| Direction | Name | Type |
+|-----------|------|------|
+| out | `source_tx_hash` | `SHA256Hash` |
+
+Errors: none beyond the universal `Fault` / `NoSyscall`.
+
+Returns the hash of the transaction that initiated the current execution.
+
+### GetTransactionStatistics
+
+| | |
+|---|---|
+| **Number** | 22 |
+
+| Direction | Name | Type |
+|-----------|------|------|
+| in | `statistic` | `TransactionStatistic` |
+| out | `result` | `u64` |
+
+Errors:
+- `InvalidSyscallInput` if the requested statistic does not exist or is not available in this configuration.
+
+Returns a transaction statistic. Statistics may be disabled in release builds or production execution, and may be nondeterministic in test configurations. Nondeterministic stats are disabled in production settings.
+
+## Error Codes
+
+The full `SyscallErrorCode` enum, from `protocol/syscall_error.x`:
+
+| Code | Name | Description |
+|------|------|-------------|
+| 0 | `None` | Success. |
+| 1 | `Fault` | A pointer argument is out of WASM memory bounds. Any syscall can return this. |
+| 2 | `NoSyscall` | The supplied syscall number is not supported. Any syscall can return this. |
+| 3 | `IsRootTransaction` | Cannot call `GetMsgSender` from a root invocation. |
+| 4 | `Reentrance` | Reentrance guard violation: the invoked address is already on the call stack. |
+| 5 | `ContractAlreadyDeployed` | Attempt to deploy a contract twice (same nonce, contract hash, and deployer). |
+| 6 | `NoReturnBufferAvailable` | No return buffer from a child call frame. Either the most recent subcall failed or no subcall has been made in this frame. |
+| 7 | `InvalidSyscallInput` | Invalid input to a syscall (type mismatch, value out of range, data too long, bad flags, etc.). |
+| 8 | `StorageKeyNotExist` | The storage key does not exist in the current view. |
+| 9 | `NoRetrocausalQueueEntry` | The retrocausal queue is empty. |
+| -1 | `DeterministicWasm` | Deterministic error inside called WASM (trap, out of gas, etc.). Signals that the called frame reverted. |
+| -2 | `FrameReverted` | The child call frame manually reverted. Signals that the called frame reverted. |

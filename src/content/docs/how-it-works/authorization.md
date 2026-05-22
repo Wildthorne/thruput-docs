@@ -38,15 +38,19 @@ Contracts do not run signature-verification code. By the time a contract is exec
 
 ## Address auth policy (concern #4)
 
-An address's `AddressAuthData` records what the protocol should enforce for transactions from it:
+An address's `AddressAuthData` records what the protocol should enforce for transactions from it. Per `protocol/address_auth.x`, the on-chain fields are:
 
-- Public keys registered for signature verification
-- Nonce policy (monotonic, windowed, etc.)
-- Gas permission policy (who may sponsor gas from this address)
+- `public_keys` — the keys registered for signature verification (each carries a weight)
+- `required_weight` — the minimum total signing weight a transaction must clear
+- `last_written_height` — bookkeeping for the address's policy state
 
-Contracts declare policy via syscalls (`change_public_key_registration`, `set_nonce_config`, `set_gas_permission_config`). The protocol reads; the contract writes.
+Contracts mutate policy through syscalls: `ChangePublicKeyRegistration` (add, replace, or remove a key) and `WriteAddressRequiredWeight` (set the weight threshold). The protocol reads at admission; the contract writes during execution.
 
-A fresh address has no `AddressAuthData`; transactions from it fail with `kAuthFailed` until policy is installed.
+A fresh address has no `AddressAuthData`; transactions from it fail authorization until policy is installed.
+
+:::note[Sponsorship / nonce policy]
+This page previously described nonce and gas-sponsorship policy fields on `AddressAuthData`. Neither ships in the current protocol. Replay protection lives in the transaction-level `Uniquifier`, and gas sponsorship is on the roadmap but not yet implemented. The v2 design is likely to introduce typed policy hooks; this page will track that work.
+:::
 
 ## Caller identity (concern #2)
 
@@ -101,8 +105,8 @@ pub fn transfer_from(
     to: Address,
     signed: Signed<Erc20Transfer>,
 ) {
-    let sender = signed.minter;          // VM-attested authorizer
-    let instruction = signed.consume();  // typed payload
+    // `consume` returns (payload, minter) as a tuple.
+    let (instruction, sender) = signed.consume();
 
     // The minter said: transfer up to `instruction.amount` to `instruction.recipient`.
     // The contract enforces actual args fit within those bounds.
@@ -129,7 +133,7 @@ This is what makes "the method signature is the auth story" enforceable: a funct
 A payload type can contain `Signed<U>` fields. When the outer attestation is consumed, the inner attestations remain valid handles: fresh entries in the runtime, with the outer's minter propagated to them.
 
 ```rust
-#[contracttype]
+#[contract_type]
 pub struct DexIntent {
     pub pool: Address,
     pub deadline: BlockHeight,
@@ -138,8 +142,7 @@ pub struct DexIntent {
 }
 
 pub fn execute_swap(signed: Signed<DexIntent>) {
-    let trader = signed.minter;
-    let intent = signed.consume();
+    let (intent, trader) = signed.consume();
     // intent.transfer is a fresh Signed<Erc20Transfer>, still attributed to `trader`.
 
     // ...swap logic, slippage checks, pool interactions...
@@ -179,17 +182,18 @@ A wallet contract can verify a multisig quorum or a passkey attestation, then mi
 ```rust
 fn verify_and_attest(msg: Bytes, sig: Bytes) -> Signed<Transfer> {
     require(self.verify_signature(&msg, &sig));
+
+    // mint_auth_token(expiry, consumer, payload) returns a typed Signed<T>
+    // whose minter is set unforgeably by the runtime to the current contract address.
     sdk::mint_auth_token(
         block_height + 100,
-        SignerPreimage {
-            consumer: some_token_address,
-            data: transfer_from_msg(&msg),
-        },
+        some_token_address,
+        transfer_from_msg(&msg),
     )
 }
 ```
 
-The returned attestation carries `minter = wallet_address`, set unforgeably by the runtime.
+The exact `mint_auth_token` signature is still settling; consult the SDK source for the current shape. The invariant is that the returned attestation carries `minter = wallet_address`, set unforgeably by the runtime.
 
 ## What this enables
 
@@ -205,7 +209,7 @@ The returned attestation carries `minter = wallet_address`, set unforgeably by t
 
 ## Provisional v1 API
 
-The current SDK exposes attestation consumption as a positional array: `get_auth_claim(index)` and `get_auth_claim_count()`. This is provisional and will be superseded by the typed `Signed<T>` model before the SDK is publicly stable. Positional access is expected to remain as a debug-only affordance.
+The current SDK exposes attestation consumption through a single `get_auth_claim()` call (`crates/sdk/src/auth_claim.rs`), which returns a typed `AuthClaim` union representing the transaction's authorization claim. There is no positional array API and no claim-count accessor. The typed `Signed<T>` model in this page is the v2 target and will be layered over the same underlying `AuthClaim` machinery.
 
 ## Not yet specified on this page
 
