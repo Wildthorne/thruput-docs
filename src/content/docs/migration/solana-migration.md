@@ -115,13 +115,13 @@ Groundhog has no account concept. Your contract method takes typed parameters (a
 
 ### Rent and Account Lifecycle
 
-Solana accounts must hold a minimum lamport balance (the rent-exempt minimum, calculated as roughly 2 years of rent). All accounts are now required to be rent-exempt at creation. This creates friction: every new piece of state costs lamports upfront, and you need to calculate the minimum balance for your account size.
+Solana accounts must hold a minimum lamport balance (the rent-exempt minimum, originally calculated against a rent schedule and now required at creation since rent collection was deprecated). This creates friction: every new piece of state costs lamports upfront, and you need to calculate the minimum balance for your account size.
 
 Groundhog uses a capital deposit model for storage. You hold HOG tokens as a deposit while storage is allocated, and the deposit is refundable when storage is freed. No rent clock, no garbage collection, no minimum balance calculations.
 
 ### Compute Unit Budgets
 
-Solana transactions have a compute budget (default 200k units per instruction, max 1.4M per transaction via `SetComputeUnitLimit`). Complex operations require careful optimization. CPI calls are expensive. Developers routinely hit compute limits and restructure logic to stay under budget.
+Solana transactions have a compute budget that can be raised per transaction via `SetComputeUnitLimit` (with a hard ceiling well below modern Ethereum gas limits). Complex operations require careful optimization. CPI calls are expensive. Developers routinely hit compute limits and restructure logic to stay under budget.
 
 Groundhog has gas limits that meter computation, but gas costs zero tokens. Specify a gas limit to bound execution, but don't optimize for gas cost. There are no priority fees and no fee-related failures.
 
@@ -251,7 +251,7 @@ require!(ctx.accounts.authority.key() == expected, MyError::NotAuthorized);
 **Groundhog:**
 
 ```rust
-#[contract_error]
+#[contract_exception]
 pub enum Error {
     NotAuthorized = 1,
 }

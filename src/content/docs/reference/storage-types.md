@@ -19,6 +19,8 @@ Non-negative integer. Used for balances, counters, supply tracking.
 
 Pass a negative value to `inc` or `strict_inc` to decrement. Use `strict_inc` by default. See [NNInt In Depth](/programming-model/nnint/) for commutativity rules.
 
+Exclusivity is controlled by the **keypath flag** set at storage-derivation time, not by a `set_exclusive` method. For ad-hoc exclusive writes, use the free function `non_negative_int_set_exclusive` from `sdk::sys_exn::nnint`.
+
 Implements `Deletable`.
 
 ## Map\<K, V\>
@@ -98,22 +100,47 @@ Arbitrary byte data. Raw bytes in, raw bytes out.
 | `get` | `fn get(&self) -> Box<[u8]>` | Read stored bytes as a heap-allocated slice. |
 | `try_get` | `fn try_get(&self) -> Option<Box<[u8]>>` | Read stored bytes. Returns `None` if the key does not exist. |
 | `get_sized` | `fn get_sized<const N: usize>(&self) -> [u8; N]` | Read into a fixed-size array. Aborts if length does not match `N`. |
-| `set` | `fn set(&mut self, buf: &[u8])` | Write bytes. Uses the keypath's locking mode. |
+| `set` | `fn set(&mut self, buf: &[u8])` | Write bytes. Uses the keypath's locking mode (exclusive if the keypath flag is set). |
+
+Exclusivity is controlled by the keypath flag, not by a `set_exclusive` method. For ad-hoc exclusive writes, use the free function `bytestring_set_exclusive` from `sdk::sys_exn::bytestring`.
 
 Implements `Deletable`.
 
-## RetrocausalQueue
+## RCQ\<T\>
 
-Multi-producer, single-consumer queue. These are free functions operating on raw `StorageKey` values, not methods on a struct.
+Multi-producer queue. Items of type `T` are XDR-encoded on insert and decoded on consume. Inserts commute; consumes are sequential.
 
-Imported from `groundhog_sdk::sys_exn::rcq`.
+The typed wrapper lives in `sdk::storage`. Lower-level free functions (operating on raw `StorageKey` values) are available in `sdk::sys_exn::rcq` for cases where you want byte-level control.
+
+| Method | Signature | Description |
+|--------|-----------|-------------|
+| `insert` | `fn insert(&mut self, entry: &T)` where `T: WriteXDR` | XDR-encode and insert the entry. |
+| `insert_raw` | `fn insert_raw(&mut self, queue_entry: &[u8])` | Insert raw bytes; bypasses XDR encoding. |
+| `consume` | `fn consume(&mut self) -> T` where `T: ReadXDROwned` | Consume the next entry and decode it. Aborts if the queue is empty or the entry cannot be decoded. |
+| `try_consume` | `fn try_consume(&mut self) -> Option<T>` where `T: ReadXDROwned` | Consume the next entry if one exists. |
+| `consume_raw` | `fn consume_raw(&mut self) -> Box<[u8]>` | Consume the next entry as raw bytes. Aborts if the queue is empty. |
+| `try_consume_raw` | `fn try_consume_raw(&mut self) -> Option<Box<[u8]>>` | Consume the next entry as raw bytes if one exists. |
+| `consume_sized` | `fn consume_sized<const N: usize>(&mut self) -> [u8; N]` | Consume into a fixed-size array. Aborts on size mismatch. |
+| `try_consume_sized` | `fn try_consume_sized<const N: usize>(&mut self) -> Option<[u8; N]>` | Consume into a fixed-size array if an entry exists. Aborts on size mismatch. |
+| `peek` | `fn peek(&self) -> T` where `T: ReadXDROwned` | Read the next entry without consuming. Aborts if empty. |
+| `try_peek` | `fn try_peek(&self) -> Option<T>` where `T: ReadXDROwned` | Read the next entry without consuming if one exists. |
+| `peek_raw` | `fn peek_raw(&self) -> Box<[u8]>` | Raw-bytes peek. Aborts if empty. |
+| `try_peek_raw` | `fn try_peek_raw(&self) -> Option<Box<[u8]>>` | Raw-bytes peek if an entry exists. |
+| `peek_sized` | `fn peek_sized<const N: usize>(&self) -> [u8; N]` | Fixed-size peek. Aborts on size mismatch. |
+| `try_peek_sized` | `fn try_peek_sized<const N: usize>(&self) -> Option<[u8; N]>` | Fixed-size peek if an entry exists. Aborts on size mismatch. |
+| `keypath` | `fn keypath(&self) -> &Keypath` | Reference to the queue's root keypath. |
+| `key` | `fn key(&self) -> &StorageKey` | Reference to the queue's resolved storage key. |
+
+Implements `StorageType` and `Deletable`.
+
+### Lower-level free functions (`sdk::sys_exn::rcq`)
 
 | Function | Signature | Description |
 |----------|-----------|-------------|
-| `retrocausal_queue_insert` | `fn retrocausal_queue_insert(key: &StorageKey, queue_entry: &[u8])` | Insert an entry. Commutes with other inserts. |
-| `retrocausal_queue_consume_sized` | `fn retrocausal_queue_consume_sized<const N: usize>(key: &StorageKey) -> [u8; N]` | Consume and return the next entry. Aborts on error or size mismatch. |
-| `retrocausal_queue_peek_sized` | `fn retrocausal_queue_peek_sized<const N: usize>(key: &StorageKey) -> [u8; N]` | Read the next entry without consuming it. Aborts on error or size mismatch. |
-| `retrocausal_queue_get_max` | `fn retrocausal_queue_get_max<const N: usize>(key: &StorageKey, peek: bool) -> Vec<u8>` | Read the next entry into a vector of up to `N` bytes. If `peek` is true, the entry is not consumed. Requires `alloc` feature. |
+| `retrocausal_queue_insert` | `fn retrocausal_queue_insert(key: &StorageKey, queue_entry: &[u8])` | Insert raw bytes. |
+| `retrocausal_queue_consume_sized` | `fn retrocausal_queue_consume_sized<const N: usize>(key: &StorageKey) -> [u8; N]` | Consume a fixed-size entry. Aborts on size mismatch or empty queue. |
+| `retrocausal_queue_peek_sized` | `fn retrocausal_queue_peek_sized<const N: usize>(key: &StorageKey) -> [u8; N]` | Peek a fixed-size entry. |
+| `retrocausal_queue_get` | `fn retrocausal_queue_get(key: &StorageKey, peek: bool) -> Box<[u8]>` | Read the next entry into a boxed slice. If `peek` is true, the entry is not consumed. |
 
 ## Slot Types
 

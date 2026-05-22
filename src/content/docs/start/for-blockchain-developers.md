@@ -28,8 +28,9 @@ The same transfer on Groundhog:
 
 ```rust
 fn transfer(&mut self, receiver: &ContractAddress, amount: Amount) {
-    self.balances.get(&get_caller()).strict_inc(-amount);
-    self.balances.get(receiver).strict_inc(amount);
+    let diff = amount_to_diff(amount);
+    self.balances.at_mut(&get_caller()).strict_inc(-diff);
+    self.balances.at_mut(receiver).strict_inc(diff);
 }
 ```
 
@@ -65,12 +66,13 @@ On Groundhog:
 
 ```rust
 fn withdraw(&mut self, amount: Amount) {
-    self.balances.get(&get_caller()).strict_inc(-amount);
+    let diff = amount_to_diff(amount);
+    self.balances.at_mut(&get_caller()).strict_inc(-diff);
     self.token.transfer(&get_caller(), amount);
 }
 ```
 
-That's it. No reentrancy guard: every contract call reads from a frozen snapshot, so a callback can't observe partial state. No manual balance check: NNInt enforces `>= 0` at the protocol level. No ordering discipline: deltas are deltas regardless of when they're produced.
+That's it. No reentrancy guard: the runtime rejects any `invoke` whose target contract address is already on the active call stack with the `Reentrance` syscall error. The check is per-contract-address and applies to both `invoke` and `try_invoke`. Separately, every contract call also reads from a frozen snapshot, so even allowed call patterns cannot observe partial state. No manual balance check: NNInt enforces `>= 0` at the protocol level. No ordering discipline: deltas are deltas regardless of when they're produced.
 
 This isn't just reentrancy. The delta model eliminates several classes of bugs at once:
 
@@ -88,7 +90,7 @@ Everything on this list exists because other chains execute transactions sequent
 - **MEV protection.** All transactions read the same snapshot. Ordering doesn't affect outcomes, so there's nothing to extract, sandwich, or front-run.
 - **Nonces.** No sequence numbers. No "nonce too low" errors. Submit transactions and they execute.
 - **Compute budgets.** No per-transaction compute limit to fit within. Gas is free, so there's no pressure to minimize instructions.
-- **Access lists.** No need to declare which accounts a transaction touches up front. The runtime handles it.
+- **Access lists.** Unlike Solana, where every account a transaction touches must be declared up front, Groundhog discovers storage access during execution. (EVM only requires explicit access lists when opting into EIP-2930.)
 - **Storage slot packing.** Typed fields via `#[sdk::storage]`. No manual layout, no packing variables into 256-bit slots.
 - **TTL management.** No storage expiry. Data persists as long as its HOG deposit is held. Delete the data, get the deposit back.
 

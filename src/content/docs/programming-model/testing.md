@@ -79,13 +79,21 @@ match client.try_decrement(10) {
 }
 ```
 
-The `try_decrement` method (generated alongside `decrement` by the `#[contract]` macro) returns a `Result` instead of aborting. The error type is `CounterClientError`, a per-client enum with variants for each declared error type plus `Library(LibraryExn)`, `Fault(FaultString)`, `Unknown(RawException)`, and `BadDecode(RawException)`. See [Error Handling](/reference/error-handling/) for the full error model.
+The `try_decrement` method (generated alongside `decrement` by the `#[contract]` macro) returns a `Result` instead of aborting. The error type is `CounterClientError`, a per-client enum with variants for each declared error type plus the fixed variants `Library(LibraryExn)`, `Fault(FaultString)`, `Unknown(RawException)`, `Invalid`, `BadDecode(RawException)`, `UnparseableReturn(FaultString)`, `UnparseableAbort(FaultString)`, `UnparseableAuthHandles(FaultString)`, and `EncodingArgs(FaultString)`. See [Error Handling](/reference/error-handling/) for the full error model.
 
 ## Named Addresses
 
-`ContractAddress::named("alice")` produces a deterministic address from a string. Same name always returns the same address. Useful for readable test code:
+`ContractAddress::named("alice")` produces a deterministic address from a string. Same name always returns the same address. The method hashes the name with SHA-256 at runtime, so it cannot initialize a `static` or `const`. Bind it inside the test or a `LazyLock` instead:
 
 ```rust
-static ALICE: ContractAddress = ContractAddress::named("alice");
-static BOB: ContractAddress = ContractAddress::named("bob");
+use groundhog_native_exec::test_helpers::Named;
+
+#[test]
+fn transfer_between_known_addresses() {
+    let alice = ContractAddress::named("alice");
+    let bob   = ContractAddress::named("bob");
+    // ...
+}
 ```
+
+The `Named` trait must be in scope; it is not re-exported through `sdk::*`.
