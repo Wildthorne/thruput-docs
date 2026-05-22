@@ -1,6 +1,6 @@
 ---
 title: SDK Macros
-description: "Reference for #[contract], #[contract_error], #[storage], #[derive(Event)], and other SDK macros."
+description: "Reference for #[contract], #[contract_exception], #[contract_type], #[storage], #[derive(Event)], #[derive(ContractTypeSpec)], and other SDK macros."
 ---
 
 ## `#[contract]`
@@ -123,7 +123,7 @@ pub trait Interface {
 
 ---
 
-## `#[contract_error]`
+## `#[contract_exception]`
 
 Convenience macro for defining contract error types. Applies `#[repr(i32)]` (enums only), derives serialization traits, and implements `Exn` with a computed selector.
 
@@ -143,7 +143,7 @@ For an enum:
 
 ```rust
 // Input
-#[contract_error]
+#[contract_exception]
 pub enum Error {
     NotAuthorized = 1,
 }
@@ -164,7 +164,7 @@ For a struct:
 
 ```rust
 // Input
-#[contract_error]
+#[contract_exception]
 pub struct MyExn;
 
 // Generates equivalent of:
@@ -188,7 +188,7 @@ Changing any of these changes the selector, which makes error types from differe
 ### Example
 
 ```rust
-#[contract_error]
+#[contract_exception]
 #[non_exhaustive]
 pub enum ERC20Error {
     AlreadyInitialized = 1,
@@ -201,7 +201,7 @@ pub enum ERC20Error {
 Struct errors carry data:
 
 ```rust
-#[contract_error]
+#[contract_exception]
 pub struct BigExn {
     pub payload: [u8; 600],
 }
@@ -211,7 +211,7 @@ pub struct BigExn {
 
 ## `#[exn]`
 
-Low-level version of `#[contract_error]`. Implements `Exn` with a computed selector but does not add any derives. Use this when you handle your own `#[derive(...)]` and `#[repr(...)]`.
+Low-level version of `#[contract_exception]`. Implements `Exn` with a computed selector but does not add any derives. Use this when you handle your own `#[derive(...)]` and `#[repr(...)]`.
 
 ### Parameters
 
@@ -255,6 +255,8 @@ All fields must be SDK storage types. Plain data must be wrapped in `Value<T>`.
 | `NNInt` | Non-negative integer with commutative arithmetic |
 | `Bytestring` | Variable-length byte blob |
 | `Map<K, V>` | Key-addressed collection (entries not enumerable) |
+| `Vector<T>` | Indexed collection backed by `Map<u32, T>` plus a length counter |
+| `RCQ<T>` | Retrocausal queue (insert-commutes; consume is sequential) |
 | `Node<T>` | Nested storage struct for use inside collections |
 
 ### Example
@@ -371,6 +373,22 @@ Computes a `SHA256Hash` from a string literal at compile time.
 let hash: SHA256Hash = sha256_static!("some_string");
 ```
 
+### `sha256_ident!`
+
+Computes a SHA-256 hash from a Rust identifier (rather than a string literal) at compile time. Useful when the input is a type name or other identifier that should not appear as a quoted string.
+
+```rust
+let hash: SHA256Hash = sha256_ident!(MyType);
+```
+
+### `sha256_array_ident!`
+
+Same as `sha256_ident!` but returns a `[u8; 32]` array instead of a `SHA256Hash`.
+
+```rust
+let bytes: [u8; 32] = sha256_array_ident!(MyType);
+```
+
 ### `hash_to_array!`
 
 Computes the SHA-256 hash of a string or byte-string literal and returns it as a `[u8; 32]` array at compile time.
@@ -386,4 +404,60 @@ Registers the current crate as a mock contract for the test environment. Place t
 
 ```rust
 sdk::declare_mock_contract!();
+```
+
+---
+
+## `#[contract_type]`
+
+Annotates a user-defined struct or enum so that the SDK knows how to serialize, deserialize, and describe it across contract boundaries. Required for any type used as an argument, return value, or storage value where the SDK needs a typed schema.
+
+The deprecated spelling `#[contracttype]` is still accepted but should not be used in new code.
+
+### Applies to
+
+Structs (named or unit) and enums.
+
+### What it generates
+
+| Item | Description |
+|------|-------------|
+| Serialization derives | `ReadXDR`, `WriteXDR` |
+| `ContractTypeSpec` impl | Describes the layout to introspection tooling (used by codegen and JSON-RPC). |
+
+### Example
+
+```rust
+use sdk::*;
+
+#[contract_type]
+pub struct Config {
+    pub administrator: ContractAddress,
+    pub paused: bool,
+}
+
+#[contract_type]
+pub enum Status {
+    Active,
+    Closed { reason: u32 },
+}
+```
+
+---
+
+## `#[derive(ContractTypeSpec)]`
+
+Low-level derive that only adds the `ContractTypeSpec` impl, without any serialization derives. Use this when you already provide your own `ReadXDR` / `WriteXDR` implementations.
+
+### Applies to
+
+Structs and enums.
+
+### Example
+
+```rust
+#[derive(Debug, ReadXDR, WriteXDR, ContractTypeSpec)]
+pub struct MyType {
+    pub field: u64,
+}
 ```

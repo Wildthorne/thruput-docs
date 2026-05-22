@@ -21,12 +21,17 @@ WebAssembly module requirements:
     - sign extension: yes
     - bulk-memory: yes
     - no "start" function
-    - Currently restricts initial memory to 1 64kb page
+    - Initial memory limited to 1 64KB page; runtime maximum capped at 2 pages (128 KB) for typical workloads
     - export memory
     - no multi memory
     - No imported functions, other than those provided by Groundhog (see [Syscalls](/reference/syscalls/))
+- Disabled WebAssembly features (modules using these will be rejected at validation):
+    - floating point (`f32` / `f64` arithmetic, conversions)
+    - SIMD (`v128` and all SIMD instructions)
+    - relaxed SIMD
+    - threads
 
-We impose no restrictions on the kinds of computation performed within the WebAssembly.
+These restrictions exist for deterministic execution and consistent cross-platform behaviour: floating-point semantics differ subtly between CPUs, and the SIMD lowering in the host runtime is platform-dependent.
 
 #### Exported Methods
 
@@ -89,13 +94,13 @@ Contracts are uniquely identified by the SHA256 hash of the `Contract` enum stru
 
 ```rust
 pub enum Contract {
-    kWasmi { wasmi_contract: ContractBlob },
+    kWasmi { wasmi_contract: ContractBlob },   // historical name; runtime is wasmtime
     kNative { native_contract_id: i32 },
     kMockTest { mock_contract_id: i32 },
 }
 ```
 
-For WebAssembly contracts, this is effectively `SHA256(XDR(Contract::kWasmi { wasmi_contract: ContractBlob { wasm: <bytecode> } }))`.
+For WebAssembly contracts, this is effectively `SHA256(XDR(Contract::kWasmi { wasmi_contract: ContractBlob { wasm: <bytecode> } }))`. The `kWasmi` tag is historical: the production WebAssembly runtime is **wasmtime** (the legacy `Wasmi`-based runtime has been replaced), but the XDR enum value was preserved for wire compatibility.
 
 ### DeployContract Syscall
 
@@ -166,8 +171,8 @@ pub struct Transaction {
     /// New contract code to make available for deployment
     pub contracts_to_deploy: VecM<Contract>,
 
-    pub auth_claims: AuthClaimData,
-    pub gas_claims: VecM<GasClaim>,
+    /// Authorization claim specifying required signatures
+    pub auth_claim: AuthClaim,
 }
 ```
 
@@ -181,7 +186,7 @@ The `contracts_to_deploy` field makes contract code *available* for deployment w
 
 ## Address Metadata
 
-When a contract is deployed, the system writes `AddressMetadata` to the storage key `(contract_address, kStorageKeyTypeAddressMetadata)`.
+When a contract is deployed, the system writes `AddressMetadata` to the storage key `(contract_address, StorageKeyType::Metadata)` (see `protocol/types.x`).
 
 ```rust
 pub struct AddressMetadata {

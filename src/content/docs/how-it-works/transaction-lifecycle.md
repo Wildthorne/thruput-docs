@@ -53,8 +53,10 @@ See [Invocation Frames](/how-it-works/invocation-frames/) for detailed execution
 
 When the root frame completes, the runtime checks its status:
 
-- **Fault or Abort**: transaction fails, no state changes are committed, transaction is excluded from the block and returned to the mempool
-- **Return (success)**: the transaction's deltas are included in the block
+- **Return (success)**: the transaction's deltas are included in the block.
+- **Abort or Fault**: the transaction is **still included in the block**, but with no state changes. The failure is deterministic, so every validator reaches the same result, and the transaction does not need to be re-evaluated. It is not returned to the mempool.
+
+This is distinct from **conflict exclusion** during execution (Stage 4): if a delta cannot be reserved against capacity locks, the transaction never reaches root-frame completion and is returned to the mempool for a future block. Deterministic abort and non-deterministic conflict-exclusion are two different failure modes with different on-chain semantics.
 
 ## Stage 5: Block Assembly
 
@@ -64,7 +66,7 @@ The proposer packages all successfully executed transactions into a consensus no
 
 Once consensus confirms the block, each validator commits the finalized state to its DB shards. All deltas for each key are combined according to type-specific merge rules to produce the new ledger state, which becomes the snapshot for the next block.
 
-Excluded transactions (those that failed conflict checking during execution) are returned to the mempool and may be re-evaluated in future blocks.
+Transactions excluded by conflict checking during execution (Stage 4) are returned to the mempool and may be re-evaluated in future blocks. Transactions that aborted or faulted deterministically remain in the block with no state effect.
 
 ## Related Documentation
 

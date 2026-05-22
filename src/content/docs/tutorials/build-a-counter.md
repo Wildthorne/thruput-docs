@@ -58,13 +58,13 @@ The `no_std` attribute applies when not testing. Contracts compile to WASM, whic
 
 ## Step 2: Define the Error Type
 
-Every contract needs an error type. The `#[contract_error]` macro generates the serialization derives and XDR encoding. Each variant maps to an integer discriminant.
+Every contract needs an error type. The `#[contract_exception]` macro generates the serialization derives and XDR encoding. Each variant maps to an integer discriminant.
 
 ```rust
 use sdk::storage::NNInt;
 use sdk::*;
 
-#[contract_error]
+#[contract_exception]
 pub enum Error {
     NotAuthorized = 1,
 }
@@ -232,4 +232,4 @@ This counter is trivial, but the pattern scales. Every mutation is a delta opera
 - [Build a Token](/tutorials/build-a-token/) for a full ERC-20 implementation using the same patterns
 - [Storage Types](/programming-model/storage-types/) for `NNInt`, `Map`, `Vector`, `Value`, `Bytestring`, and `RetrocausalQueue`
 - [NNInt In Depth](/programming-model/nnint/) for the `set_add` primitive and commutativity rules
-- [SDK Macros](/reference/sdk-macros/) for details on `#[contract]`, `#[contract_error]`, `#[storage]`
+- [SDK Macros](/reference/sdk-macros/) for details on `#[contract]`, `#[contract_exception]`, `#[storage]`

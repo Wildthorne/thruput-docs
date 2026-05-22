@@ -20,22 +20,17 @@ This is a low-level capability. Most contracts should use `strict_inc` and let t
 
 ## Exclusive Writes
 
-The `set_exclusive` method is available on NNInt, Map, and Bytestring. It acquires an exclusive lock at reservation time: if two transactions both use `set_exclusive` on the same storage location, one is excluded.
+Exclusive writes acquire a per-key lock at reservation time: if two transactions both write exclusively to the same location, one is excluded. This is a stronger guarantee than normal conflict semantics, where compatible deltas merge.
+
+The mechanism is exposed differently per storage type:
+
+- `Value<T>::set_exclusive(&new_value)` — typed slot, exclusive write.
+- `Map<K, V>::at_mut_exclusive(&key)` — exclusive slot accessor on a Map entry.
+- Free functions `non_negative_int_set_exclusive(key, value)` and `bytestring_set_exclusive(key, bytes)` for the lower-level primitives.
 
 ```rust
-self.config.set_exclusive(&new_value);
+self.config.set_exclusive(&new_value);              // Value<Config>
+self.balances.at_mut_exclusive(&owner).set(&v);     // Map<_, NNInt>
 ```
 
-This is a stronger guarantee than normal conflict semantics. Normal NNInt deltas can merge. Exclusive writes cannot. Use this when an operation genuinely requires sole access to a storage location for the duration of a block.
-
-:::caution[Coming Soon]
-Full documentation on exclusive write semantics, including behavior when mixed with non-exclusive writes to the same location, is planned.
-:::
-
-## Early Reservation (try_invoke)
-
-The execution model described in [Execution Model](/programming-model/execution/) runs all transactions against the snapshot and checks compatibility at the end. An alternative path exists where reservations can be checked during execution rather than after.
-
-:::caution[Coming Soon]
-This feature is available in the runtime but not yet documented for general use. It will be covered here when the API and naming are finalized.
-:::
+Use exclusive writes only when an operation genuinely needs sole access to a storage location for the duration of a block. Mixing exclusive and non-exclusive writes to the same key in the same block excludes the non-exclusive writers.

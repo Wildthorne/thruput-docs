@@ -98,7 +98,7 @@ match client.try_throw_alpha_not_found() {
 
 ### The generated error enum
 
-For a client named `FooClient`, the macro generates `FooClientError`. The enum contains one variant per declared `throws` type, plus three fixed variants.
+For a client named `FooClient`, the macro generates `FooClientError`. The enum contains one variant per declared `throws` type, plus a fixed set of variants for SDK-level and decoding failures.
 
 Given `#[contract(client = MultiClient, throws(AlphaError, BetaError))]`, the generated enum is:
 
@@ -112,7 +112,12 @@ pub enum MultiClientError {
     Library(LibraryExn),
     Fault(FaultString),
     Unknown(RawException),
+    Invalid,
     BadDecode(RawException),
+    UnparseableReturn(FaultString),
+    UnparseableAbort(FaultString),
+    UnparseableAuthHandles(FaultString),
+    EncodingArgs(FaultString),
 }
 ```
 
@@ -122,7 +127,14 @@ pub enum MultiClientError {
 | `Library(LibraryExn)` | The SDK itself threw (e.g., NNInt underflow, encoding failure). |
 | `Fault(FaultString)` | The callee panicked. Contains a debug message when the `debugging` feature is enabled. |
 | `Unknown(RawException)` | The callee threw an error type not listed in `throws`. |
+| `Invalid` | The call could not be made (e.g. invalid contract address before the call dispatched). |
 | `BadDecode(RawException)` | The selector matched a declared type, but the payload could not be decoded. |
+| `UnparseableReturn(FaultString)` | The callee committed but its return buffer could not be decoded as the expected type. |
+| `UnparseableAbort(FaultString)` | The callee aborted but the abort payload could not be parsed. |
+| `UnparseableAuthHandles(FaultString)` | The callee committed but the returned auth-token handle list was malformed. |
+| `EncodingArgs(FaultString)` | The caller's arguments could not be encoded before dispatch. |
+
+Match arms on this enum should include a wildcard or cover every variant; otherwise `match` will fail to compile if a new fixed variant is added.
 
 ### Matching on specific errors
 
@@ -210,4 +222,4 @@ impl Caller {
 }
 ```
 
-See [Error Handling](/reference/error-handling/) for defining error types with `#[contract_error]`.
+See [Error Handling](/reference/error-handling/) for defining error types with `#[contract_exception]`.
