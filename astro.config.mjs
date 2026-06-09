@@ -75,7 +75,7 @@ export default defineConfig({
           ],
         },
         {
-          label: 'Migration Guides',
+          label: 'Ecosystem Guides',
           items: [
             'migration/stellar-migration',
             'migration/evm-migration',

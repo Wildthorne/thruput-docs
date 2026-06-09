@@ -36,13 +36,13 @@ Previous block committed state
 ```
 
 1. **Snapshot**: block boundary freezes state. All transactions read from this.
-2. **Execute**: all transactions run against the snapshot. Order doesn't matter. Each produces a set of deltas.
-3. **Reserve**: deltas are checked for compatibility using each storage type's merge rules (see [storage-types.md](./storage-types.md)).
+2. **Execute**: transactions run against the snapshot and produce deltas.
+3. **Reserve**: deltas are checked for compatibility using each storage type's merge rules (see [storage-types.md](./storage-types.md)). The engine may resolve some conflicts eagerly during execution, but the developer-facing rule is the same.
 4. **Merge or exclude**: compatible deltas merge into new state. Incompatible transactions are excluded and returned to the mempool.
 
 ## Exclusion, Not Failure
 
-Conflicting transactions are not aborted mid-execution. They execute fully, produce deltas, and are excluded at reservation. The excluded transaction is returned to the mempool and resubmitted in the next block.
+From the contract author's perspective, conflicts are exclusions, not retry loops inside your code. A transaction either lands or is excluded by the runtime when its deltas cannot be reserved or merged with other transactions in the block. The excluded transaction is returned to the mempool and can be resubmitted in a later block.
 
 The developer writes no retry logic. The user experiences sub-second latency. The mempool handles resubmission.
 

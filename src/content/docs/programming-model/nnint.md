@@ -12,7 +12,7 @@ Every NNInt storage location maintains two pending values during a transaction:
 - **set**: `i128`. The absolute base value.
 - **add**: `i128`. The accumulated delta.
 
-The low-level operation is `set_add(set_value, add_value)`. It replaces both pending values. The final committed value is `set + add`.
+The low-level operation is `set_add(set_value, add_value, flags)`. It replaces both pending values. The final committed value is `set + add`, subject to runtime reservation and invariant checks.
 
 Your contract never calls `set_add` directly. The SDK methods (`strict_inc`, `inc`, `set`) map onto it. But this two-component model is what makes the commutativity rules simple and mechanical.
 
@@ -30,13 +30,13 @@ The set values don't have to be any particular value. They just have to match ea
 
 Same base + different deltas = merge. Different bases = conflict. That's the whole rule.
 
-## The None Optimization
+## The None Path
 
-`set_add` also accepts `None` as the set value: `set_add(None, add_value)`. This means "I don't need to choose the base. Let the DB fill it in from the snapshot."
+`set_add` also accepts `None` as the set value: `set_add(None, add_value)`. This means "I don't need to choose the base in this invocation. Let the runtime resolve it from the snapshot."
 
-The DB reads the snapshot value and runs `set_add(snapshot, add_value)` internally. This is a performance optimization: it produces the same result as reading the snapshot yourself, but skips the client-side DB read.
+The runtime resolves `None` to the snapshot value internally. This is a performance optimization: it produces the same result as forcing the snapshot read yourself, but skips that read in the contract invocation.
 
-Since None resolves to the snapshot, commutativity depends on what the other transaction does:
+Since `None` resolves to the snapshot, commutativity depends on what the other transaction does:
 
 | Tx A | Tx B | Commutes? | Why |
 |------|------|-----------|-----|
@@ -46,19 +46,19 @@ Since None resolves to the snapshot, commutativity depends on what the other tra
 
 ## How the API Maps to set_add
 
-| Method | Calls | Reads snapshot? | Commutes? |
-|--------|-------|-----------------|-----------|
-| `strict_inc(delta)` | `set_add(snapshot, accumulated + delta)` | Yes | Always (all resolve to snapshot base) |
-| `inc(delta)` | `set_add(None, accumulated + delta)` | No | Always (None resolves to snapshot) |
-| `set(value)` | `set_add(value, 0)` | No | Only if all concurrent callers set the same value |
+| Method | Effective call | Forces snapshot read? | Commutes? |
+|--------|----------------|-----------------------|-----------|
+| `strict_inc(delta)` | `set_add(Some(snapshot), accumulated + delta)` | Yes | Yes, when all callers resolve to the same snapshot base |
+| `inc(delta)` | `set_add(existing_set_or_None, accumulated + delta)` | No | Yes, when all callers resolve to the same snapshot base |
+| `set(value)` | `set_add(Some(value), 0)` | No | Only if all concurrent callers set the same value |
 
-**strict_inc(delta)**: reads the snapshot base, checks the non-negative invariant, calls `set_add(snapshot, accumulated + delta)`. Aborts immediately if the result would be negative. This is the common case. Use this for balances, counters, and any hot path.
+**strict_inc(delta)**: forces the snapshot base to be loaded, checks the non-negative invariant in the current invocation, then calls `set_add(Some(snapshot), accumulated + delta)`. Aborts immediately if this invocation's result would be negative. This is the common case. Use this for balances, counters, and any hot path.
 
-**inc(delta)**: calls `set_add(None, accumulated + delta)`. Skips the client-side DB read. Underflow is caught at commit time, not at call site (harder to debug). Use this when you need to skip the read and are confident the balance is sufficient.
+**inc(delta)**: preserves the pending set value if one already exists in this invocation; otherwise calls `set_add(None, accumulated + delta)`. Skips the forced snapshot read. Underflow is caught later by runtime reservation/invariant checks when no explicit base has been loaded, which can be harder to debug.
 
-**set(value)**: calls `set_add(value, 0)`. Replaces the base and clears the delta. Commutes only when all concurrent callers set the same value. `set(100)` vs `set(100)` merges. `set(100)` vs `set(200)` conflicts. `set(100)` vs `strict_inc(5)` conflicts if the snapshot is not 100, commutes if it is. Reserve `set` for initialization or admin operations.
+**set(value)**: calls `set_add(Some(value), 0)`. Replaces the base and clears the delta. Commutes only when all concurrent callers set the same value. `set(100)` vs `set(100)` merges. `set(100)` vs `set(200)` conflicts. `set(100)` vs `strict_inc(5)` conflicts if the snapshot is not 100, commutes if it is. Reserve `set` for initialization or admin operations.
 
-`strict_inc` and `inc` are interchangeable from a commutativity standpoint. Mix them freely. The only trade-off is a DB read vs early underflow detection.
+`strict_inc` and `inc` are interchangeable from a commutativity standpoint. Mix them freely. The trade-off is read cost vs early underflow detection.
 
 ## Why This Matters
 

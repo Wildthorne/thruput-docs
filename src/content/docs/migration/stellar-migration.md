@@ -1,17 +1,17 @@
 ---
-title: Stellar Migration
-description: Guide for Stellar developers adapting applications to Groundhog.
+title: Stellar & Soroban
+description: Groundhog patterns for developers building in the Stellar ecosystem.
 ---
 
 ## Who This Guide Is For
 
-This guide is for Stellar developers evaluating how their applications would adapt to run on Groundhog. It focuses on **pattern adaptation**: how the workflows and mental models you've developed for Stellar would change, rather than low-level API mappings.
+This guide is for Stellar and Soroban developers evaluating where Groundhog fits alongside the Stellar economy. It focuses on **pattern translation**: how familiar workflows look when they are expressed with Groundhog's parallel storage primitives.
 
 ---
 
 ## Mental Model Shifts
 
-Before diving into specific patterns, understand these fundamental differences:
+Before diving into specific patterns, here are the main differences in emphasis:
 
 | Aspect | Stellar | Groundhog |
 |--------|---------|-----------|
@@ -21,15 +21,15 @@ Before diving into specific patterns, understand these fundamental differences:
 | **DEX execution** | Synchronous (immediate result) | Async (intent submission, later execution) |
 | **Multi-operation** | Bundle multiple ops in one transaction (Stellar Classic caps at 100 ops/tx) | Single contract invocation with cross-contract calls |
 
-**The good news:** The majority of Stellar traffic is payments and token operations, which map directly to parallel Groundhog primitives with minimal adaptation. The pattern that requires the most rethinking is DEX trading, which moves from synchronous execution to an intent-queue model.
+The majority of Stellar traffic is payments and token operations, which map naturally to Groundhog's delta-based primitives. DEX trading is the pattern that looks most different because Groundhog models high-contention venues as intent queues.
 
 ---
 
-## Pattern Adaptations
+## Pattern Translations
 
-### 1. Simple Payments (Low Friction)
+### 1. Simple Payments
 
-**Current Stellar Pattern:**
+**Stellar Pattern:**
 ```javascript
 // Stellar SDK
 const payment = Operation.payment({
@@ -41,7 +41,7 @@ const payment = Operation.payment({
 transaction.addOperation(payment);
 ```
 
-**Groundhog Equivalent:**
+**Groundhog Pattern:**
 ```rust
 // Token contract transfer (see Build a Token for the full implementation)
 fn transfer(&mut self, receiver: &ContractAddress, amount: Amount) {
@@ -53,18 +53,18 @@ fn transfer(&mut self, receiver: &ContractAddress, amount: Amount) {
 }
 ```
 
-**What Changes:**
+**What This Highlights:**
 - You write a token contract with explicit balance primitives instead of using built-in account-level balances
 - Both balance updates are delta operations (`strict_inc`), so transfers to and from the same account can execute in parallel
 - Underflow is automatically rejected by `NNInt` (the balance can never go negative)
 
-**Adaptation Difficulty:** Low. The ERC-20 token contract in [Build a Token](/tutorials/build-a-token/) is a complete working example.
+The token contract in [Build a Token](/tutorials/build-a-token/) shows the full version of this pattern.
 
 ---
 
-### 2. Multi-Operation Transactions (Medium Friction)
+### 2. Multi-Operation Transactions
 
-**Current Stellar Pattern:**
+**Stellar Pattern:**
 ```javascript
 // Stellar: All operations execute atomically, sequentially
 const transaction = new TransactionBuilder(account)
@@ -74,7 +74,7 @@ const transaction = new TransactionBuilder(account)
   .build();
 ```
 
-**Groundhog Equivalent:**
+**Groundhog Pattern:**
 ```rust
 // A contract method that performs multiple operations
 fn batch_payment_and_trust(
@@ -95,21 +95,21 @@ fn batch_payment_and_trust(
 }
 ```
 
-**What Changes:**
+**What This Highlights:**
 - No operation bundling. You write a contract method that does everything you need
 - For cross-contract operations, use [cross-contract calls](/reference/cross-contract-calls/): your method invokes other contracts
 - Groundhog does not require you to declare which state you'll touch upfront. Conflicts are detected at merge time, not submission time
 - Each contract invocation is atomic: if your method aborts, all state changes are discarded
 
-**Adaptation Difficulty:** Medium. The contract model is more flexible than Stellar's operation model, but requires thinking about your logic as contract code rather than a list of operations.
+The main shift is organizational: logic that would be represented as a list of Stellar operations becomes a contract method.
 
 ---
 
-### 3. Market Making / Resting Orders (Low Friction)
+### 3. Market Making / Resting Orders
 
-This is the biggest win for Stellar users on Groundhog. Most Stellar DEX activity is resting order management, which maps directly to parallel primitives.
+Most Stellar DEX activity is resting order management, which maps directly to Groundhog's parallel primitives.
 
-**Current Stellar Pattern:**
+**Stellar Pattern:**
 ```javascript
 // Place a new offer
 Operation.manageSellOffer({
@@ -130,7 +130,7 @@ Operation.manageSellOffer({
 });
 ```
 
-**Groundhog Equivalent:**
+**Groundhog Pattern:**
 ```rust
 // Place offer: insert into a retrocausal queue (always commutes)
 fn place_order(&mut self, venue: &StorageKey, amount: Amount, price: u64) {
@@ -156,21 +156,21 @@ fn cancel_order(&mut self, amount: Amount) {
 }
 ```
 
-**What Changes:**
+**What This Highlights:**
 - Offers are intents submitted to a `RetrocausalQueue`, not direct orderbook manipulation
 - Multiple market makers can submit offers in parallel (queue inserts commute)
 - Cancellation is balance rebalancing, fully parallel
 - Offer matching happens in a subsequent block (see DEX Trading below)
 
-**Adaptation Difficulty:** Low. Order placement and cancellation are the high-volume operations, and they parallelize completely.
+Order placement and cancellation are high-volume operations, and both map cleanly to parallel execution.
 
 ---
 
-### 4. DEX Trading / Swaps (High Friction)
+### 4. DEX Trading / Swaps
 
 This is where the mental model changes most significantly.
 
-**Current Stellar Pattern:**
+**Stellar Pattern:**
 ```javascript
 // Synchronous path payment: result is immediate
 Operation.pathPaymentStrictReceive({
@@ -188,7 +188,7 @@ Operation.pathPaymentStrictReceive({
 // - How much was sent?
 ```
 
-**Groundhog Equivalent:**
+**Groundhog Pattern:**
 ```rust
 // Phase 1: Submit swap intent (commutes with other intents)
 fn submit_swap(
@@ -214,19 +214,19 @@ fn submit_swap(
 // Results are delivered via events or callback.
 ```
 
-**What Changes:**
+**What This Highlights:**
 - No immediate execution result. You submit an intent, execution happens in a subsequent block
 - Submission is parallel (many users can submit swaps simultaneously)
 - Execution is sequential per venue (only swaps on the same pair compete)
 - Must handle async results via events or callback
 
-**Adaptation Difficulty:** High. This is the one area where the programming model is fundamentally different. But it is also more fair than Stellar's model, where transaction ordering within a ledger can favor certain participants.
+For applications that need immediate path-payment semantics, this is the largest design shift. For venues that can work with submit-then-settle flows, the queue model makes contention explicit and keeps intent submission parallel.
 
 ---
 
-### 5. Account & Trust Management (Low Friction)
+### 5. Account & Trust Management
 
-**Current Stellar Pattern:**
+**Stellar Pattern:**
 ```javascript
 // Create trustline
 Operation.changeTrust({
@@ -242,7 +242,7 @@ Operation.setOptions({
 });
 ```
 
-**Groundhog Equivalent:**
+**Groundhog Pattern:**
 ```rust
 // Trust and account config are just contract storage
 fn set_trustline(&mut self, asset: &ContractAddress, limit: Amount) {
@@ -256,18 +256,16 @@ fn set_options(&mut self, home_domain: &[u8], flags: u32) {
 }
 ```
 
-**What Changes:**
+**What This Highlights:**
 - Explicit key-value storage instead of built-in account abstraction
 - Per-account operations on different accounts are fully parallel (different `Map` keys)
 - Configuration writes to the same account use `Bytestring`, so concurrent config changes conflict (one per block)
-
-**Adaptation Difficulty:** Low
 
 ---
 
 ### 6. Soroban Smart Contracts
 
-If you're already writing Soroban contracts, the adaptation is mostly about storage types and error handling.
+If you're already writing Soroban contracts, Groundhog is best read as an adjacent contract environment with a different storage model. Soroban remains a strong fit for applications that want the Soroban runtime and Stellar integration directly; Groundhog is useful when parallel execution, permanent storage, and delta-oriented state are the shape you want.
 
 **Soroban:**
 ```rust
@@ -297,11 +295,11 @@ impl TokenContract {
 }
 ```
 
-**Key Differences from Soroban:**
+**Side-by-Side Patterns:**
 
 | Soroban | Groundhog |
 |---------|-----------|
-| `env.storage().persistent().get/set` (read-modify-write) | `strict_inc(delta)` (delta operation, no read needed) |
+| `env.storage().persistent().get/set` (read-modify-write) | `strict_inc(delta)` (delta operation; no absolute rewrite) |
 | Three storage tiers (Instance, Persistent, Temporary) | One storage model, no tiers |
 | TTLs on all storage; must call `extend_ttl()` or data expires | Permanent storage, no TTLs, no expiration |
 | `require_auth()` for caller authorization | `ensure(caller == self.owner.get(), err)` pattern |
@@ -311,24 +309,22 @@ impl TokenContract {
 | Sequence numbers enforce serial execution per account | No sequence numbers; transactions parallelize by default |
 | Fees per transaction (inclusion + resource fees) | No per-operation fees; available (unlocked) HOG balance determines throughput share |
 
-**What you can stop doing:** TTL management, storage tier selection, building cron jobs to extend data lifetimes, managing channel accounts for parallelism.
-
-**What you need to learn:** Commutativity. Which of your storage operations commute determines your parallelism. See [Execution Model](/how-it-works/execution-model/).
+The important Groundhog concept is commutativity: which storage operations can merge determines how much parallelism your contract gets. See [Execution Model](/how-it-works/execution-model/).
 
 ---
 
-## Adaptation Summary
+## Pattern Summary
 
-| Pattern | Adaptation | Notes |
-|---------|------------|-------|
-| Payments | Low | Direct mapping to token contract transfers |
-| Resting orders | Low | Queue inserts commute; market makers benefit most |
-| Trust/Auth | Low | Explicit key-value model |
-| DEX trades | High | Intent queue pattern; async results |
-| Soroban tokens | Low | Delta operations instead of read-modify-write |
-| Soroban DEX | High | Same intent queue pattern as DEX trades |
+| Pattern | Groundhog Shape | Notes |
+|---------|------------------|-------|
+| Payments | Direct | Token contract transfers with `NNInt` balances |
+| Resting orders | Direct | Queue inserts commute; market makers benefit most |
+| Trust/Auth | Direct | Explicit key-value model |
+| DEX trades | Async | Intent queue pattern; async results |
+| Soroban tokens | Direct | Delta operations instead of read-modify-write |
+| Soroban DEX | Async | Same intent queue pattern as DEX trades |
 
-Most Stellar traffic is payments and token operations, which parallelize on Groundhog with minimal changes. DEX trading is the one area that requires a fundamentally different approach.
+Most Stellar traffic is payments and token operations, which parallelize naturally on Groundhog. DEX trading is the area where applications should deliberately choose between synchronous execution semantics and an async intent-queue design.
 
 ---
 
