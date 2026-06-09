@@ -1,9 +1,9 @@
 ---
 title: Storage Types
-description: "The six storage types, their conflict semantics, and how to choose between them."
+description: "SDK storage types, their conflict semantics, and how to choose between them."
 ---
 
-Groundhog has six storage types. The type you choose determines whether concurrent writes merge, conflict, or ignore each other.
+The SDK storage layer exposes the types you use to model contract state. The type you choose determines whether concurrent writes merge, conflict, or ignore each other. At the protocol level, the primitives are `NNInt`, `Bytestring`, and `RetrocausalQueue`; `Map`, `Value`, `Vector`, and `Node` are SDK helpers built on top.
 
 ## NNInt
 
@@ -28,7 +28,7 @@ self.value.strict_inc(-3);   // Tx B: "subtract 3"
 // Both land. Result: original + 2
 ```
 
-Pass negative values to `strict_inc` to subtract. The non-negative invariant is enforced at the protocol level: if the merged result of all deltas would take the value below zero, the offending transaction is excluded.
+Pass negative values to `strict_inc` to subtract. The non-negative invariant is enforced by the runtime: if concurrent debits exceed available capacity, one or more transactions are excluded.
 
 How this works underneath (the `set_add` primitive and its commutativity rules) is covered in [NNInt In Depth](/programming-model/nnint/).
 
@@ -79,20 +79,20 @@ self.owner.set(&other_owner);  // Tx B -- conflict, one excluded
 
 Use Bytestring for config, ownership, or metadata where you accept that concurrent writers to the same location are mutually exclusive. Not for hot paths.
 
-## RetrocausalQueue
+## RCQ\<T\> / RetrocausalQueue
 
 FIFO queue. Inserts always commute. Consumes are sequential.
 
 ```rust
-// These two transactions both land:
-retrocausal_queue_insert(&key, &entry_a);  // Tx A
-retrocausal_queue_insert(&key, &entry_b);  // Tx B -- no conflict
+// These two transactions can both land:
+self.requests.insert(&entry_a);  // Tx A
+self.requests.insert(&entry_b);  // Tx B -- no conflict
 
 // Consumes pull from the front of the queue
-let entry = retrocausal_queue_consume_sized::<N>(&key);
+let entry = self.requests.try_consume();
 ```
 
-Use RetrocausalQueue when producers are concurrent but consumers process items in order.
+Use `RCQ<T>` when producers are concurrent but consumers process items in order. Lower-level raw functions are available when you need byte-level control.
 
 ## Vector\<S\>
 
@@ -168,7 +168,7 @@ Use `Value<T>` for typed single-slot storage. Use `Bytestring` when you need raw
 | Ordered list, accessed by index | Vector | Per-element independence. Pushes are exclusive. |
 | Store a typed value | Value\<T\> | Typed Bytestring. Same conflict rules. |
 | `col = absolute_value` (raw bytes) | Bytestring | Accept that concurrent writes conflict. |
-| Append to a log or work queue | RetrocausalQueue | Inserts merge, consumers are sequential. |
+| Append to a log or work queue | RCQ\<T\> | Inserts merge, consumers are sequential. |
 
 :::tip[Exclusive Writes]
 If you need mutex-like semantics (only one transaction can write to a storage location per block), each type exposes exclusivity differently:

@@ -182,7 +182,7 @@ impl TokenContract {
 }
 ```
 
-Every mutation goes through `strict_inc`. No method reads a value, computes a new value, and writes it back. That read-modify-write pattern would create conflicts between concurrent transactions. `strict_inc` expresses intent ("add 50" or "subtract 30") without reading the current value, which is what makes it commutative.
+Every balance and allowance mutation goes through `strict_inc`. No method reads a value, computes a new absolute value, and writes it back. That read-modify-write pattern would create conflicts between concurrent transactions. `strict_inc` expresses intent ("add 50" or "subtract 30") as a delta; it may read the snapshot for early underflow detection, but it does not write an absolute final value.
 
 Map access uses `.at(key)` for reads and `.at_mut(key)` for writes. These return borrow guards that deref to the inner storage type. Nested maps chain naturally: `self.allowances.at_mut(owner).at_mut(spender)` walks through `Map<owner, Map<spender, NNInt>>` and returns a mutable reference to the inner `NNInt`.
 

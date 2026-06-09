@@ -165,9 +165,7 @@ See [Storage & Scheduling Economics](/how-it-works/storage-economics/) for the f
 | Sequence numbers enforce serial execution per account | No sequence numbers; transactions parallelize by default |
 | Fees per transaction (inclusion + resource fees) | No per-operation fees; free HOG balance determines throughput share |
 
-**What you can stop doing:** TTL management, storage tier selection, building cron jobs to extend data lifetimes, managing channel accounts for parallelism, working within resource limits.
-
-**What you need to learn:** commutativity. In Soroban, you think about storage tiers and TTLs. In Groundhog, you think about whether your operations commute. That is the new axis of complexity, and it is the only one.
+For Soroban developers, the main shift is not contract expressiveness; it is where the runtime asks you to pay attention. Groundhog makes storage permanence and transaction capacity part of the base model, then uses commutativity to decide which operations can merge safely in parallel.
 
 ## Related Documentation
 

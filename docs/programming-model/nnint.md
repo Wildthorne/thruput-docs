@@ -1,7 +1,10 @@
 # NNInt set_add Commutativity Rules
 
-Source of truth: lead dev, confirmed 2026-03-06.
-Public API: `sdk_rs/src/non_negative_int.rs`. Internal syscall wrapper: `sdk_rs/src/internal/nnint.rs`. The `src/storage/` layer is optional convenience sugar.
+Verified against the current Rust SDK in `~/code/sdk_rs`:
+
+- Public storage wrapper: `crates/sdk/src/storage/nnint.rs`
+- Throwing syscall wrappers: `crates/sdk/src/sys_exn/nnint.rs`
+- Internal set/add wrapper: `crates/sdk/src/sys_exn/nnint_internal.rs`
 
 ## The Primitive
 
@@ -10,7 +13,7 @@ Every NNInt storage location maintains two pending values during a transaction:
 - **set**: `i128` -- absolute base value
 - **add**: `i128` -- accumulated delta
 
-The low-level syscall is `set_add(set_value, add_value)`. It replaces both pending values. The final committed value is `set + add`.
+The low-level operation is `set_add(set_value, add_value, flags)`. It replaces both pending values. The final value is `set + add`, subject to runtime reservation and invariant checks.
 
 ## The One Rule
 
@@ -26,11 +29,11 @@ The set values don't have to be any particular value. They just have to match ea
 
 **Same base + different deltas = merge. Different bases = conflict.**
 
-## The None Optimization
+## The None Path
 
-`set_add` also accepts `None` as the set value: `set_add(None, add_value)`. This means "I don't need to see the base, let the DB fill it in." The DB reads the snapshot value and calls the `set_add(snapshot, add_value)` codepath internally.
+`set_add` also accepts `None` as the set value: `set_add(None, add_value)`. This means "I don't need to load a base in this contract invocation; let the runtime resolve it from the snapshot."
 
-This is a performance optimization. It produces the same result as `set_add(snapshot, add_value)` but skips the client-side DB read. Since the DB resolves None to the snapshot, it commutes with any call that also resolves to the snapshot value:
+This is a performance optimization. It produces the same result as `set_add(snapshot, add_value)` but skips the forced snapshot read. Since the runtime resolves `None` to the snapshot, it commutes with any call that also resolves to the snapshot value:
 
 | Tx A | Tx B | Commutes? | Why |
 |------|------|-----------|-----|
@@ -44,21 +47,21 @@ The public API maps to `set_add` as follows:
 
 ### `strict_inc(delta)` -- the common case
 
-Reads the snapshot base, checks the non-negative invariant, calls `set_add(snapshot, accumulated + delta)`.
+Forces the snapshot base to be loaded, checks the non-negative invariant in the current invocation, then calls `set_add(Some(snapshot), accumulated + delta)`.
 
 - Commutes with other `strict_inc` and `inc` calls (all resolve to the same snapshot base).
-- Aborts immediately if the result would be negative. Better debugging.
-- Pays for a DB read.
+- Aborts immediately if this invocation's result would be negative. Better debugging.
+- Pays for the forced snapshot read.
 
 ### `inc(delta)` -- the optimization
 
-Calls `set_add(None, accumulated + delta)`. Skips the client-side read.
+Preserves the pending set value if one already exists in this invocation; otherwise calls `set_add(None, accumulated + delta)`. Skips the forced snapshot read.
 
 - Commutes with other `inc` and `strict_inc` calls (None resolves to snapshot).
-- Underflow is caught at commit time, not at call site. Harder to debug.
-- Saves a DB read per call.
+- Underflow is caught later by runtime reservation/invariant checks when no explicit base has been loaded. Harder to debug.
+- Saves the forced read when you do not need early underflow detection.
 
-`strict_inc` and `inc` are fully interchangeable from a commutativity standpoint. Mix them freely. The only tradeoff is read cost vs early underflow detection.
+`strict_inc` and `inc` are interchangeable from a commutativity standpoint. Mix them freely. The tradeoff is read cost vs early underflow detection.
 
 ### `set(value)` -- absolute write
 
@@ -69,12 +72,12 @@ Calls `set_add(value, 0)`. Replaces the base and clears the delta.
 - `set(100)` vs `set(200)` -- conflict.
 - `set(100)` vs `strict_inc(5)` -- conflict if snapshot != 100; commutes if snapshot == 100.
 
-Use `strict_inc()` on hot paths. Reserve `set()` for initialization or admin operations.
+Use `strict_inc()` by default for balances and counters. Use `inc()` only when you intentionally want to skip the read. Reserve `set()` for initialization or admin operations.
 
 ## Summary
 
 | Method | Calls | Reads? | Commutative? | Use for |
 |--------|-------|--------|--------------|---------|
-| `strict_inc(delta)` | `set_add(snapshot, accumulated + delta)` | Yes | Always (snapshot base) | Hot paths, balances, counters |
-| `inc(delta)` | `set_add(None, accumulated + delta)` | No | Always (resolves to snapshot) | High-throughput, skip the read |
-| `set(value)` | `set_add(value, 0)` | No | Only if values match | Init, admin, config |
+| `strict_inc(delta)` | `set_add(Some(snapshot), accumulated + delta)` | Yes | Yes, when all callers resolve to the same snapshot base | Default for balances and counters |
+| `inc(delta)` | `set_add(existing_set_or_None, accumulated + delta)` | No | Yes, when all callers resolve to the same snapshot base | Skip the read when late underflow detection is acceptable |
+| `set(value)` | `set_add(Some(value), 0)` | No | Only if values match | Init, admin, config |
