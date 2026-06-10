@@ -53,7 +53,7 @@ Solidity compiles to EVM bytecode. Groundhog contracts compile to WASM:
 cargo --config .cargo/contract.toml build --release
 ```
 
-The output is a `.wasm` binary, analogous to Solidity's ABI + bytecode.
+The output is a `.wasm` binary with an embedded [contract spec](/reference/contract-spec/), analogous to Solidity's bytecode + ABI.
 
 ### Deploying
 
@@ -268,7 +268,7 @@ fn transfer(&mut self, receiver: &ContractAddress, amount: Amount) {
 }
 ```
 
-**What changes:** No `indexed` keyword. Events use typed structs (`TransferEvent`, `ApprovalEvent`) with topic-based indexing built into the type. The SDK provides helpers like `log_transfer_event` that handle serialization. Indexing and filtering happen at the node/explorer layer, not in the contract.
+**What changes:** No `indexed` keyword. Events use typed structs (`TransferEvent`, `ApprovalEvent`) with topic-based indexing built into the type — fields marked `#[topic]` are indexed. The SDK provides helpers like `log_transfer_event` that handle serialization. Indexing and filtering happen at the node/explorer layer, not in the contract. See [Add Events to a Contract](/tutorials/add-events-to-a-contract/) for the full workflow and [Contract Spec](/reference/contract-spec/#events) for how events are described to off-chain tools.
 
 ## ERC-20 Side-by-Side
 
