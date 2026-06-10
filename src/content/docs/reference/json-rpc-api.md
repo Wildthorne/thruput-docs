@@ -243,7 +243,7 @@ Paginated, filterable event stream. Cursor-driven; the server-authored `cursor` 
 | `sequenceNumber` | integer | Position within the transaction's event log |
 | `event` | `EmittedEvent` | `{ contractAddress, topics, data }` |
 
-**`EmittedEvent`** — up to 3 topics (each exactly 32 bytes) plus opaque `data` up to 1 KB. The gateway parses hogd's wire-format `serialized_event` into the split form on the way out.
+**`EmittedEvent`** — up to 3 topics (each exactly 32 bytes) plus opaque `data`; topics and data together are capped at 1 KB. The gateway parses hogd's wire-format `serialized_event` into the split form on the way out.
 
 Source: `crates/api-types/src/events.rs:186-275`.
 

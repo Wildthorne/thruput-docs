@@ -53,7 +53,7 @@ In this example:
 - Each byte becomes 2 hex characters (e.g., `0x01` -> `"01"`, `0xCC` -> `"CC"`)
 - The resulting 16-character string is used as the WebAssembly export name
 
-**Note:** Entrypoint IDs can be arbitrary 8-byte values. The SDK provides a conventional scheme for deriving entrypoint IDs from interface names and method signatures (see [SDK Macros](/reference/sdk-macros/)), but contracts are free to use any 8-byte identifiers they choose.
+**Note:** Entrypoint IDs can be arbitrary 8-byte values. The SDK provides a conventional scheme for deriving entrypoint IDs from interface names, major versions, and method signatures (see [SDK Macros](/reference/sdk-macros/)), but contracts are free to use any 8-byte identifiers they choose.
 
 **Multiple methods:**
 
