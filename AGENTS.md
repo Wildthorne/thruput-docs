@@ -12,14 +12,15 @@ Developer documentation site for the Groundhog L1 blockchain. Built with Astro a
 - Build: `pnpm build`
 - Fast validation: `npx astro check`
 
-## Programming Model Source of Truth
+## Programming Model Guidance
 
-`docs/programming-model/` is authoritative for NNInt, storage types, execution, and gas. Read it before writing or editing related content. Published docs must be derivable from these rules.
+The sibling source repos are authoritative for SDK APIs, protocol semantics, execution, gas, and storage economics. `docs/programming-model/` is a compact working model for doc authors. Read it before editing related content, but verify its claims against source before publishing.
 
 Key rules:
 
-- Two `set_add` calls commute if and only if their set values match.
-- `strict_inc(delta)` and `inc(delta)` are both commutative. `strict_inc` reads the snapshot for early underflow detection. `inc` skips the read.
+- NNInt uses a `set + add` model with a commit-time floor: `value >= min(set, 0)`. Negative explicit `set` values are allowed by current source, but ordinary balances and counters should still use nonnegative bases.
+- Two `set_add` calls commute if and only if their resolved set values match.
+- `strict_inc(delta)` and `inc(delta)` are both commutative. `strict_inc` loads the current base for early underflow detection. `inc` skips that read.
 - Gas costs zero tokens. Root transactions use the declared gas limit for scheduling capacity. There is no unused-gas refund path.
 - Say "gas price estimation" when discussing other-chain pain. The problem is price volatility, not usage prediction.
 - Excluded transactions are returned to the mempool, not retried next block.
@@ -44,7 +45,7 @@ Key rules:
 
 ## Verification
 
-Verify technical claims against `docs/programming-model/` first, then source code.
+Verify technical claims against source code first, then reconcile `docs/programming-model/` and published docs with what the source says.
 
 Other repos:
 

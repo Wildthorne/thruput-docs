@@ -24,15 +24,21 @@ Running contract code costs nothing. There are no gas fees, no per-operation cha
 
 The protocol defines gas limits on transactions and cross-contract calls, but gas costs zero. The gas infrastructure exists for computational metering (preventing infinite loops, bounding cross-contract calls), not for billing.
 
+For root transactions, the declared gas limit is the amount of scheduling capacity used. If you submit a transaction with a `100_000` gas limit, the scheduler accounts for `100_000` units of HOG capacity whether the transaction actually uses `20_000`, `95_000`, or all `100_000`. The execution engine only checks whether the transaction exceeds its declared limit. It does not write a refund for unused gas.
+
+That difference matters for parallelism. A refund-based gas model would need to credit unused gas back to the payer, which creates extra balance updates on the accounts sending many transactions. Groundhog avoids that hot-account path: gas metering can fault an over-limit transaction, but it does not create ledger-side refund effects.
+
 ### Balance-Proportional Scheduling
 
 When the network is under capacity, every valid transaction lands in the next block. No scheduling pressure, no competition.
 
 When demand exceeds capacity, the network allocates throughput proportionally to free HOG balances. If account A holds 1,000 free HOGs and account B holds 500, A gets roughly twice the throughput of B during congestion. This is Balance-Proportional Scheduling (BPS).
 
-The mechanism works through age-weighted queuing. Each account's free HOGs sit in a scheduling queue tagged with the block number they entered. When a transaction executes, HOGs move from the "ready" group to the "scheduled" group. The proposer fills each block by selecting transactions whose HOGs have waited longest. Over time, this produces proportional allocation without requiring any fee market or priority auction.
+The mechanism works through age-weighted queuing. Each account's free HOGs sit in a scheduling queue tagged with the block number they entered. When a transaction is scheduled, the transaction's declared gas limit moves that much HOG capacity from the "ready" group to the "scheduled" group. The proposer fills each block by selecting transactions whose HOGs have waited longest. Over time, this produces proportional allocation without requiring any fee market or priority auction.
 
 No tokens are consumed in this process. HOGs cycle between ready and scheduled groups and eventually become ready again.
+
+HOG transferred between accounts enters the recipient's scheduling queue as newly received capacity. It does not carry the sender's accumulated scheduling age. That makes it safe for a transaction to transfer HOG from the same balance that gave it scheduling capacity: the transfer is just a token movement with fresh scheduling age on the recipient side, not a gas refund.
 
 ### Toll-Free Calls
 
