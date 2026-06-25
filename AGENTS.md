@@ -46,13 +46,14 @@ Key rules:
 
 Verify technical claims against `docs/programming-model/` first, then source code.
 
-Useful local source repos:
+Other repos:
 
-- SDK: `~/code/gh/sdk_rs/`
-- Core engine: `~/code/gh/hogd/`
-- JSON-RPC gateway: `~/code/gh/groundhog-rpc/`
-- Protocol definitions: `~/code/gh/protocol/`
-- TypeScript protocol bindings: `~/code/gh/protocol-ts/`
+- SDK: `../sdk_rs/`
+- Core engine: `../hogd/`
+- JSON-RPC gateway: `../groundhog-rpc/`
+- Protocol definitions: `../protocol/`
+- TypeScript protocol bindings: `../protocol-ts/`
+- TypeScript client/SDK: `../ts-client/`
 
 Common gotchas:
 
