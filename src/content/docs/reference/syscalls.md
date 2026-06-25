@@ -153,7 +153,7 @@ Errors:
 - `FrameReverted` if the callee reverts itself.
 - `Reentrance` if the invoked address is already on the call stack.
 
-Invokes the specified entrypoint of the contract at `address` with the supplied calldata and auth tokens, creating a new call frame. The new frame is capped at `min(gas_limit, remaining gas in current frame)`; unused gas is returned to the caller. The SDK defaults `gas_limit` to `u64::MAX` so the child inherits everything the parent has left.
+Invokes the specified entrypoint of the contract at `address` with the supplied calldata and auth tokens, creating a new call frame. The new frame is capped at `min(gas_limit, remaining gas in current frame)`; unused child-frame gas returns to the caller's execution budget. This is not a token refund. The SDK defaults `gas_limit` to `u64::MAX` so the child inherits everything the parent has left.
 
 `entrypoint_id` is the little-endian interpretation of an 8-byte `ContractEntrypointID`, passed as a `u64` so a clever compiler can keep it on the WASM stack rather than spilling it to linear memory.
 
@@ -327,9 +327,9 @@ If `force_load_from_snapshot` is false, the prior snapshot state is ignored unle
 | in | `flags` | `StorageDeltaFlagSet` |
 
 Errors:
-- `InvalidSyscallInput` if the operation would always result in a negative value (for example `set_add(1, -2)`) or the storage flags are invalid.
+- `InvalidSyscallInput` if the operation would always violate the NNInt floor (for example `set_add(1, -2)` or `set_add(-1, -1)`) or the storage flags are invalid.
 
-Sets or modifies the NNInt at `key`. `set_value` (if `Some`) supplies the base, and `add_value` is added as a delta. The resolved value must remain nonnegative. Overwrites any existing value, even if that value has a different storage type. See [Programming Model: NNInt](/programming-model/nnint/) for commutativity rules.
+Sets or modifies the NNInt at `key`. `set_value` (if `Some`) supplies the base, and `add_value` is added as a delta. The resolved value must satisfy `value >= min(set, 0)`. Overwrites any existing value, even if that value has a different storage type. See [Programming Model: NNInt](/programming-model/nnint/) for commutativity rules.
 
 ### DeleteObject
 

@@ -260,7 +260,7 @@ All fields must be SDK storage types. Plain data must be wrapped in `Value<T>`.
 | Type | Description |
 |------|-------------|
 | `Value<T>` | Single XDR-serializable value |
-| `NNInt` | Non-negative integer with commutative arithmetic |
+| `NNInt` | Integer storage with commutative arithmetic and a commit-time floor |
 | `Bytestring` | Variable-length byte blob |
 | `Map<K, V>` | Key-addressed collection (entries not enumerable) |
 | `Vector<T>` | Indexed collection backed by `Map<u32, T>` plus a length counter |

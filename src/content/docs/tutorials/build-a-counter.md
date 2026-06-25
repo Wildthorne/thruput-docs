@@ -82,7 +82,7 @@ pub struct Counter {
 }
 ```
 
-The `#[sdk::storage]` macro generates serialization and persistence code. Each field becomes a storage slot. `NNInt` (non-negative integer) is the core commutative primitive: it supports additive operations that commute by construction.
+The `#[sdk::storage]` macro generates serialization and persistence code. Each field becomes a storage slot. `NNInt` is Groundhog's core commutative integer primitive: it supports additive operations that commute by construction.
 
 One field is all this contract needs. More complex contracts use `Map<K, V>` for key-value storage (see [Build a Token](/tutorials/build-a-token/)).
 
@@ -188,7 +188,7 @@ fn test_counter_underflow() {
 
             client.initialize(5);
 
-            // Decrementing by 10 should abort: NNInt can't go negative
+            // Decrementing by 10 should abort: strict_inc rejects a negative result
             match client.try_decrement(10) {
                 Ok(_) => panic!("expected underflow"),
                 Err(err) => assert!(

@@ -14,9 +14,9 @@ non_negative_int_set(key, -5);
 non_negative_int_inc(key, 1);  // succeeds, value is now -4
 ```
 
-When the base is negative, increments that keep the value negative do not abort. The non-negative invariant only triggers an immediate abort when a positive base plus a negative increment would go below zero.
+When the base is negative, increments that move the value upward can keep the value negative without aborting. The commit-time floor is `value >= min(set, 0)`, not simply `value >= 0`. `strict_inc` still aborts if the invocation's total remains negative.
 
-This is a low-level capability. Most contracts should use `strict_inc` and let the invariant protect them. Negative set values are relevant for initialization patterns and edge cases where the protocol-level enforcement needs to be bypassed temporarily.
+This is a low-level capability. Most contracts should use `strict_inc` on nonnegative bases and let the invariant protect balances and counters. Negative set values are relevant for initialization patterns and edge cases that need an explicit lower floor.
 
 ## Exclusive Writes
 
