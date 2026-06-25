@@ -6,7 +6,7 @@ At the protocol level, the user-facing primitives are `NNInt`, `Bytestring`, and
 
 ## NNInt
 
-Non-negative integer with a two-component (set, add) model. Concurrent increments commute. Concurrent absolute writes conflict. Full rules in [nnint.md](./nnint.md).
+Integer storage with a two-component (set, add) model and a commit-time floor. Concurrent increments commute. Concurrent absolute writes conflict. Full rules in [nnint.md](./nnint.md).
 
 ```rust
 // Delta operation: commutes with other deltas on the same key
@@ -17,7 +17,7 @@ self.balance.strict_inc(-3);  // pass negative to subtract
 self.balance.set(100);
 ```
 
-`strict_inc` reads the snapshot base for early underflow detection, then records a delta. `inc` records a delta without forcing that read; underflow is caught later. Both commute with other delta operations on the same base. The non-negative invariant is enforced by the runtime: if concurrent debits exceed available capacity, one or more transactions are excluded.
+`strict_inc` reads the current base for early underflow detection, then records a delta. `inc` records a delta without forcing that read; underflow is caught later. Both commute with other delta operations on the same resolved base. For ordinary balances and counters, the base is nonnegative and the runtime enforces that concurrent debits cannot drive the value below zero. If debits exceed available capacity, one or more transactions are excluded.
 
 ## Map<K, V>
 

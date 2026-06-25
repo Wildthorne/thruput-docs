@@ -60,6 +60,10 @@ Your contract writes no retry logic. Client-side, the flow is the same as any ot
 
 Transactions and cross-contract calls specify a gas limit. Gas bounds computation (prevents infinite loops, caps cross-contract call depth) but costs zero tokens. No gas is burned.
 
+For root transactions, the gas limit is the scheduling quantity. The scheduler accounts for the amount you declare whether execution uses all of it or only part of it. If execution exceeds the limit, the transaction faults and its state changes are discarded.
+
+There is no "pay the maximum, refund the unused gas" path. Actual gas consumed does not write a refund delta, touch the sender's balance, or create a serial hot-account update. Cross-contract calls may return unused child-frame gas to the caller's frame, but that only affects local execution budget. It is not a token refund and it does not change the root transaction's scheduling amount.
+
 ```rust
 let client = TokenClient::new(&token_address);
 client.with_gas_limit(100_000).transfer(&to, amount);
@@ -75,6 +79,8 @@ Your free HOG token balance determines your share of network throughput.
 
 - **Under capacity**: every valid transaction lands in the next block. No competition.
 - **Under congestion**: throughput is allocated proportionally to free HOG balances. Hold 2x the HOG, get roughly 2x the throughput.
+
+HOG transferred between accounts enters the recipient's scheduling queue as newly received capacity. It does not carry the sender's accumulated scheduling age. A transaction can transfer HOG from the same balance that scheduled it without creating refund accounting or extra contention.
 
 No tokens are consumed. No tokens are burned. Schedule your coins, don't burn them.
 

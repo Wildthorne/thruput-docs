@@ -122,7 +122,7 @@ Groundhog's costs are capital-based, not usage-based. You hold HOG tokens to get
 
 Every HOG in your account is either **free** (contributing to your throughput share) or **locked** (backing on-chain storage). Free HOGs entitle you to a proportional share of network throughput through age-weighted scheduling. Locked HOGs are returned when you delete the data they back.
 
-Transactions declare a gas limit for computational metering (bounding cross-contract calls, preventing infinite loops), but gas costs zero. There are no per-operation fees.
+Transactions declare a gas limit for computational metering (bounding cross-contract calls, preventing infinite loops), but gas costs zero. For root transactions, the declared limit is the scheduling quantity. The engine measures gas so it can fault an over-limit transaction, not so it can compute a refund. Actual gas consumed does not write refund deltas or create balance updates.
 
 See [Storage & Scheduling Economics](/how-it-works/storage-economics/) for the full cost model, including dynamic pricing, sponsorship, and Balance-Proportional Scheduling.
 

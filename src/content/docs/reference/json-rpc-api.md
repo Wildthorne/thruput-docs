@@ -1,432 +1,326 @@
 ---
 title: JSON-RPC API
-description: JSON-RPC 2.0 method reference for the groundhog-rpc gateway.
+description: How Groundhog's JSON-RPC is shaped and the methods it exposes.
 ---
 
 :::caution[Draft]
-Wire-format version `1.2.1`. Methods, parameter shapes, and return types are stable across patch releases of the same wire-format major. New variants may be added to non-exhaustive enums without a major bump; clients must accept unknown variants.
+This API is under active development. Method signatures and response formats may change.
 :::
 
-The Groundhog JSON-RPC gateway (`groundhog-rpc`) speaks JSON-RPC 2.0 over HTTP. All methods are namespaced under `groundhog_*`; local-node-only methods live under `groundhog_dev_*`.
+The Groundhog JSON-RPC gateway (`groundhog-rpc`) is a separate service that exposes a JSON-RPC 2.0 API over HTTP. It connects to the validator stack (hogd) via internal RPC and provides external access for clients, wallets, and tooling.
 
-Source of truth: the `GroundhogApi` trait in `crates/rpc-api/src/lib.rs`. Request and response types live in `crates/api-types/src/`.
+For how the gateway fits into the node architecture, see [Networking](/how-it-works/networking/). The first half of this page covers the *shape* of the API and the design choices behind it; the second half is the per-method reference. If you're picking up the API for the first time, read the design section first. If you're looking up a specific method, jump to [Methods](#methods).
 
-For architecture context see [Networking](/how-it-works/networking/). For client-side error handling patterns see [Error Handling](/reference/error-handling/).
+## Connection
 
-## Wire format conventions
+The gateway listens on a configurable HTTP port. All methods use the standard JSON-RPC 2.0 request format:
 
-| Element | Format |
-|---------|--------|
-| Hashes (`tx_hash`, block hash, etc.) | `0x`-prefixed lowercase hex, 64 chars (32 bytes) |
-| Contract addresses | `0x`-prefixed lowercase hex, 64 chars (32 bytes) |
-| Event topics | `0x`-prefixed lowercase hex, 64 chars (32 bytes, exactly) |
-| Variable-length bytes | `0x`-prefixed lowercase hex, even length |
-| Block heights, counts | JSON integer |
-| `NonnegativeInt` storage values | Decimal-encoded JSON string (exceeds JSON number precision) |
-| Field naming | `camelCase` on the wire; Rust types use `snake_case` |
-| Parameter naming | `snake_case` (by-name params), e.g. `tx_hex`, `tx_hash` |
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "groundhog_chainTip",
+  "params": [],
+  "id": 1
+}
+```
 
-All methods take a single by-name parameter object unless documented as parameterless. The examples below use named params.
+## Design
 
-## Transaction submission
+The API presents a typed JSON envelope. Responses are objects with named, JSON-native fields. Wallets, explorers, and dapps interpret them directly. Clients only reach for an XDR codec when they need to inspect or construct the bytes inside a specific field — never to decode a whole response.
+
+### Typed JSON, Not XDR Blobs
+
+Three points on the design space:
+
+| Style | Example | What clients need |
+|---|---|---|
+| **Raw bytes everywhere** | EVM `eth_getStorageAt` returns one `bytes32` per slot | A storage-layout library to know what each slot means |
+| **XDR-typed everywhere** | Soroban `ScVal` wraps every value in a tagged XDR enum | An XDR codec for nearly every read |
+| **Typed JSON envelope** | Groundhog `getStorageAt` returns `{ kind: "nonnegativeInt", value: "1000000000" }` | Nothing for the common cases; an XDR codec only for byte-typed fields |
+
+The third style — Horizon-shaped envelope, Groundhog-typed values — is what every method on the public `groundhog_*` namespace uses. It works because Groundhog's storage model is genuinely typed at the protocol level: nonnegative integers, bytestrings, auth data, and retrocausal queues are distinct kinds, not packed words. Returning that type information directly is cheaper for clients than reconstructing it from raw bytes.
+
+### The Shape of a Response
+
+Receipts, events, and statuses are typed objects. Nothing is XDR-encoded except specific byte-typed fields (addresses, hashes, calldata, event topics) which are carried as `0x`-prefixed hex strings.
+
+A transaction receipt:
+
+```json
+{
+  "txHash": "0xabc1...def0",
+  "height": 12345,
+  "status": { "result": "ok" },
+  "events": [
+    {
+      "contractAddress": "0x1111...1111",
+      "topics": ["0x2222...2222"],
+      "data": "0x3333"
+    }
+  ],
+  "returnData": "0x42"
+}
+```
+
+`status` is a tagged variant, not a binary 0/1. A reverted call returns `{ "result": "reverted", "message": "insufficient balance" }`; a deterministic engine error returns `{ "result": "deterministicError", "kind": "outOfGas" }`. Clients switch on `result` and handle each case directly. Compare to EVM, where a `0` status leaves you guessing why.
+
+Events look familiar to anyone who has worked with `eth_getLogs`: structured records with a `contractAddress`, indexed `topics`, and a `data` payload. The page wrapper carries a cursor for pagination.
+
+### Reading State
+
+`groundhog_getStorageAt` returns the latest committed value at a given address and storage key:
+
+```json
+{
+  "blockHeight": 4567,
+  "item": {
+    "kind": "nonnegativeInt",
+    "value": "1000000000"
+  }
+}
+```
+
+Two things to notice. First, the response always carries `blockHeight` — even when the key is empty (`item: null`) — so clients can compare against `chainTip` to gauge freshness. Second, `item` is a tagged union. Clients switch on `kind` and read the variant's named fields directly:
+
+```json
+{ "kind": "nonnegativeInt", "value": "1000000000" }
+{ "kind": "bytestring",     "bytes": "0xdeadbeef" }
+{ "kind": "deployedContract", "hash": "0x...", "size": 12345, "contractType": 0 }
+{ "kind": "authData" }
+{ "kind": "retrocausalQueue" }
+{ "kind": "replayCacheEntry" }
+{ "kind": "unknown", "typeId": 99 }
+```
+
+`authData`, `retrocausalQueue`, and `replayCacheEntry` are presence-only. Their on-chain shapes are richer than a single value can express — auth data is a structured policy record, retrocausal queues are multi-entry containers — so the API reports presence and points clients toward a contract invocation when they need the contents. Same principle as Horizon: headline stats from the read API; deep detail from a typed operation.
+
+`unknown` is a forward-compatibility variant. If a future protocol release adds a new storage kind, clients built against an older spec see `{ "kind": "unknown", "typeId": 99 }` rather than a parse failure.
+
+#### Wallet Balance, End to End
+
+The HogToken precompile stores HOG balances under per-address storage keys. To read a wallet's balance, a client calls `groundhog_getStorageAt(hogTokenAddress, walletBalanceKey)` and pattern-matches on the response:
+
+```js
+const { item } = await rpc.getStorageAt(HOG_TOKEN_ADDRESS, balanceKey(wallet));
+if (item?.kind === "nonnegativeInt") {
+  return BigInt(item.value);
+}
+return 0n;  // key absent or different kind
+```
+
+No XDR codec, no storage-layout library, no `keccak256(abi.encode(...))` slot derivation in the client. The wallet derives its own balance key, asks the chain, and reads a decimal string.
+
+### Wire Conventions
+
+A few conventions the API follows consistently:
+
+- **camelCase for all field names** in `groundhog_*` and `groundhog_dev_*` JSON-RPC responses. (Internal readiness JSON between hogd-dev and the supervisor uses snake_case; this is process plumbing, not public API.)
+- **`0x`-prefixed lowercase hex** for byte-typed fields: addresses, hashes, calldata, event topics, raw bytestrings.
+- **Decimal-string encoding for big integers** (`u128`, `i128`, anything that can exceed JavaScript's safe-integer range). Smaller numeric fields like block heights and event counts are JSON numbers.
+- **Tagged unions** are encoded with a discriminator field (`kind` for storage items, `result` for execution status). Variants carry their own named fields alongside the tag.
+- **Method namespacing**: `groundhog_*` for production methods every backend implements, `groundhog_dev_*` for local-node-only methods (account listing, transaction detail with full traces, reset). Production gateways do not expose `groundhog_dev_*`.
+
+Specific byte-field sizes:
+
+| Field | Format |
+|---|---|
+| Hashes and addresses | `0x`-prefixed lowercase hex, 64 characters (32 bytes) |
+| Event topics | `0x`-prefixed lowercase hex, 64 characters (32 bytes) |
+| Event data, calldata, bytestrings | `0x`-prefixed lowercase hex, variable length |
+
+### What's Familiar from EVM
+
+If you've written against `eth_*` JSON-RPC, most of this is muscle memory:
+
+- Structured-JSON responses for receipts, events, blocks, status.
+- camelCase field names. Hex-encoded byte fields. Discriminator tags for variants.
+- Method namespacing by prefix.
+- A cursor-paginated `getEvents` shaped like `eth_getLogs`.
+
+The places Groundhog goes further than EVM: typed status (no binary 0/1 guessing), typed storage reads (no slot-layout reverse engineering), and big numbers as decimal strings rather than hex (same precision-safety reasoning, different convention than Geth).
+
+### Where It Differs from Soroban
+
+Soroban exposed `ScVal` — an XDR-tagged universal value type — as the wire shape for nearly every read and write. The result was that wallets, explorers, and indexer-front-ends all needed a working XDR codec to make sense of basic responses. Familiar JSON gives way to "decode this XDR blob to find out what type it is, then decode again to read the value."
+
+Groundhog avoids that by exposing typed JSON variants instead. A `nonnegativeInt` arrives as `{ "kind": "nonnegativeInt", "value": "1000000000" }`, not as an XDR-encoded `ScVal::U128(...)`. Clients still need an XDR codec to construct signed transactions and decode XDR-typed payload bytes inside specific fields, but the envelope is JSON-native end to end.
+
+The framing in one line: **Horizon-shaped JSON envelope, EVM-shaped naming and conventions, typed where the protocol is genuinely typed.**
+
+## Methods
+
+Phase 1 methods. See [Future Phases](#future-phases) for what's planned next.
 
 ### groundhog_sendRawTransaction
 
 Submit a signed transaction to the mempool.
 
-**Parameters**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `bytes` | `0x`-prefixed hex | The signed transaction bytes |
 
-| Name | Type | Description |
-|------|------|-------------|
-| `tx_hex` | string | `0x`-prefixed hex-encoded XDR of a signed transaction |
+**Returns:** `TxHash` (the transaction hash).
 
-**Returns** — `TxHash`: 32-byte hash serialized as a `0x`-prefixed hex string. Equals `sha256(xdr_serialize(signed_tx.tx))`, covering the inner transaction body, not signatures.
-
-**Example request**
-
-```json
-{
-  "jsonrpc": "2.0",
-  "method": "groundhog_sendRawTransaction",
-  "params": { "tx_hex": "0x0000000100000020..." },
-  "id": 1
-}
-```
-
-**Example response**
-
-```json
-{
-  "jsonrpc": "2.0",
-  "result": "0xabc123...def",
-  "id": 1
-}
-```
-
-## Transaction queries
+---
 
 ### groundhog_getTransactionReceipt
 
-Full receipt for a committed transaction. Returns `null` until the transaction is committed.
+Get the execution result and emitted events for a committed transaction.
 
-**Parameters**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `hash` | `0x`-prefixed hex (64 chars) | The transaction hash |
 
-| Name | Type | Description |
-|------|------|-------------|
-| `tx_hash` | string | Canonical transaction hash (`0x`-prefixed, 64 hex chars) |
+**Returns:** `TransactionReceipt` or `null` if not found. The receipt includes execution status, emitted events, and block height. See [The Shape of a Response](#the-shape-of-a-response) for the wire shape.
 
-**Returns** — `Option<TransactionReceipt>`:
+**Execution status values:**
 
-| Field | Type | Notes |
-|-------|------|-------|
-| `txHash` | `TxHash` | Canonical hash of the executed transaction |
-| `height` | integer | Block height at which the transaction was committed |
-| `status` | `ExecStatus` | Discriminated union, see below |
-| `events` | array of `EmittedEvent` | Events emitted during execution |
-| `returnData` | hex string (optional) | Bytes returned by the root call when `status.result == "ok"` and the chain version recorded a return value |
-| `abortData` | hex string (optional) | Bytes passed to `abort`/`revert` when `status.result == "reverted"` and the chain version recorded the payload |
+| Status | Meaning |
+|--------|---------|
+| `{"result": "ok"}` | Transaction executed and committed |
+| `{"result": "reverted", "message": "..."}` | Transaction executed but was reverted |
+| `{"result": "deterministicError", "kind": "..."}` | Transaction failed deterministically (e.g., WASM trap) |
+| `{"result": "failedGasSponsorship"}` | Gas sponsorship check failed |
+| `{"result": "other"}` | Unclassified execution outcome |
 
-There is no `blockHash`, `gasUsed`, `gasPrice`, `transactionIndex`, or `logsBloom`. SCP gives instant finality, so height alone identifies the block.
-
-Source: `crates/api-types/src/receipt.rs:20-52`.
-
-**`ExecStatus` variants** — tagged union with discriminator `result`:
-
-| `result` | Extra fields | Meaning |
-|----------|--------------|---------|
-| `ok` | — | Transaction executed successfully |
-| `reverted` | `message` (optional string) | Root call called `abort`/`revert` |
-| `deterministicError` | `kind` (string) | Engine-deterministic failure (out of gas, stack overflow, etc.) |
-| `failedGasSponsorship` | — | Gas sponsorship check failed |
-| `nonDeterministicError` | — | Proposal-time storage conflict or other race |
-| `other` | — | Unrecognized `ExecResult` from the indexer; check for gateway update |
-
-`ExecStatus` is `#[non_exhaustive]`. Clients must handle unknown variants gracefully.
-
-**Example response**
-
-```json
-{
-  "jsonrpc": "2.0",
-  "result": {
-    "txHash": "0xabc123...",
-    "height": 42,
-    "status": { "result": "ok" },
-    "events": [
-      {
-        "contractAddress": "0x1111...",
-        "topics": ["0xdead...beef"],
-        "data": "0xcafebabe"
-      }
-    ],
-    "returnData": "0x01"
-  },
-  "id": 2
-}
-```
+---
 
 ### groundhog_getTransactionStatus
 
-Lightweight status check that consults the mempool, then the indexer.
+Check whether a transaction is pending, committed, or unknown.
 
-**Parameters**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `hash` | `0x`-prefixed hex (64 chars) | The transaction hash |
 
-| Name | Type | Description |
-|------|------|-------------|
-| `tx_hash` | string | Canonical transaction hash |
+**Returns:** One of:
 
-**Returns** — `TransactionStatus`, tagged union with discriminator `status`:
+| Status | Meaning |
+|--------|---------|
+| `Pending` | Transaction is in the mempool, not yet committed |
+| `Committed` | Transaction has been included in a block (includes `height` and `blockHash`) |
+| `Invalid` | Transaction was rejected |
+| `Unknown` | Transaction not found in mempool or committed history |
 
-| `status` | Extra fields | Meaning |
-|----------|--------------|---------|
-| `pending` | — | In the mempool, not yet committed |
-| `committed` | `height` (integer) | Included in a committed block; no `blockHash`, height alone identifies |
-| `invalid` | `reason` (string) | Scheduler rejected the transaction |
-| `unknown` | — | Not found in mempool or indexer |
+The gateway checks the mempool (scheduler) first, then the indexer. If the scheduler is unavailable, it returns best-effort results from the indexer only.
 
-Source: `crates/api-types/src/transaction.rs:22-38`.
-
-**Example response**
-
-```json
-{
-  "jsonrpc": "2.0",
-  "result": { "status": "committed", "height": 42 },
-  "id": 3
-}
-```
-
-## Block queries
+---
 
 ### groundhog_chainTip
 
-Current chain tip.
+Get the current chain tip.
 
-**Parameters** — none.
+**Parameters:** None.
 
-**Returns** — `ChainTip`:
+**Returns:** `ChainTip` with the current block height and block hash.
 
-| Field | Type | Notes |
-|-------|------|-------|
-| `height` | integer | Latest committed block height |
-| `blockHash` | hex string | SHA-256 hash of the tip block |
-
-### groundhog_getBlockByNumber
-
-Block header data at a given height. Returns `null` when the height is beyond the indexed tip or otherwise unavailable.
-
-**Parameters**
-
-| Name | Type | Description |
-|------|------|-------------|
-| `height` | integer | Block height to fetch |
-
-**Returns** — `Option<BlockInfo>`:
-
-| Field | Type | Notes |
-|-------|------|-------|
-| `networkId` | integer (u64) | Network identifier |
-| `blockHeight` | integer | Block height |
-| `txsetHash` | hex string | Hash over the committed transaction set |
-| `dbHash` | hex string | Database state hash at this block |
-| `eventsHash` | hex string | Hash over emitted events |
-| `prevBlockHash` | hex string | Predecessor block hash |
-
-### groundhog_pendingTransactionCount
-
-Number of transactions currently in the mempool.
-
-**Parameters** — none.
-
-**Returns** — integer (u64).
-
-## Event queries
-
-### groundhog_getEvents
-
-Paginated, filterable event stream. Cursor-driven; the server-authored `cursor` carries `order` and `anchor` once pagination has started.
-
-**Parameters** — single `query` object of shape `EventQuery`:
-
-| Field | Type | Notes |
-|-------|------|-------|
-| `filters` | array of `EventFilter` (max 16) | OR across filters, AND within each filter |
-| `order` | string enum: `ascending` \| `descending` | Walk direction |
-| `anchor` | `BlockAnchor` | `{ "kind": "atBeginning" }`, `{ "kind": "atEnd" }`, or `{ "kind": "atHeight", "height": <int> }` |
-| `cursor` | hex string | `"0x"` on initial call; pass back the prior response's `cursor` to continue |
-| `limit` | integer | Clamped to `[1, 200]`; `0` means server default (50) |
-
-**`EventFilter`**
-
-| Field | Type | Notes |
-|-------|------|-------|
-| `contractAddresses` | array of contract address (max 16; must be non-empty) | Required: the indexer has no topic-only scan |
-| `topics` | `EventTopicFilter` | Positional topic predicate |
-
-**`EventTopicFilter`** — for each position (`topic0`, `topic1`, `topic2`), supply an array of up to 16 topic values. Empty = "match anything at this position". Non-empty = "topic at this position must be in the list". Filters with fewer specified positions partial-match events with more topics (Ethereum `getLogs` / stellar-rpc post-#358 semantics).
-
-**Returns** — `EventPage`:
-
-| Field | Type | Notes |
-|-------|------|-------|
-| `events` | array of `IdentifiedEvent` | May be empty even when `cursor` is non-empty: keep paginating |
-| `cursor` | hex string | `"0x"` when the stream is exhausted in the requested direction |
-| `latestBlock` | integer | Highest block height the indexer has processed |
-| `oldestBlock` | integer | Oldest block height the indexer still retains (currently always 0) |
-
-**`IdentifiedEvent`**
-
-| Field | Type | Notes |
-|-------|------|-------|
-| `txHash` | hex string | Transaction that emitted the event |
-| `blockHeight` | integer | Height at which the event was emitted |
-| `sequenceNumber` | integer | Position within the transaction's event log |
-| `event` | `EmittedEvent` | `{ contractAddress, topics, data }` |
-
-**`EmittedEvent`** — up to 3 topics (each exactly 32 bytes) plus opaque `data`; topics and data together are capped at 1 KB. The gateway parses hogd's wire-format `serialized_event` into the split form on the way out.
-
-Source: `crates/api-types/src/events.rs:186-275`.
-
-**Example request**
-
-```json
-{
-  "jsonrpc": "2.0",
-  "method": "groundhog_getEvents",
-  "params": {
-    "query": {
-      "filters": [
-        {
-          "contractAddresses": ["0x1111..."],
-          "topics": {
-            "topic0": ["0xdead...beef"],
-            "topic1": [],
-            "topic2": []
-          }
-        }
-      ],
-      "order": "descending",
-      "anchor": { "kind": "atEnd" },
-      "cursor": "0x",
-      "limit": 50
-    }
-  },
-  "id": 4
-}
-```
-
-## State queries
+---
 
 ### groundhog_getStorageAt
 
-Read the latest committed storage item at a contract address + key. `blockHeight` in the response always reflects the snapshot the read ran against, even when no item exists at the key, so wallets can compare against `chainTip` to gauge freshness.
+Read the latest committed storage item at an address/key pair.
 
-**Parameters**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `address` | `0x`-prefixed hex (64 chars) | Contract address whose storage to read |
+| `key` | `0x`-prefixed hex | Storage key bytes |
 
-| Name | Type | Description |
-|------|------|-------------|
-| `address` | hex string (32 bytes) | Contract address |
-| `key` | hex string (32 bytes) | Storage key |
+**Returns:** `StorageItemRead { blockHeight, item: StorageItemInfo | null }`. `blockHeight` is always the snapshot the read was performed against; `item` is `null` when no value exists at the key.
 
-**Returns** — `StorageItemRead`:
+See [Reading State](#reading-state) for the full `StorageItemInfo` variant table and the wallet-balance walkthrough.
 
-| Field | Type | Notes |
-|-------|------|-------|
-| `blockHeight` | integer | Snapshot height the read was performed against |
-| `item` | `StorageItemInfo` \| `null` | `null` when the key has no committed value at this snapshot |
+---
 
-**`StorageItemInfo`** — tagged union with discriminator `kind`:
+### groundhog_getBlockByNumber
 
-| `kind` | Extra fields | Meaning |
-|--------|--------------|---------|
-| `nonnegativeInt` | `value` (decimal string) | Non-negative `int128`, e.g. HOG balance; string-encoded because i128 exceeds JSON number precision |
-| `bytestring` | `bytes` (hex string) | Raw byte array |
-| `authData` | — | Authorization data registered at this address (presence indicator) |
-| `retrocausalQueue` | — | RCQ registered at this address (presence indicator; invoke a contract to read contents) |
-| `replayCacheEntry` | — | Replay-cache entry exists; presence is the signal |
-| `deployedContract` | `hash` (hex), `size` (integer), `contractType` (integer) | Deployed-contract metadata |
-| `unknown` | `typeId` (integer) | Protocol shipped a variant this build was not regenerated against |
+Get block information by height.
 
-Source: `crates/api-types/src/state.rs:17-80`.
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `height` | integer | Block height |
 
-### groundhog_view
+**Returns:** `BlockInfo` or `null` if the block does not exist.
 
-Execute a sandboxed contract simulation against the latest committed state. No transaction is submitted; no state is mutated.
-
-**Parameters** — single `request` object of shape `ViewRequest`:
-
-| Field | Type | Notes |
-|-------|------|-------|
-| `contract` | hex string | Contract address to execute |
-| `entrypoint` | hex string | Entrypoint id; exactly 8 bytes |
-| `calldata` | hex string | Opaque call input bytes |
-| `caller` | hex string (optional) | Simulated `get_msg_sender` value |
-
-**Returns** — `ViewResponse`:
-
-| Field | Type | Notes |
-|-------|------|-------|
-| `output` | `RootInvocationOutput` | See below |
-| `events` | array of `EmittedEvent` | Events the simulated frame emitted |
-| `height` | integer | Committed snapshot height the view ran against |
-
-**`RootInvocationOutput`** — tagged union with discriminator `result`:
-
-| `result` | Extra fields | Meaning |
-|----------|--------------|---------|
-| `return` | `returnData` (hex string) | Contract returned normally |
-| `abort` | `abortData` (hex string) | Contract aborted/reverted deterministically |
-| `fault` | — | Execution faulted before producing a return or abort payload |
-
-Source: `crates/api-types/src/view.rs:11-60`.
-
-## System
-
-### groundhog_version
-
-Version dimensions for this JSON-RPC server.
-
-**Parameters** — none.
-
-**Returns** — `VersionInfo`:
-
-| Field | Type | Notes |
-|-------|------|-------|
-| `wireFormat` | string | SemVer of the OpenRPC wire format implemented (e.g. `"1.2.1"`). Branch on this. |
-| `implementation` | string | Diagnostic-only binary version. Do not branch on this. |
-| `commitHash` | string \| null | Diagnostic-only build commit, when available. Do not branch on this. |
-
-## Dev-only methods
-
-Implemented only by the local node (`groundhog node` / `--dev-node`). Production gateways return `-32052 NotImplemented`.
-
-### groundhog_dev_getAccounts
-
-List pre-funded dev accounts with addresses and well-known keys.
-
-**Parameters** — none.
-
-**Returns** — array of `DevAccount`:
-
-| Field | Type | Notes |
-|-------|------|-------|
-| `address` | hex string | Dev account/wallet contract address |
-| `publicKey` | hex string | Ed25519 public key bytes |
-| `privateKey` | hex string | Ed25519 secret key bytes (dev-only; well-known) |
-| `initialStorageTokens` | integer (u64) | Storage-token balance snapshot taken at local-node start. Not refreshed; use a live balance read for current funding. |
-
-Source: `crates/api-types/src/dev.rs:21-33`.
-
-## Error codes
-
-Standard JSON-RPC 2.0 codes apply. Groundhog-specific codes follow Substrate's per-module pattern.
-
-| Code | Name | Meaning |
-|------|------|---------|
-| `-32602` | `InvalidParams` | One or more parameters are malformed, out of range, or otherwise invalid |
-| `-32000` | `TxInvalid` | Submitted transaction is malformed, has invalid XDR, or fails local validation before backend submission |
-| `-32001` | `TxRejected` | Well-formed transaction was rejected by the scheduler or execution backend |
-| `-32002` | `TxNotFound` | Requested transaction hash was not found in mempool or committed index |
-| `-32010` | `BlockNotFound` | Requested block height is out of range or beyond the current indexed tip |
-| `-32050` | `BackendUnavailable` | Gateway could not reach a required backend (hogd, scheduler, indexer) |
-| `-32051` | `BackendTimeout` | Request timed out waiting for a backend response; outcome may be ambiguous |
-| `-32052` | `NotImplemented` | Method exists but is not implemented by this gateway/backend |
-| `-32053` | `Overloaded` | Gateway or backend rejected the request before it reached side-effecting backend execution; safe to retry with backoff |
-
-Codes `-32020` through `-32029` are reserved for subscription errors in a future phase.
-
-Source: `crates/api-types/src/error.rs:8-52`.
-
-## Rust client
-
-The `groundhog-rpc-client` crate provides a typed, async JSON-RPC client generated from the same trait that defines the server.
-
-```rust
-use groundhog_rpc_client::{GroundhogApiClient, HttpClientBuilder};
-
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let client = HttpClientBuilder::default().build("http://localhost:8545")?;
-
-    let tip = client.chain_tip().await?;
-    println!("tip height: {}", *tip.height);
-
-    let tx_hash = client
-        .send_raw_transaction("0x0000000100000020...".to_string())
-        .await?;
-    println!("submitted: {tx_hash:?}");
-
-    Ok(())
+```json
+{
+  "networkId": 1,
+  "blockHeight": 42,
+  "txsetHash": "0x...",
+  "dbHash": "0x...",
+  "eventsHash": "0x...",
+  "prevBlockHash": "0x..."
 }
 ```
 
-Local-node deployments additionally expose `GroundhogDevApiClient`:
+:::caution[Not Yet Implemented]
+This method returns error code `-32052`. The data source for block headers is being finalized.
+:::
 
-```rust
-use groundhog_rpc_client::{GroundhogDevApiClient, HttpClientBuilder};
+---
 
-let client = HttpClientBuilder::default().build("http://localhost:8545")?;
-let accounts = client.get_accounts().await?;
-```
+### groundhog_pendingTransactionCount
 
-The client re-exports the request and response types under `groundhog_rpc_client::types` (alias for `groundhog-rpc-api-types`).
+Get the number of transactions currently in the mempool.
+
+**Parameters:** None.
+
+**Returns:** integer.
+
+:::caution[Not Yet Implemented]
+This method returns error code `-32052`. Requires a scheduler size RPC that is not yet available.
+:::
+
+---
+
+### groundhog_getContractEvents
+
+Query events emitted by a contract within a block range.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `address` | `0x`-prefixed hex (64 chars) | Contract address |
+| `fromBlock` | integer | Start of block range (inclusive) |
+| `toBlock` | integer | End of block range (inclusive) |
+
+**Returns:** Array of `IdentifiedEvent` objects, each containing the event data, topics, block height, and transaction hash.
+
+The gateway enforces a maximum block range per request (default: 1000 blocks).
+
+## Error Codes
+
+Standard JSON-RPC 2.0 error codes apply. The gateway also defines application-specific codes:
+
+| Code | Name | Meaning |
+|------|------|---------|
+| `-32602` | Invalid params | Standard JSON-RPC: malformed parameters |
+| `-32000` | TX_INVALID | Transaction XDR could not be decoded |
+| `-32001` | TX_REJECTED | Scheduler rejected the transaction |
+| `-32002` | TX_NOT_FOUND | Transaction not found in mempool or history |
+| `-32010` | BLOCK_NOT_FOUND | No block at the requested height |
+| `-32011` | RANGE_TOO_LARGE | Event query block range exceeds maximum |
+| `-32050` | BACKEND_UNAVAILABLE | Internal backend (indexer or scheduler) is not connected |
+| `-32051` | BACKEND_TIMEOUT | Internal backend did not respond in time |
+| `-32052` | NOT_IMPLEMENTED | Method exists but is not yet functional |
+
+## Client Libraries
+
+**TypeScript/JavaScript.** The `@groundhog/protocol` and `@groundhog/rpc` packages provide TypeScript type definitions and an ONC-RPC client generated from the same XDR protocol definitions used by hogd. These are lower-level than the JSON-RPC gateway and connect directly to hogd's internal RPC interface. See [TypeScript SDK](/tools/typescript-sdk/) for details.
+
+**Rust.** The `groundhog-rpc` crate includes a typed JSON-RPC client generated from the same trait that defines the gateway. Import `groundhog_rpc_client` for a ready-made client.
+
+## Future Phases
+
+| Phase | Planned |
+|-------|---------|
+| Phase 2 | WebSocket subscriptions (new blocks, pending transactions, contract events) |
+| Phase 3 | SDK client and CLI integration |
+| Phase 4 | Production hardening (rate limiting, caching, metrics) |
+
+## Related Documentation
+
+- [Architecture](/how-it-works/architecture/): The big-picture design.
+- [Networking](/how-it-works/networking/): Where the gateway fits in the node topology.
+- [Storage Types Reference](/reference/storage-types/): Protocol-level kinds the JSON-RPC surfaces.
+- [Transaction Lifecycle](/how-it-works/transaction-lifecycle/): How a submitted transaction moves through the network.
+- [EVM Migration](/migration/evm-migration/): Coming from Solidity and `eth_*` RPC.
+- [Stellar Migration](/migration/stellar-migration/): Coming from Soroban and `ScVal`.
