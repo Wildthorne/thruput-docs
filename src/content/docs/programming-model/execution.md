@@ -88,6 +88,6 @@ No tokens are consumed. No tokens are burned. Schedule your coins, don't burn th
 
 Writing data to the ledger locks HOG proportional to bytes stored. Deleting data returns the HOG. This is a refundable deposit, not a burn.
 
-Every HOG locked for storage is one less HOG contributing to your throughput share. The deposit rate adjusts dynamically based on total network state size. Your contract does not calculate or manage deposits. The runtime handles it at commit.
+Every HOG locked for storage is one less HOG contributing to your throughput share. Current source uses a configured storage cost model. Dynamic pricing based on network state size is a target design, not the current implementation. Your contract does not calculate or manage deposits. The runtime handles storage cost accounting at commit.
 
 For a deeper look at how the runtime implements snapshot isolation, reservation, and delta merging, see [How It Works: Execution Model](/how-it-works/execution-model/).

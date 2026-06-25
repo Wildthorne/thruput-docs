@@ -124,7 +124,7 @@ Every HOG in your account is either **free** (contributing to your throughput sh
 
 Transactions declare a gas limit for computational metering (bounding cross-contract calls, preventing infinite loops), but gas costs zero. For root transactions, the declared limit is the scheduling quantity. The engine measures gas so it can fault an over-limit transaction, not so it can compute a refund. Actual gas consumed does not write refund deltas or create balance updates.
 
-See [Storage & Scheduling Economics](/how-it-works/storage-economics/) for the full cost model, including dynamic pricing, sponsorship, and Balance-Proportional Scheduling.
+See [Storage & Scheduling Economics](/how-it-works/storage-economics/) for the full cost model, including storage deposits, sponsorship, and Balance-Proportional Scheduling.
 
 ## How This Compares
 

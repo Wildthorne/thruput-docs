@@ -7,15 +7,15 @@ API reference for the SDK storage types. For conflict semantics, usage guidance,
 
 ## NNInt
 
-Non-negative integer. Used for balances, counters, supply tracking.
+Integer storage with a two-component (set, add) model and a commit-time floor. Used for balances, counters, and supply tracking.
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
 | `get` | `fn get(&self) -> i128` | Read current value. Aborts if the location has never been set. |
 | `try_get` | `fn try_get(&self) -> Option<i128>` | Read current value. Returns `None` if never set. |
 | `set` | `fn set(&mut self, set_value: i128)` | Set the value. Uses the keypath's locking mode. |
-| `inc` | `fn inc(&mut self, increment: i128)` | Add `increment` without reading the snapshot. Underflow caught at merge, not immediately. |
-| `strict_inc` | `fn strict_inc(&mut self, increment: i128)` | Add `increment`, reading the snapshot first. Aborts immediately if the result would be negative. |
+| `inc` | `fn inc(&mut self, increment: i128)` | Add `increment` without forcing a snapshot read. Underflow caught at merge, not immediately. |
+| `strict_inc` | `fn strict_inc(&mut self, increment: i128)` | Add `increment`, loading the current base for early underflow detection. Aborts immediately if the result would be negative. |
 
 Pass a negative value to `inc` or `strict_inc` to decrement. Use `strict_inc` by default. See [NNInt In Depth](/programming-model/nnint/) for commutativity rules.
 

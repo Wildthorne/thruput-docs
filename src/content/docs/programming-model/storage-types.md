@@ -7,7 +7,7 @@ The SDK storage layer exposes the types you use to model contract state. The typ
 
 ## NNInt
 
-Non-negative integer. The workhorse type for balances, counters, and any value that changes by deltas.
+Integer storage with a two-component (set, add) model and a commit-time floor. It is the workhorse type for balances, counters, and any value that changes by deltas.
 
 ```rust
 use sdk::storage::NNInt;
@@ -28,7 +28,7 @@ self.value.strict_inc(-3);   // Tx B: "subtract 3"
 // Both land. Result: original + 2
 ```
 
-Pass negative values to `strict_inc` to subtract. The non-negative invariant is enforced by the runtime: if concurrent debits exceed available capacity, one or more transactions are excluded.
+Pass negative values to `strict_inc` to subtract. For ordinary balances and counters, the base is nonnegative and the runtime enforces that concurrent debits cannot drive the value below zero. If debits exceed available capacity, one or more transactions are excluded.
 
 How this works underneath (the `set_add` primitive and its commutativity rules) is covered in [NNInt In Depth](/programming-model/nnint/).
 

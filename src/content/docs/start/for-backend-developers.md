@@ -37,9 +37,9 @@ fn transfer(&mut self, receiver: &ContractAddress, amount: Amount) {
 }
 ```
 
-Under the hood, each NNInt (non-negative integer) maintains two pending values: a **set** (absolute base) and an **add** (accumulated delta). The underlying operation is `set_add(set, add)`, and the final committed value is `set + add`. The commutativity rule: two operations commute **if their set values match**. They don't have to be any particular value. They just have to agree.
+Under the hood, each NNInt maintains two pending values: a **set** (absolute base) and an **add** (accumulated delta). The underlying operation is `set_add(set, add)`, and the final committed value is `set + add`, subject to a commit-time floor. The commutativity rule: two operations commute **if their resolved set values match**. They don't have to be any particular value. They just have to agree.
 
-`strict_inc()` uses the snapshot as the set value. Since every transaction in a block reads the same snapshot, `strict_inc` calls always agree on the base. Commutativity comes for free. There's also `inc()`, an optimization that lets the DB fill in the snapshot base, skipping the client-side read. And `set(value)` for absolute writes, where concurrent calls commute only if they write the same value.
+`strict_inc()` loads the current base (usually the snapshot value) and records a delta against it. Since every transaction in a block reads the same snapshot, concurrent `strict_inc` calls agree on the base. Commutativity comes for free. There's also `inc()`, an optimization that lets the runtime fill in the snapshot base, skipping that read. And `set(value)` for absolute writes, where concurrent calls commute only if they write the same value.
 
 **If you'd write it as `SET col = col + ?` in SQL, it parallelizes on Groundhog. If you'd write it as `SET col = ?`, it might conflict.**
 
@@ -49,7 +49,7 @@ Under the hood, each NNInt (non-negative integer) maintains two pending values: 
 
 When deltas conflict, Groundhog does what Postgres does at serialization check, with one difference: **you don't write retry loops.** The conflicting transaction is excluded from the block and returned to the mempool. The next block picks it up. Zero retry logic in your code.
 
-The non-negative invariant works the same way. If merged deltas would drive a balance below zero (like two concurrent withdrawals that together exceed the balance), one transaction is excluded. This is `CHECK (balance >= 0)` enforced at the protocol level.
+The balance invariant works the same way. With ordinary nonnegative balances, if merged deltas would drive a balance below zero (like two concurrent withdrawals that together exceed the balance), one transaction is excluded. This is `CHECK (balance >= 0)` enforced at the protocol level for that storage pattern.
 
 ---
 

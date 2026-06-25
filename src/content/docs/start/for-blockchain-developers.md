@@ -34,7 +34,7 @@ fn transfer(&mut self, receiver: &ContractAddress, amount: Amount) {
 }
 ```
 
-Familiar structure. Shorter. Each balance is an `NNInt` (non-negative integer): Groundhog's core storage primitive. `strict_inc(delta)` produces a **delta** ("adjust by this amount") instead of an absolute write ("set to this value"). That one change eliminates entire classes of bugs.
+Familiar structure. Shorter. Each balance is an `NNInt`, Groundhog's commutative integer storage primitive. `strict_inc(delta)` produces a **delta** ("adjust by this amount") instead of an absolute write ("set to this value"). That one change eliminates entire classes of bugs.
 
 ---
 
@@ -72,13 +72,13 @@ fn withdraw(&mut self, amount: Amount) {
 }
 ```
 
-That's it. No reentrancy guard: the runtime rejects any `invoke` whose target contract address is already on the active call stack with the `Reentrance` syscall error. The check is per-contract-address and applies to both `invoke` and `try_invoke`. Separately, every contract call also reads from a frozen snapshot, so even allowed call patterns cannot observe partial state. No manual balance check: NNInt enforces `>= 0` at the protocol level. No ordering discipline: deltas are deltas regardless of when they're produced.
+That's it. No reentrancy guard: the runtime rejects any `invoke` whose target contract address is already on the active call stack with the `Reentrance` syscall error. The check is per-contract-address and applies to both `invoke` and `try_invoke`. Separately, every contract call also reads from a frozen snapshot, so even allowed call patterns cannot observe partial state. No manual balance check: `strict_inc` rejects balance updates that would go below zero. No ordering discipline: deltas are deltas regardless of when they're produced.
 
 This isn't just reentrancy. The delta model eliminates several classes of bugs at once:
 
 - **Front-running and MEV.** All transactions read the same snapshot. Order doesn't matter. Nothing to reorder, sandwich, or front-run.
 - **The approve() race condition.** ERC-20's `approve(spender, amount)` is an absolute write, creating a race where the spender can extract both the old and new allowance. On Groundhog, allowances are deltas. The race doesn't exist.
-- **Integer underflow.** NNInt enforces non-negative as a protocol invariant. If merged deltas would drive a balance negative, the transaction is excluded and returned to the mempool. No `require()` needed.
+- **Integer underflow.** For ordinary balances, NNInt deltas enforce `balance >= 0`. If merged deltas would drive a balance negative, the transaction is excluded and returned to the mempool. No `require()` needed.
 
 ---
 
@@ -98,9 +98,9 @@ Everything on this list exists because other chains execute transactions sequent
 
 ## The Programming Model in Brief
 
-Under the hood, each NNInt maintains two pending values: a **set** (absolute base) and an **add** (accumulated delta). The underlying operation is `set_add(set, add)`, and the final value is `set + add`. Two operations commute **if their set values match**. `strict_inc()` always uses the snapshot as the set value, so concurrent calls always agree. Commutativity comes for free.
+Under the hood, each NNInt maintains two pending values: a **set** (absolute base) and an **add** (accumulated delta). The underlying operation is `set_add(set, add)`, and the final value is `set + add`, subject to a commit-time floor. Two operations commute **if their resolved set values match**. `strict_inc()` loads the current base (usually the snapshot value) and records a delta against it, so concurrent calls agree. Commutativity comes for free.
 
-NNInt is the workhorse, but it's not the only storage type. `Bytestring` stores up to 2KB of arbitrary data (config, metadata, serialized structs). For higher-level patterns, `Map<K, V>` gives you per-key independence (like `mapping` in Solidity), and `RetrocausalQueue` handles producer-consumer workflows where inserts commute but consumption needs sequencing.
+NNInt is the workhorse, but it's not the only storage type. `Bytestring` stores up to 1024 bytes of arbitrary data (config, metadata, serialized structs). For higher-level patterns, `Map<K, V>` gives you per-key independence (like `mapping` in Solidity), and `RetrocausalQueue` handles producer-consumer workflows where inserts commute but consumption needs sequencing.
 
 Not everything commutes. Order book matching, unique name registration, and some governance operations need sequencing. Groundhog doesn't force you to do acrobatics for these: `Bytestring` and `RetrocausalQueue` give you the tools to handle serialized workflows cleanly. Meanwhile, the vast majority of on-chain activity (payments, transfers, balance updates) flows with zero effort, giving you all the compute capacity you need to make your applications as rich as you want them to be. For the full treatment, see the [Programming Model](/programming-model/execution/) section.
 
