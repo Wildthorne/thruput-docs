@@ -7,9 +7,38 @@ Groundhog contracts do not use `Result`. Methods return values directly. If some
 
 You cannot catch an exception within the same contract. To handle errors from another contract, use `try_*` client methods (see [Cross-Contract Calls](/reference/cross-contract-calls/)).
 
+:::note[Version checked]
+This page was last checked against SDK `0.15.4`, `thiserror` `2.x`, and `anyhow` `1.x` on June 26, 2026.
+:::
+
 ## Defining Errors
 
 Use `#[contract_exception]` to define error types. The macro generates all required derives (`Debug`, `Clone`, `PartialEq`, `ReadXDR`, `WriteXDR`) and the `Exn` trait implementation automatically.
+
+### `thiserror` and `anyhow`
+
+You can use `thiserror` with `#[contract_exception]` when you want `Display` messages for logs, tests, or off-chain tooling. Put `#[derive(thiserror::Error)]` on the exception type and use `#[error("...")]` on each variant:
+
+```rust
+use sdk::*;
+
+#[derive(thiserror::Error)]
+#[contract_exception]
+pub enum CounterError {
+    #[error("not authorized")]
+    NotAuthorized = 1,
+}
+```
+
+Do not copy the usual `#[derive(Error, Debug)]` pattern from generic Rust examples. `#[contract_exception]` already generates `Debug`, `Clone`, and `PartialEq`; deriving them again creates duplicate implementations.
+
+For contract crates, configure `thiserror` without the default `std` feature:
+
+```toml
+thiserror = { version = "2", default-features = false }
+```
+
+Avoid `anyhow` for contract exception types and public contract method surfaces. `anyhow::Error` is an erased application error type, while contract exceptions need concrete XDR-serializable types that appear in the contract spec. `anyhow` is fine in off-chain tools, build scripts, tests, or CLI code. Inside a contract, private helpers may use `Result` if they immediately convert failures into concrete contract exceptions with `throw`, `ensure`, or `or_throw`.
 
 ### Enum errors
 
@@ -171,7 +200,7 @@ pub trait MultiThrows {
 For `throws(AlphaError, BetaError)` on a contract with `client = MultiClient`, the macro generates:
 
 ```rust
-// Generated — you don't write this
+// Generated. You don't write this
 enum MultiClientError {
     AlphaError(AlphaError),   // Declared error types
     BetaError(BetaError),

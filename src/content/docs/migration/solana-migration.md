@@ -70,15 +70,15 @@ Solana programs are written in Rust with Anchor (or native). Groundhog contracts
 
 ### Compiling
 
-Solana compiles to BPF bytecode (`cargo build-sbf`). Groundhog compiles to WASM:
+Solana compiles to BPF bytecode (`cargo build-sbf`). Groundhog compiles to RV32 by default:
 
 ```bash
-cargo --config .cargo/contract.toml build --release
+groundhog build
 ```
 
 ### Deploying
 
-On Solana, you upload the program binary, then initialize accounts for it. Program addresses are keypair-derived or PDA-derived. On Groundhog, you upload the WASM binary, then create a contract instance via `DeployContract` with a nonce. The contract address is deterministically derived from the deployer's address, the contract hash, and the nonce. Similar to Solana PDAs in predictability, but simpler: no seeds, no bump bytes.
+On Solana, you upload the program binary, then initialize accounts for it. On Groundhog, you deploy the RV32 artifact and create a contract instance via `DeployContract` with a nonce. The contract address is deterministically derived from the deployer's address, the contract hash, and the nonce. Similar to Solana PDAs in predictability, but simpler: no seeds, no bump bytes.
 
 ### Calling
 

@@ -304,7 +304,7 @@ Standard JSON-RPC 2.0 error codes apply. The gateway also defines application-sp
 
 ## Client Libraries
 
-**TypeScript/JavaScript.** The `@groundhog/protocol` and `@groundhog/rpc` packages provide TypeScript type definitions and an ONC-RPC client generated from the same XDR protocol definitions used by hogd. These are lower-level than the JSON-RPC gateway and connect directly to hogd's internal RPC interface. See [TypeScript SDK](/tools/typescript-sdk/) for details.
+**TypeScript/JavaScript.** The `@groundhogchain/client`, `@groundhogchain/protocol`, and related packages provide TypeScript types, codecs, and helpers for building gateway calls. See [TypeScript Bindings](/tools/typescript-sdk/) for details.
 
 **Rust.** The `groundhog-rpc` crate includes a typed JSON-RPC client generated from the same trait that defines the gateway. Import `groundhog_rpc_client` for a ready-made client.
 
