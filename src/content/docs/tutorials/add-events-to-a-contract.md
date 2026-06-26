@@ -7,11 +7,15 @@ We're extending the counter from [Build a Counter](/tutorials/build-a-counter/) 
 
 **Prerequisites:** A working counter contract from [Build a Counter](/tutorials/build-a-counter/).
 
+:::note[Version checked]
+This tutorial was last checked against Groundhog CLI `0.5.10` and SDK `0.15.4` on June 26, 2026.
+:::
+
 ## How Events Work on Groundhog
 
 An event is up to three 32-byte **topics** plus an XDR-serialized **payload** (at most 1 KB in total). Topics are indexed: off-chain consumers filter on them via [`groundhog_getEvents`](/reference/json-rpc-api/#groundhog_getevents). The payload is not indexed; it carries the data you want to read back.
 
-Topic 0 is always the event's **signature** — a hash that identifies the event type — so up to two topics are available for your own fields. There is no `indexed` keyword as in Solidity: you mark struct fields with `#[topic]`.
+Topic 0 is always the event's **signature**, a hash that identifies the event type, so up to two topics are available for your own fields. There is no `indexed` keyword as in Solidity: you mark struct fields with `#[topic]`.
 
 ## Step 1: Define the Event
 
@@ -27,7 +31,7 @@ pub struct CounterIncremented<'a> {
 ```
 
 - **`#[derive(Event)]`** generates everything the event needs: a `SIGNATURE` constant, serialization for the payload, and a `CounterIncrementedPayload` companion struct for decoding. See [SDK Macros](/reference/sdk-macros/#deriveevent).
-- **`#[topic]`** makes `by` an indexed topic (topic 1), so consumers can filter events by address. Fields without the attribute — here `amount` — go into the payload.
+- **`#[topic]`** makes `by` an indexed topic (topic 1), so consumers can filter events by address. Fields without the attribute, here `amount`, go into the payload.
 - **The lifetime** lets the topic borrow the address instead of copying it. 32-byte values like `ContractAddress` are used as topics directly; other types are XDR-encoded and hashed, which makes them filterable but not recoverable. Anything you need to *read* from the event belongs in the payload.
 
 ## Step 2: Declare and Emit It
@@ -51,7 +55,7 @@ impl Counter {
 }
 ```
 
-- **`emits(CounterIncremented)`** declares the event as part of the contract's interface, which records it in the [contract spec](/reference/contract-spec/#events) so codegen and indexers can decode it. Like `throws`, `emits` belongs on the interface — the trait definition or inherent impl, never a trait impl.
+- **`emits(CounterIncremented)`** declares the event as part of the contract's interface, which records it in the [contract spec](/reference/contract-spec/#events) so codegen and indexers can decode it. Like `throws`, `emits` belongs on the interface: the trait definition or inherent impl, never a trait impl.
 - **`log_event`** serializes the topics and payload and emits the event via the `LogEvent` syscall. Events become part of the block's event trie; they are not readable by contracts.
 - **`get_caller()`** returns the address of the immediate caller, which becomes the event's indexed topic.
 
@@ -97,7 +101,7 @@ Walking through the assertions:
 1. **`assert_event_count(1)`** counts every event the transaction emitted, across all contracts it touched.
 2. **`assert_event::<CounterIncremented>(0, ...)`** decodes the event at index 0 as a `CounterIncremented` and hands you a typed view.
 3. **`event.topic(0)`** is the signature; `CounterIncremented::SIGNATURE` is the constant the derive generated.
-4. **`event.topic(1)`** is the `by` field. A 32-byte topic converts back to `&ContractAddress` with `.into()`. The caller is the address the transaction originated from — `ContractAddress::named("test")`.
+4. **`event.topic(1)`** is the `by` field. A 32-byte topic converts back to `&ContractAddress` with `.into()`. The caller is the address the transaction originated from: `ContractAddress::named("test")`.
 5. **`event.payload()`** is the decoded `CounterIncrementedPayload`; payload fields are read back directly.
 
 Run it:
@@ -114,7 +118,7 @@ Build the contract:
 groundhog build
 ```
 
-Alongside the wasm, the CLI writes the contract's [spec](/reference/contract-spec/) — `counter.spec.json` (human-readable) and `counter.spec.xdr` (canonical). Because of the `emits` declaration, the spec now carries the event:
+Alongside the RV32 artifact, the CLI writes the contract's [spec](/reference/contract-spec/): `counter.spec.json` (human-readable) and `counter.spec.xdr` (canonical). Because of the `emits` declaration, the spec now carries the event:
 
 ```json
 "events": [
@@ -127,13 +131,13 @@ Alongside the wasm, the CLI writes the contract's [spec](/reference/contract-spe
 ]
 ```
 
-The `signature` is `sha256(MAJOR_VERSION :: CRATE_NAME :: TYPE_NAME)` — here `sha256("0.1::counter::CounterIncremented")`, for the crate `counter` at version `0.1.x`. Yours will differ if your crate's name or major version differs. This is the hash that appears as topic 0 of every emitted instance, and it's stable across SemVer-compatible releases of your contract.
+The `signature` is `sha256(MAJOR_VERSION :: CRATE_NAME :: TYPE_NAME)`. Here it is `sha256("0.1::counter::CounterIncremented")`, for the crate `counter` at version `0.1.x`. Yours will differ if your crate's name or major version differs. This is the hash that appears as topic 0 of every emitted instance, and it's stable across SemVer-compatible releases of your contract.
 
-Anything that consumes the spec now understands the event — including `groundhog codegen ts`, which regenerates [TypeScript bindings](/tools/typescript-sdk/) aware of it.
+Anything that consumes the spec now understands the event, including `groundhog codegen ts`, which regenerates [TypeScript bindings](/tools/typescript-sdk/) aware of it.
 
 ## Step 5: Query It On Chain
 
-After deploying (see [Getting Started](/start/getting-started/) for the deploy flow) and calling `increment`, the event is queryable through the gateway. Filter on the contract address and the signature from the spec — as `topic0`, with a `0x` prefix:
+After deploying (see [Getting Started](/start/getting-started/) for the deploy flow) and calling `increment`, the event is queryable through the gateway. Filter on the contract address and the signature from the spec as `topic0`, with a `0x` prefix:
 
 ```json
 {

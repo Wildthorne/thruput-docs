@@ -47,24 +47,24 @@ Where Solidity uses `constructor()`, Groundhog uses a conventional `initialize` 
 
 ### Compiling
 
-Solidity compiles to EVM bytecode. Groundhog contracts compile to WASM:
+Solidity compiles to EVM bytecode. Groundhog contracts compile to RV32 by default:
 
 ```bash
-cargo --config .cargo/contract.toml build --release
+groundhog build
 ```
 
-The output is a `.wasm` binary with an embedded [contract spec](/reference/contract-spec/), analogous to Solidity's bytecode + ABI.
+The output is a `.rv32a` artifact plus [contract spec](/reference/contract-spec/) sidecars, analogous to Solidity's bytecode + ABI.
 
 ### Deploying
 
-On Ethereum, you send a transaction containing bytecode, the EVM executes the constructor, and you get an address back. On Groundhog, deployment is a two-step process:
+On Ethereum, you send a transaction containing bytecode, the EVM executes the constructor, and you get an address back. On Groundhog, deployment submits the contract artifact and creates a contract instance with a nonce:
 
-1. **Upload the WASM binary** to the ledger (analogous to deploying a "factory").
-2. **Create a contract instance** by calling `DeployContract` with a nonce. The nonce, combined with the deployer's address and the contract hash, deterministically produces the contract address.
+1. **Include the RV32 artifact** in the deploy transaction.
+2. **Create a contract instance** with a nonce. The nonce, combined with the deployer's address and the contract hash, deterministically produces the contract address.
 
 This is closer to Ethereum's `CREATE2` than `CREATE`. The address is predictable before deployment.
 
-The `initialize` method runs during instance creation, not during WASM upload. This means the same WASM binary can be instantiated multiple times with different initialization parameters, each at a different address.
+The `initialize` method runs during instance creation. This means the same contract artifact can be instantiated multiple times with different initialization parameters, each at a different address.
 
 ### Calling
 
@@ -268,7 +268,7 @@ fn transfer(&mut self, receiver: &ContractAddress, amount: Amount) {
 }
 ```
 
-**What changes:** No `indexed` keyword. Events use typed structs (`TransferEvent`, `ApprovalEvent`) with topic-based indexing built into the type — fields marked `#[topic]` are indexed. The SDK provides helpers like `log_transfer_event` that handle serialization. Indexing and filtering happen at the node/explorer layer, not in the contract. See [Add Events to a Contract](/tutorials/add-events-to-a-contract/) for the full workflow and [Contract Spec](/reference/contract-spec/#events) for how events are described to off-chain tools.
+**What changes:** No `indexed` keyword. Events use typed structs (`TransferEvent`, `ApprovalEvent`) with topic-based indexing built into the type. Fields marked `#[topic]` are indexed. The SDK provides helpers like `log_transfer_event` that handle serialization. Indexing and filtering happen at the node/explorer layer, not in the contract. See [Add Events to a Contract](/tutorials/add-events-to-a-contract/) for the full workflow and [Contract Spec](/reference/contract-spec/#events) for how events are described to off-chain tools.
 
 ## ERC-20 Side-by-Side
 

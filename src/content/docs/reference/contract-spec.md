@@ -1,23 +1,27 @@
 ---
 title: Contract Spec
-description: "Reference for the Groundhog contract spec: the machine-readable interface description produced by `groundhog build` — methods, types, events, and errors."
+description: "Reference for the Groundhog contract spec: the machine-readable interface description produced by `groundhog build`: methods, types, events, and errors."
 ---
 
 Every Groundhog contract carries a **spec**: a machine-readable description of its interfaces, the types they use, the events they emit, and the errors they throw. The spec is Groundhog's equivalent of an EVM ABI. It is generated at compile time by the SDK macros and consumed by `groundhog codegen ts`, `groundhog call`, indexers, and any other tool that needs to encode calldata or decode results and events.
 
+:::note[Version checked]
+This page was last checked against Groundhog CLI `0.5.10` and SDK `0.15.4` on June 26, 2026.
+:::
+
 ## Where the Spec Lives
 
-`groundhog build` produces the spec in three places:
+`groundhog build` produces the spec sidecars next to the built artifact:
 
 | Artifact | Format | Purpose |
 |----------|--------|---------|
-| `groundhogspecv0` custom section inside the `.wasm` | XDR | Canonical. Travels with the binary, so tools can work from the wasm alone. |
 | `<artifact>.spec.xdr` sidecar | XDR | Canonical, as a standalone file. Accepted by `groundhog codegen ts`. |
 | `<artifact>.spec.json` sidecar | JSON | Human-readable rendering for inspection and debugging. Not designed to be parsed back. |
+| `groundhogspecv0` custom section inside a `.wasm` | XDR | WASM-only. Lets legacy WASM tooling read the spec from the binary. |
 
-For a contract crate named `counter`, `groundhog build` writes `counter.spec.json` and `counter.spec.xdr` next to the compiled `counter.wasm`.
+For a contract crate named `counter`, the default RV32 build writes `target/groundhog/counter.rv32a`, `target/groundhog/counter.spec.json`, and `target/groundhog/counter.spec.xdr`.
 
-Under the hood, the SDK macros embed raw spec fragments in the compiled binary (a `groundhogspecrawv0` section). `groundhog build` collects the fragments, canonicalizes them (deduplication, sorting, validation), rewrites the wasm with the final `groundhogspecv0` section, and writes the sidecars.
+Under the hood, the SDK macros embed raw spec fragments in the compiled binary. `groundhog build` collects the fragments, canonicalizes them (deduplication, sorting, validation), and writes the sidecars. WASM builds also get a finalized `groundhogspecv0` custom section in the `.wasm`.
 
 ## Top-Level Structure
 
@@ -125,7 +129,7 @@ Composite kinds:
 { "kind": "named", "name": "Payload" }
 ```
 
-These correspond to `Option<u64>`, `Vec<ContractAddress>`, `[u8; 32]`, `(u32, bool)`, and a user-defined type named `Payload`. A `named` reference points at an entry in `type_defs` by name. The nested-type key differs by kind — `inner` for `option` and `vec`, `element` for `array`, `items` for `tuple` — and `max_len` is the vector's declared bound (`4294967295`, i.e. `u32::MAX`, when unbounded).
+These correspond to `Option<u64>`, `Vec<ContractAddress>`, `[u8; 32]`, `(u32, bool)`, and a user-defined type named `Payload`. A `named` reference points at an entry in `type_defs` by name. The nested-type key differs by kind: `inner` for `option` and `vec`, `element` for `array`, and `items` for `tuple`. `max_len` is the vector's declared bound (`4294967295`, i.e. `u32::MAX`, when unbounded).
 
 ## Type Definitions
 
@@ -148,7 +152,7 @@ pub struct Payload {
 }
 ```
 
-**Enums** — Rust enums whose variants carry no data:
+**Enums**: Rust enums whose variants carry no data:
 
 ```rust
 #[contract_type]
@@ -169,7 +173,7 @@ pub enum Choice {
 }
 ```
 
-**Unions** — Rust enums where at least one variant carries data. Each case records its discriminant and payload shape (`void`, `tuple`, or `struct`):
+**Unions**: Rust enums where at least one variant carries data. Each case records its discriminant and payload shape (`void`, `tuple`, or `struct`):
 
 ```rust
 #[contract_type]
@@ -213,7 +217,7 @@ pub enum Envelope {
 }
 ```
 
-Only types reachable from an interface — through method arguments and returns, thrown error types, declared events, or the fields of other reachable types — are included. A `#[contract_type]` that nothing references does not appear in the spec, unless it is marked `#[contract_type(export)]`, which forces the type into the spec of any contract that links it.
+Only types reachable from an interface are included. This covers method arguments and returns, thrown error types, declared events, and fields of other reachable types. A `#[contract_type]` that nothing references does not appear in the spec, unless it is marked `#[contract_type(export)]`, which forces the type into the spec of any contract that links it.
 
 ## Events
 
@@ -285,9 +289,10 @@ See [SDK Macros](/reference/sdk-macros/) for the full macro reference and [Add E
 
 ## Consuming the Spec
 
-- [`groundhog codegen ts`](/tools/typescript-sdk/) generates TypeScript bindings from a `.wasm` or `.spec.xdr`; `groundhog build --bindings ts` does the same in one step.
-- `groundhog call` resolves method names against the spec embedded in a built artifact.
-- Indexers and explorers can read the `.spec.json` sidecar or extract the spec from the deployed wasm to label methods and decode events.
+- [`groundhog codegen ts`](/tools/typescript-sdk/) generates TypeScript bindings from a `.spec.xdr`. It can also read a legacy `.wasm` artifact with an embedded spec.
+- `groundhog build --target wasm --bindings ts` generates TypeScript in one step for the WASM compatibility path. For RV32, build first and run `groundhog codegen ts target/groundhog/<name>.spec.xdr`.
+- `groundhog call` uses local contract metadata when it can resolve it from the project or artifact.
+- Indexers and explorers can read the `.spec.json` sidecar to label methods and decode events.
 
 ## Related Documentation
 
