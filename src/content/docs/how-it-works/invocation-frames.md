@@ -8,6 +8,7 @@ An **Invocation Frame** represents the execution context for a single [contract]
 - Whenever a contract invokes another contract via the Invoke [syscall](/reference/syscalls/) (a child frame), also known as a [cross-contract call](/reference/cross-contract-calls/)
 
 Each frame tracks the execution state, resource usage, and state modifications for one contract method invocation.
+Frames are independent of artifact type. The default user contract runtime is RV32, Groundhog's 32-bit RISC-V target, but the same frame model also covers native contracts, test mocks, and legacy WASM contracts.
 
 ## Frame Structure
 
@@ -93,7 +94,7 @@ The frame is initialized with:
 
 ### 2. Execution
 
-The contract executes its WebAssembly code, making syscalls to e.g. read and write ledger state.
+The contract executes in its runtime, RV32 by default, making syscalls to read and write ledger state.
 All modifications are recorded in the frame's mutable state.
 
 ### 3. Completion
@@ -103,13 +104,12 @@ A frame terminates in one of three ways:[^termination-syscall]
 **a) Fault**
 
 The frame terminates abnormally due to:
-- WebAssembly trap (divide by zero, out of bounds access, etc.)
-- Explicit contract panic (e.g., Rust `panic!()`). Due to installed panic handlers in WebAssembly, a `panic!()` macro in the Rust SDK may call Abort instead of Fault.
+- Runtime trap, such as an invalid instruction, bad program counter, bad memory access, breakpoint, or equivalent deterministic guest failure
 - Out of gas
 
 When a frame **Faults**: No return buffer, all state changes discarded, gas still consumed
 
-**b) Commit**
+**b) Return**
 
 The contract completes successfully, preserving its state changes.
 
@@ -121,7 +121,7 @@ The contract explicitly aborts its execution, discarding state changes but retur
 
 When a frame **Aborts**: Return buffer passed to caller, state changes discarded, gas consumed
 
-[^termination-syscall]: Contracts control termination through the Return syscall, which takes an output buffer and a `revert_frame` flag (`false` for Return, `true` for Abort). WebAssembly functions that exit normally without calling this syscall implicitly Return. The status codes used on this page (`Return = 0`, `Fault = 1`, `Abort = 2`) match `FrameTerminationStatus` in `protocol/transaction.x`.
+[^termination-syscall]: Contracts normally control termination through the Return syscall, which takes an output buffer and a `revert_frame` flag (`false` for Return, `true` for Abort). SDK-generated RV32 entrypoint wrappers use this path. A missing RV32 entrypoint or a wrapper that falls through traps deterministically. The status codes used on this page (`Return = 0`, `Fault = 1`, `Abort = 2`) match `FrameTerminationStatus` in `protocol/transaction.x`.
 
 ### 4. Merge into Parent (or Finalize for Root)
 
@@ -131,7 +131,7 @@ The parent frame is updated:
 - Gas: Parent's `gas_used` increases by child's `gas_used`
 - Result state: Parent's `most_recent_child_result` is set to child's result
   - If child hit a **Fault**: status = Fault, buffer = empty
-  - If child **Returned**: status = Commit, buffer = child's return buffer
+  - If child **Returned**: status = Return, buffer = child's return buffer
   - If child **Aborted**: status = Abort, buffer = child's return buffer
 
 State changes:
@@ -149,9 +149,9 @@ The transaction terminates. The root frame's `state_changes` map is passed to th
 
 The frame is removed from the call stack:
 - Control returns to the caller (or transaction ends if root frame)
-- **All WebAssembly execution state is discarded** (linear memory, locals, stack, program counter)
+- **All guest execution state is discarded** (memory, registers, stack, program counter)
 
-**WARNING:** WebAssembly modules do not persist state across invocation frames. Any data not written to ledger storage is lost when the frame terminates.
+**WARNING:** Guest memory does not persist across invocation frames. Any data not written to ledger storage is lost when the frame terminates.
 
 ## Example: Nested Contract Calls
 
@@ -205,17 +205,17 @@ state_changes: {
 gas_used: 15_000
 ```
 
-**4. ContractB Commits (preserves state changes)**
+**4. ContractB Returns (preserves state changes)**
 
-ContractB completes successfully, committing its state:
+ContractB completes successfully, preserving its state:
 ```
 return_buffer: "success_b"
-status: Commit
+status: Return
 ```
 
-ContractA frame updated after ContractB Commits:
+ContractA frame updated after ContractB Returns:
 ```
-most_recent_child_result: { buffer: "success_b", status: Commit }
+most_recent_child_result: { buffer: "success_b", status: Return }
 deployed_contracts: []
 state_changes: {
   (contract_a_address, key_0x01): Write_Bytestring('AAA'),
@@ -283,7 +283,7 @@ gas_used: 10_000
 
 **8. ContractD hits a Fault (unhandled error)**
 
-ContractD hits a WebAssembly trap (divide by zero, out of bounds, etc.):
+ContractD hits a runtime trap, such as bad memory access, an invalid instruction, or a breakpoint:
 ```
 status: Fault
 No return buffer
@@ -313,12 +313,12 @@ state_changes: {
 gas_used: 60_000
 ```
 
-**10. Root frame Commits (commits transaction)**
+**10. Root frame Returns (commits transaction)**
 
 ContractA completes successfully, committing the transaction:
 ```
 return_buffer: "done"
-status: Commit
+status: Return
 deployed_contracts: []
 state_changes: {
   (contract_a_address, key_0x01): Write_Bytestring('AAA'),

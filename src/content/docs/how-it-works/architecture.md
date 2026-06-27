@@ -3,7 +3,7 @@ title: Architecture
 description: How Groundhog achieves parallel execution without making you think about parallelism.
 ---
 
-Groundhog executes every transaction in a block simultaneously. Not optimistically, not on separate shards, not with restrictions on what a transaction can do. Every transaction runs in parallel, on full-featured WebAssembly contracts, with no declared access lists.
+Groundhog executes every transaction in a block simultaneously. Not optimistically, not on separate shards, not with restrictions on what a transaction can do. Every transaction runs in parallel, on full-featured RV32 (32-bit RISC-V) contracts, with no declared access lists.
 
 You don't manage any of this. You write contracts using typed storage primitives. The types know how to merge concurrent modifications. Parallelism is a consequence of the type system, not something you orchestrate.
 
