@@ -7,6 +7,8 @@ description: Calling other contracts from your contract.
 
 The `#[contract]` macro generates a client struct when you specify the `client` parameter. The client mirrors every public method on the trait or impl block.
 
+For exact macro behavior, see [`#[contract]` Rustdoc](https://groundhog.dev/docs/sdk/latest/sdk/attr.contract.html) or [SDK Macros](/reference/sdk-macros/#contract).
+
 Single error type:
 
 ```rust

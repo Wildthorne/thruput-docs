@@ -5,6 +5,8 @@ description: The set_add primitive underneath NNInt and why concurrent transacti
 
 You've been using `strict_inc` to write to NNInt values. Here's what's happening underneath, and why concurrent transactions can merge safely.
 
+For exact SDK method signatures, see [`NNInt` Rustdoc](https://groundhog.dev/docs/sdk/latest/sdk/storage/nnint/struct.NNInt.html) or [Storage Types Reference](/reference/storage-types/#nnint).
+
 ## The set_add Primitive
 
 Every NNInt storage location maintains two pending values during a transaction:

@@ -182,9 +182,9 @@ impl ISwapV2Pair for SwapV2Pair {
 
 (Source: `swapv2_pair.rs:29-48`.)
 
-`deploy_contract(&nonce, &code_hash)` is a syscall. It takes a nonce (so the same pair can deploy multiple sub-contracts deterministically) and the SHA-256 of an already-uploaded contract binary. The returned address is stored in `lp_addr`. Then `self.lp().initialize(...)` runs the LP's own initializer with the pair as owner. From here on, only the pair can mint or burn LP tokens.
+[`deploy_contract(&nonce, &code_hash)`](https://groundhog.dev/docs/sdk/latest/sdk/deploy/fn.deploy_contract.html) is a syscall wrapper. It takes a nonce (so the same pair can deploy multiple sub-contracts deterministically) and the SHA-256 of an already-uploaded contract binary. The returned address is stored in `lp_addr`. Then `self.lp().initialize(...)` runs the LP's own initializer with the pair as owner. From here on, only the pair can mint or burn LP tokens.
 
-`hash_ident!` generates a unique compile-time nonce. Use it once per `deploy_contract` site.
+[`hash_ident!`](https://groundhog.dev/docs/sdk/latest/sdk/macro.hash_ident.html) generates a unique compile-time nonce. Use it once per `deploy_contract` site.
 
 The `lp()` helper wraps the address in a generated client:
 

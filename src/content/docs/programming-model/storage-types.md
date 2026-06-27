@@ -5,6 +5,8 @@ description: "SDK storage types, their conflict semantics, and how to choose bet
 
 The SDK storage layer exposes the types you use to model contract state. The type you choose determines whether concurrent writes merge, conflict, or ignore each other. At the protocol level, the primitives are `NNInt`, `Bytestring`, and `RetrocausalQueue`; `Map`, `Value`, `Vector`, and `Node` are SDK helpers built on top.
 
+This page explains behavior and tradeoffs. For exact method signatures, see [Storage Types Reference](/reference/storage-types/) or [`sdk::storage` Rustdoc](https://groundhog.dev/docs/sdk/latest/sdk/storage/index.html).
+
 ## NNInt
 
 Integer storage with a two-component (set, add) model and a commit-time floor. It is the workhorse type for balances, counters, and any value that changes by deltas.
@@ -173,8 +175,8 @@ Use `Value<T>` for typed single-slot storage. Use `Bytestring` when you need raw
 :::tip[Exclusive Writes]
 If you need mutex-like semantics (only one transaction can write to a storage location per block), each type exposes exclusivity differently:
 
-- `Value<T>::set_exclusive(&v)` — typed slot, exclusive write.
-- `Map::at_mut_exclusive(&key)` — exclusive mutator on a Map entry.
+- `Value<T>::set_exclusive(&v)`: typed slot, exclusive write.
+- `Map::at_mut_exclusive(&key)`: exclusive mutator on a Map entry.
 - `NNInt` and `Bytestring` honour the **exclusive keypath flag** set on the field at storage-derivation time, or via the lower-level free functions `non_negative_int_set_exclusive` / `bytestring_set_exclusive`.
 
 This is a blunt instrument. Prefer NNInt deltas on hot paths. Reserve exclusive writes for operations that genuinely cannot tolerate concurrent access.

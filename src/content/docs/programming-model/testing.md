@@ -85,6 +85,8 @@ Use [`TestEnvironment::default()`](https://groundhog.dev/docs/sdk/latest/sdk/str
 
 Use `TestEnvironment::new(Some(&model))` when the test is specifically about a custom `StorageCostModel`. Use `setup_grant_storage_tokens` to fund accounts in cost-sensitive tests.
 
+For the full generated API, see the [`TestEnvironment` Rustdoc](https://groundhog.dev/docs/sdk/latest/sdk/struct.TestEnvironment.html) or [Rust API Docs](/tools/rust-api-docs/).
+
 Use `groundhog test --integration` when the thing under test is not just contract logic: local node startup, RV32 artifact deployment, profile resolution, signing, RPC environment variables, or generated off-chain client behavior.
 
 ## Testing Error Cases
