@@ -7,6 +7,8 @@ description: "Reference for #[contract], #[contract_exception], #[contract_type]
 This reference was last checked against SDK `0.15.4` on June 26, 2026.
 :::
 
+Rustdoc shortcuts: [`#[contract]`](https://groundhog.dev/docs/sdk/latest/sdk/attr.contract.html), [`#[contract_exception]`](https://groundhog.dev/docs/sdk/latest/sdk/attr.contract_exception.html), [`#[storage]`](https://groundhog.dev/docs/sdk/latest/sdk/attr.storage.html), [`#[contract_type]`](https://groundhog.dev/docs/sdk/latest/sdk/attr.contract_type.html), [`#[derive(Event)]`](https://groundhog.dev/docs/sdk/latest/sdk/derive.Event.html), [`#[derive(Deletable)]`](https://groundhog.dev/docs/sdk/latest/sdk/derive.Deletable.html), [`#[derive(ContractTypeSpec)]`](https://groundhog.dev/docs/sdk/latest/sdk/derive.ContractTypeSpec.html), and [`declare_mock_contract!`](https://groundhog.dev/docs/sdk/latest/sdk/macro.declare_mock_contract.html). See [Rust API Docs](/tools/rust-api-docs/) for common SDK links.
+
 ## `#[contract]`
 
 Generates contract entrypoints, a client struct for cross-contract calls, and a client error enum.
@@ -403,6 +405,15 @@ Computes a SHA-256 hash from a Rust identifier (rather than a string literal) at
 
 ```rust
 let hash: SHA256Hash = sha256_ident!(MyType);
+```
+
+### `hash_ident!`
+
+Declares a static `SHA256Hash` or `ContractAddress` whose bytes are the SHA-256 hash of the static identifier.
+
+```rust
+hash_ident! { static LP_NONCE: SHA256Hash; }
+hash_ident! { pub static FACTORY_ADDR: ContractAddress; }
 ```
 
 ### `sha256_array_ident!`

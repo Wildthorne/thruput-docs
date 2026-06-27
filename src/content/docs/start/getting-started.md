@@ -5,7 +5,7 @@ description: Set up the Groundhog CLI and build your first RV32 contract.
 
 ## How to Start
 
-The **Groundhog CLI** is the recommended way to get going. It scaffolds a project, manages the Rust toolchain, builds deployable RV32 artifacts, and wraps the local-node workflow. The tutorials on this site all start from CLI-generated projects.
+The **[Groundhog CLI](/tools/groundhog-cli/)** is the recommended way to get going. It scaffolds a project, manages the Rust toolchain, builds deployable RV32 artifacts, and wraps the local-node workflow. The tutorials on this site all start from CLI-generated projects.
 
 That said, the CLI is a convenience, not a requirement. You can also:
 
@@ -28,13 +28,9 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 cargo install groundhog-cli  # exact instructions provided during early access onboarding
 ```
 
-## Authenticate
+## Configure Cargo
 
-During early access, the SDK is distributed through a private Cargo registry. Log in before creating your first project:
-
-```bash
-groundhog login
-```
+During early access, the SDK is distributed through a private Cargo registry. Configure Cargo with the registry settings and credentials from your onboarding instructions before creating or building SDK projects. The Groundhog CLI does not manage Cargo registry credentials.
 
 ## Create and Run
 
@@ -61,9 +57,11 @@ Generated projects work with both `cargo` and `groundhog`. Use `cargo` for nativ
 | `cargo test` | Runs tests natively. Faults are Rust panics caught by `catch_unwind`. | Fast logic tests, step-through debugging |
 | `groundhog build` | Builds the deployable RV32 artifact and spec sidecars | Deployable contract artifact |
 | `groundhog node` | Starts a standalone local `hog-devnode` on port `9545` | Local deploy/call testing |
-| `groundhog deploy` | Builds if needed, signs, and submits the contract | Deploy to the selected profile |
+| `groundhog deploy` | Signs and submits the selected built artifact | Deploy to the selected profile |
 | `groundhog test --integration` | Starts an ephemeral `hog-devnode`, deploys the contract, and runs `tests/integration.rs` | End-to-end RPC tests |
 | `groundhog test` | Runs the WASM compatibility harness | Legacy WASM checks |
+
+For a command-by-command map, including the Foundry/Anvil mental model for local development, see [Groundhog CLI](/tools/groundhog-cli/).
 
 ### What `groundhog build` Produces
 
@@ -135,12 +133,12 @@ The SDK is three layers, each building on the one below:
 | Layer | What it provides | When to use |
 |-------|-----------------|-------------|
 | **Macros** | `#[storage]`, `#[contract]`, `#[contract_exception]`. Generates storage wiring, contract entrypoints, and client stubs. | Default. Start here. |
-| **Typed wrappers** | `NNInt`, `Map<K, V>`, `Value<T>`, `Bytestring`, `RetrocausalQueue`, `Vector<T>`. Type-safe storage access with auto-serialization. | When you need control over storage layout without writing raw syscalls. |
+| **Typed wrappers** | `NNInt`, `Map<K, V>`, `Value<T>`, `Bytestring`, `RCQ<T>`, `Vector<T>`. Type-safe storage access with auto-serialization. | When you need control over storage layout without writing raw syscalls. |
 | **Raw syscalls** | Direct `bytestring_set()`, `non_negative_int_strict_inc()` calls. | When you need full control or are building your own abstractions. |
 
 The `erc20_low_level/` example in the SDK implements a full ERC-20 token using only raw syscalls. It works identically to the macro-based version. The macros reduce boilerplate, they don't restrict what you can build.
 
-If the provided storage types don't fit your use case, drop down a layer. The syscall interface is documented in the [Syscalls Reference](/reference/syscalls/).
+If the provided storage types don't fit your use case, drop down a layer. The syscall interface is documented in the [Syscalls Reference](/reference/syscalls/). Generated Rustdoc for exact SDK signatures lives at [groundhog.dev/docs/](https://groundhog.dev/docs/); see [Rust API Docs](/tools/rust-api-docs/) for common links.
 
 ## Deployment
 
@@ -149,7 +147,8 @@ The CLI handles the full deploy/call/inspect flow:
 ```bash
 groundhog keys generate              # create an Ed25519 signing key
 groundhog node                       # start a local hog-devnode on :9545
-groundhog deploy                     # compile, sign, and submit the contract
+groundhog build                      # build the RV32 artifact
+groundhog deploy                     # sign and submit the selected artifact
 groundhog call <addr> increment 1    # send a signed transaction
 groundhog view <addr> get            # sandboxed read-only simulation
 groundhog storage <addr> 0x<key>     # read raw committed storage
@@ -163,6 +162,8 @@ A hosted testnet faucet is not yet available; for now, fund accounts via the loc
 
 ## Next Steps
 
+- **[Groundhog CLI](/tools/groundhog-cli/)**: Map each CLI command to the development job it handles
+- **[Rust API Docs](/tools/rust-api-docs/)**: Find generated Rustdoc for the SDK crates
 - **[Build a Counter](/tutorials/build-a-counter/)**: Line-by-line walkthrough of the contract you just generated
 - **[Programming Model](/programming-model/execution/)**: Understand why this works (snapshots, deltas, commutativity)
 - **[Build a Token](/tutorials/build-a-token/)**: Build a full ERC-20 token

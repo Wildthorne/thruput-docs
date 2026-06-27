@@ -11,6 +11,8 @@ You cannot catch an exception within the same contract. To handle errors from an
 This page was last checked against SDK `0.15.4`, `thiserror` `2.x`, and `anyhow` `1.x` on June 26, 2026.
 :::
 
+For exact SDK item docs, see [`#[contract_exception]`](https://groundhog.dev/docs/sdk/latest/sdk/attr.contract_exception.html), [`throw`](https://groundhog.dev/docs/sdk/latest/sdk/fn.throw.html), [`ensure`](https://groundhog.dev/docs/sdk/latest/sdk/fn.ensure.html), [`OrThrow`](https://groundhog.dev/docs/sdk/latest/sdk/trait.OrThrow.html), and [Rust API Docs](/tools/rust-api-docs/).
+
 ## Defining Errors
 
 Use `#[contract_exception]` to define error types. The macro generates all required derives (`Debug`, `Clone`, `PartialEq`, `ReadXDR`, `WriteXDR`) and the `Exn` trait implementation automatically.

@@ -200,6 +200,7 @@ For pure read access without generated bindings, see the [JSON-RPC API](/referen
 
 ## Related Documentation
 
+- [Groundhog CLI](/tools/groundhog-cli/) for the RV32 build, deploy, and codegen command map
 - [Contract Spec](/reference/contract-spec/) for the format consumed by codegen
 - [JSON-RPC API](/reference/json-rpc-api/) for the underlying gateway surface
 - [Cross-Contract Calls](/reference/cross-contract-calls/) for the Rust client codegen story

@@ -11,9 +11,6 @@ The same simplicity that makes your code correct is what makes Groundhog incredi
 
 ## Easy Things Are Still Easy
 
-*We may not all write contracts for an EVM-based chain, but for this example we picked Solidity since many folks are at
-least familiar with it. We'll have "what you need to know" guides for most popular chains in the near future!*
-
 A token transfer on Solidity:
 
 ```solidity

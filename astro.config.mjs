@@ -21,13 +21,14 @@ export default defineConfig({
           ],
         },
         {
-          label: 'Programming Model',
+          label: 'Tools',
           items: [
-            'programming-model/execution',
-            'programming-model/storage-types',
-            'programming-model/nnint',
-            'programming-model/testing',
-            'programming-model/advanced',
+            'tools/groundhog-cli',
+            'tools/rust-api-docs',
+            'tools/typescript-sdk',
+            'tools/block-explorer',
+            'tools/wallet-integration',
+            'tools/faucet',
           ],
         },
         {
@@ -41,12 +42,13 @@ export default defineConfig({
           ],
         },
         {
-          label: 'Tools',
+          label: 'Programming Model',
           items: [
-            'tools/typescript-sdk',
-            'tools/block-explorer',
-            'tools/wallet-integration',
-            'tools/faucet',
+            'programming-model/execution',
+            'programming-model/storage-types',
+            'programming-model/nnint',
+            'programming-model/testing',
+            'programming-model/advanced',
           ],
         },
         {

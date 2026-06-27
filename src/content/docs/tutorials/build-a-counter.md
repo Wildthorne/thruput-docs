@@ -216,7 +216,7 @@ Breaking down the test setup:
 5. **`deploy_contract`** deploys the contract and returns its address. The nonce (`SHA256Hash`) makes the address deterministic across test runs.
 6. **`CounterClient::new`** creates a typed client. Methods return values directly (no `Result` unwrapping needed).
 
-Use [`TestEnvironment::default()`](https://groundhog.dev/docs/sdk/latest/sdk/struct.TestEnvironment.html#method.default) instead when the test should exercise the normal storage cost model. Use `TestEnvironment::new(Some(&model))` for custom cost-model tests.
+Use [`TestEnvironment::default()`](https://groundhog.dev/docs/sdk/latest/sdk/struct.TestEnvironment.html#method.default) instead when the test should exercise the normal storage cost model. Use `TestEnvironment::new(Some(&model))` for custom cost-model tests. For the generated SDK reference, see [Rust API Docs](/tools/rust-api-docs/).
 
 ### Testing Error Cases
 
@@ -283,6 +283,6 @@ This counter is trivial, but the pattern scales. Every mutation is a delta opera
 
 - [Build a Token](/tutorials/build-a-token/) for a full ERC-20 implementation using the same patterns
 - [Add Events to a Contract](/tutorials/add-events-to-a-contract/) to extend this counter with an emitted event
-- [Storage Types](/programming-model/storage-types/) for `NNInt`, `Map`, `Vector`, `Value`, `Bytestring`, and `RetrocausalQueue`
+- [Storage Types](/programming-model/storage-types/) for `NNInt`, `Map`, `Vector`, `Value`, `Bytestring`, and `RCQ`
 - [NNInt In Depth](/programming-model/nnint/) for the `set_add` primitive and commutativity rules
 - [SDK Macros](/reference/sdk-macros/) for details on `#[contract]`, `#[contract_exception]`, `#[storage]`
