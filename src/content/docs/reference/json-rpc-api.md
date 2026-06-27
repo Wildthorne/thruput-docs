@@ -322,5 +322,5 @@ Standard JSON-RPC 2.0 error codes apply. The gateway also defines application-sp
 - [Networking](/how-it-works/networking/): Where the gateway fits in the node topology.
 - [Storage Types Reference](/reference/storage-types/): Protocol-level kinds the JSON-RPC surfaces.
 - [Transaction Lifecycle](/how-it-works/transaction-lifecycle/): How a submitted transaction moves through the network.
-- [EVM Migration](/migration/evm-migration/): Coming from Solidity and `eth_*` RPC.
-- [Stellar Migration](/migration/stellar-migration/): Coming from Soroban and `ScVal`.
+- [EVM & Solidity](/ecosystem/evm/): Coming from Solidity and `eth_*` RPC.
+- [Stellar & Soroban](/ecosystem/stellar/): Coming from Soroban and `ScVal`.

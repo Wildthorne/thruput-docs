@@ -81,9 +81,9 @@ export default defineConfig({
         {
           label: 'Ecosystem Guides',
           items: [
-            'migration/stellar-migration',
-            'migration/evm-migration',
-            'migration/solana-migration',
+            'ecosystem/evm',
+            'ecosystem/solana',
+            'ecosystem/stellar',
           ],
         },
         {

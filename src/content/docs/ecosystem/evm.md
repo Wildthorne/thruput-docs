@@ -1,9 +1,9 @@
 ---
-title: EVM Migration
-description: Guide for Solidity/EVM developers building on Groundhog.
+title: EVM & Solidity
+description: Groundhog concepts for Solidity and EVM developers.
 ---
 
-This guide is for developers who know Solidity and the EVM. It uses EVM concepts as a familiar reference point to explain how Groundhog works, what changes, and what disappears entirely.
+This guide is for developers who know Solidity and the EVM. It uses familiar EVM concepts to explain how Groundhog works, what changes, and what disappears entirely.
 
 For the foundational concepts (delta operations, commutativity, storage types), see [For Blockchain Developers](/start/for-blockchain-developers/). This page builds on that with concrete patterns and a worked example.
 
@@ -13,7 +13,7 @@ If you've deployed and called contracts on Ethereum, the Groundhog lifecycle wil
 
 ### Writing
 
-Groundhog contracts are written in Rust and compiled to WebAssembly (not EVM bytecode). The SDK provides optional convenience macros, but you can also work directly with raw syscalls. A minimal contract looks like this:
+Groundhog contracts are written in Rust and compiled to RV32 artifacts by default, not EVM bytecode. RV32 is Groundhog's 32-bit RISC-V contract target. The SDK provides optional convenience macros, but you can also work directly with raw syscalls. A minimal contract looks like this:
 
 ```rust
 #[contract_exception]
@@ -47,7 +47,7 @@ Where Solidity uses `constructor()`, Groundhog uses a conventional `initialize` 
 
 ### Compiling
 
-Solidity compiles to EVM bytecode. Groundhog contracts compile to RV32 by default:
+Solidity compiles to EVM bytecode. Groundhog contracts compile to RV32, a 32-bit RISC-V target, by default:
 
 ```bash
 groundhog build
@@ -96,11 +96,11 @@ The key difference: every read within a block sees the same snapshot. Two transa
 | Sequential execution | Parallel by default | Every transaction in a block runs simultaneously against the same snapshot. |
 | `require(condition, "message")` | `ensure(condition, Error::Variant)` | Typed errors instead of string messages. |
 | `revert()` / `require()` | `throw(error)` | Aborts the transaction. Cannot be caught within the same contract. |
-| Solidity + EVM bytecode | Rust + WebAssembly | WASM gives full-featured computation. No EIP-170 24KB contract size cap. |
+| Solidity + EVM bytecode | Rust + RV32 artifact | Full-featured computation without the EIP-170 24KB contract size cap. |
 | `constructor()` | `fn initialize()` | Called during the deployment transaction, not bytecode upload. |
 | `msg.sender` | `get_caller()` | Same concept. |
 | `view` / `pure` | `&self` / no self | Read-only methods don't produce state changes. |
-| `public` / `external` / `internal` / `private` | `pub` / not pub | Rust visibility. Public methods are WASM exports. |
+| `public` / `external` / `internal` / `private` | `pub` / not pub | Rust visibility. Public methods become contract entrypoints. |
 | OpenZeppelin inheritance | Trait implementations | Rust uses traits and composition, not inheritance. |
 
 ## What Disappears
@@ -243,7 +243,7 @@ impl Token {
 }
 ```
 
-**What changes:** Groundhog has no special constructor syntax. The deployer calls `initialize` as part of the deployment transaction. It runs once when the contract instance is created (not when the WASM is uploaded). State initialization uses the same delta operations as everything else.
+**What changes:** Groundhog has no special constructor syntax. The deployer calls `initialize` as part of the deployment transaction. It runs once when the contract instance is created, not when the artifact is uploaded. State initialization uses the same delta operations as everything else.
 
 ### Events
 
@@ -369,7 +369,7 @@ These EVM features have no Groundhog equivalent. Set your expectations:
 | `block.timestamp` / `block.number` | Available via syscalls | Different API, same concept |
 | `gasleft()` | Does not exist | Gas metering exists but costs zero. No need to check remaining gas. |
 | Contract inheritance | Does not exist | Use Rust traits and composition |
-| 24KB contract size limit | Does not exist | WASM binaries have no practical size limit |
+| 24KB contract size limit | Does not exist | RV32 artifacts do not have EVM's contract size cap |
 | Storage slot packing | Does not exist | Each storage field is independent |
 
 ## Next Steps
