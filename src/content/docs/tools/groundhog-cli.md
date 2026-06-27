@@ -3,7 +3,7 @@ title: Groundhog CLI
 description: How Groundhog CLI commands fit into RV32 builds, local nodes, tests, deployment, and TypeScript bindings.
 ---
 
-Run normal Rust loops with `cargo`. Run Groundhog-specific work with `groundhog`: scaffolds, RV32 artifacts, local nodes, deployments, RPC calls, state inspection, keys, wallets, and generated bindings.
+Run normal Rust loops with `cargo`. Run Groundhog-specific work with `groundhog`: scaffolds, RV32 artifacts, local nodes, deployments, RPC calls, state inspection, keys, wallets, and generated bindings. RV32 is Groundhog's 32-bit RISC-V contract target.
 
 :::note[Version checked]
 This page was last checked against Groundhog CLI `0.5.10` and SDK `0.15.4` on June 26, 2026.
@@ -87,7 +87,7 @@ Most network-facing commands accept `--profile` (also available as `--network`) 
 
 ## Build and Test
 
-`groundhog build` defaults to `--target rv32` and writes the deployable artifact plus spec sidecars:
+`groundhog build` defaults to `--target rv32` and writes the deployable 32-bit RISC-V artifact plus spec sidecars:
 
 ```text
 target/groundhog/<name>.rv32a

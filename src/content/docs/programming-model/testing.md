@@ -14,7 +14,7 @@ This page was last checked against Groundhog CLI `0.5.10` and SDK `0.15.4` on Ju
 | Command | What it covers | Use for |
 |---------|----------------|---------|
 | `cargo test` | Native SDK execution in process | Fast logic tests, error-path assertions, debugging |
-| `groundhog test --integration` | Ephemeral `hog-devnode`, deployed artifact, RPC client path | End-to-end deploy/call tests. Defaults to RV32. |
+| `groundhog test --integration` | Ephemeral `hog-devnode`, deployed artifact, RPC client path | End-to-end deploy/call tests. Defaults to RV32 (32-bit RISC-V). |
 | `groundhog test` | WASM compatibility harness | Legacy WASM checks |
 
 Start with `cargo test`. Add `groundhog test --integration` when you need to test the same path a partner or app will use: build artifact, local node, deployment, signing profile, RPC URL, and generated client behavior.

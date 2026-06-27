@@ -1,9 +1,9 @@
 ---
-title: Solana Migration
-description: Guide for Solana/Anchor developers building on Groundhog.
+title: Solana & Anchor
+description: Groundhog concepts for Solana and Anchor developers.
 ---
 
-This guide is for developers who know Solana and Anchor. It uses Solana concepts as a familiar reference point to explain how Groundhog works, what changes, and what you stop worrying about.
+This guide is for developers who know Solana and Anchor. It uses familiar Solana concepts to explain how Groundhog works, what changes, and what you stop worrying about.
 
 For the foundational concepts (delta operations, commutativity, storage types), see [For Blockchain Developers](/start/for-blockchain-developers/). This page builds on that with Solana-specific patterns.
 
@@ -54,7 +54,7 @@ This is a fundamental difference. On Solana, parallelism comes from the develope
 
 ## The Contract Lifecycle
 
-Both Solana and Groundhog use a two-step deployment (upload code, then create instance), and both compile to a binary format (BPF vs. WASM). The details differ but the flow is analogous.
+Both Solana and Groundhog use a two-step deployment (upload code, then create instance), and both compile to a binary format: BPF on Solana, RV32 on Groundhog. RV32 is Groundhog's 32-bit RISC-V contract target. The details differ but the flow is analogous.
 
 ### Writing
 
@@ -70,7 +70,7 @@ Solana programs are written in Rust with Anchor (or native). Groundhog contracts
 
 ### Compiling
 
-Solana compiles to BPF bytecode (`cargo build-sbf`). Groundhog compiles to RV32 by default:
+Solana compiles to BPF bytecode (`cargo build-sbf`). Groundhog compiles to RV32, a 32-bit RISC-V target, by default:
 
 ```bash
 groundhog build

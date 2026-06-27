@@ -33,7 +33,7 @@ groundhog new counter
 cd counter
 ```
 
-The generated `Cargo.toml` includes both the library contract and the RV32 entrypoint wrapper:
+The generated `Cargo.toml` includes both the library contract and the RV32 (32-bit RISC-V) entrypoint wrapper:
 
 ```toml
 [package]

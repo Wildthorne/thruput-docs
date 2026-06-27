@@ -5,7 +5,7 @@ description: Set up the Groundhog CLI and build your first RV32 contract.
 
 ## How to Start
 
-The **[Groundhog CLI](/tools/groundhog-cli/)** is the recommended way to get going. It scaffolds a project, manages the Rust toolchain, builds deployable RV32 artifacts, and wraps the local-node workflow. The tutorials on this site all start from CLI-generated projects.
+The **[Groundhog CLI](/tools/groundhog-cli/)** is the recommended way to get going. It scaffolds a project, manages the Rust toolchain, builds deployable RV32 artifacts, and wraps the local-node workflow. RV32 is Groundhog's 32-bit RISC-V contract target. The tutorials on this site all start from CLI-generated projects.
 
 That said, the CLI is a convenience, not a requirement. You can also:
 
@@ -65,7 +65,7 @@ For a command-by-command map, including the Foundry/Anvil mental model for local
 
 ### What `groundhog build` Produces
 
-`groundhog build` defaults to `--target rv32`. It compiles the RV32 entrypoint binary, lowers it, and writes:
+`groundhog build` defaults to `--target rv32`. It compiles the RV32 (32-bit RISC-V) entrypoint binary, lowers it, and writes:
 
 - `target/groundhog/<name>.rv32a`: deployable contract artifact
 - `target/groundhog/<name>.rv32.json`: RV32 lowering metadata

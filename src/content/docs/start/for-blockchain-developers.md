@@ -115,6 +115,6 @@ Getting the primitive right at the most fundamental level (typed deltas with kno
 
 ## Next Steps
 
-For a detailed Solidity-to-Groundhog mapping, see the [EVM Migration Guide](/migration/evm-migration/). For the full execution model (snapshots, deltas, merge rules), see the [Programming Model](/programming-model/execution/).
+For a detailed Solidity-to-Groundhog mapping, see [EVM & Solidity](/ecosystem/evm/). For the full execution model (snapshots, deltas, merge rules), see the [Programming Model](/programming-model/execution/).
 
 Ready to write code? [Getting Started](/start/getting-started/) walks you through the SDK setup and your first contract.

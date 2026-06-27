@@ -13,7 +13,7 @@ This page was last checked against Groundhog CLI `0.5.10`, SDK `0.15.4`, `@groun
 
 ## Overview
 
-The Groundhog CLI emits TypeScript bindings from a contract [spec](/reference/contract-spec/). The normal RV32 path is:
+The Groundhog CLI emits TypeScript bindings from a contract [spec](/reference/contract-spec/). The normal RV32 (32-bit RISC-V) path is:
 
 1. Build the contract with `groundhog build`.
 2. Generate bindings from `target/groundhog/<name>.spec.xdr`.
