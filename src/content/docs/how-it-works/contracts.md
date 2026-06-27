@@ -1,192 +1,195 @@
 ---
 title: Contracts
-description: Contract types, deployment, and address derivation in Groundhog.
+description: Contract artifacts, deployment, and address derivation in Groundhog.
 ---
 
 An address in Groundhog can be invoked if there is a contract *deployed* at that address.
-Recall that the invocation that starts a Transaction is specified by a contract address and method arguments. Each invocation creates an [invocation frame](/how-it-works/invocation-frames/) that tracks execution state and storage modifications.
+The root invocation of a transaction is specified by a contract address, an 8-byte entrypoint ID, and method arguments. Each invocation creates an [invocation frame](/how-it-works/invocation-frames/) that tracks execution state and storage modifications.
 
-There are two types of on-chain contracts within Groundhog, plus a mock type for testing.
+The normal user-deployed contract path is RV32, Groundhog's 32-bit RISC-V contract target. The protocol also supports legacy WASM contracts, native precompiled contracts, and local test mocks.
 
 ## Contract Types
 
-### WebAssembly Contracts
+### RV32 Contracts
 
-The common type of contract, which users can write, deploy, and invoke, are implemented as WebAssembly modules.
+RV32 contracts are the default user contract type. `groundhog build` compiles the contract's RV32 entrypoint wrapper for `riscv32im-unknown-none-elf`, lowers that ELF into a deployable `.rv32a` artifact, and writes the contract spec sidecars used by CLI and TypeScript tooling.
 
-WebAssembly module requirements:
-- Valid WebAssembly
-    - memory64: no
-    - mutable globals: yes
-    - sign extension: yes
-    - bulk-memory: yes
-    - no "start" function
-    - Initial memory limited to 1 64KB page; runtime maximum capped at 2 pages (128 KB) for typical workloads
-    - export memory
-    - no multi memory
-    - No imported functions, other than those provided by Groundhog (see [Syscalls](/reference/syscalls/))
-- Disabled WebAssembly features (modules using these will be rejected at validation):
-    - floating point (`f32` / `f64` arithmetic, conversions)
-    - SIMD (`v128` and all SIMD instructions)
-    - relaxed SIMD
-    - threads
+For a crate named `counter`, the default build writes:
 
-These restrictions exist for deterministic execution and consistent cross-platform behaviour: floating-point semantics differ subtly between CPUs, and the SIMD lowering in the host runtime is platform-dependent.
+```txt
+target/groundhog/counter.rv32a
+target/groundhog/counter.rv32.json
+target/groundhog/counter.spec.xdr
+target/groundhog/counter.spec.json
+```
 
-#### Exported Methods
+The `.rv32a` file is the executable contract artifact. `groundhog deploy` wraps those bytes in the protocol's `Contract::kRv32` variant before signing and submitting the deploy transaction.
 
-WebAssembly contracts expose their callable methods via exported functions. Each method is identified by an 8-byte **entrypoint ID**, which is encoded as a 16-character hexadecimal string in the export name.
-These functions must have no input or output arguments in their signatures. WebAssembly contracts can access contract arguments via [system calls](/reference/syscalls/).
+#### Entrypoints
 
-**Example:**
+Every callable method is identified by an 8-byte `ContractEntrypointID`. RV32 contracts do not expose methods through exported WASM function names. Instead, the SDK's `#[contract]` macro emits one dispatch record per method into a link-time `GROUNDHOG_RV32_ENTRYPOINTS` registry.
+
+When hogd invokes an RV32 contract, it enters the guest at `_start` with the method ID in registers. The RV32 runtime dispatches by scanning the registry, then calls the generated wrapper for the matching method. That wrapper decodes calldata, calls the Rust method, and returns through the Return syscall.
+
+Entrypoint IDs can be arbitrary 8-byte values at the protocol layer. The SDK provides the normal convention: derive a 6-byte interface prefix from the interface name and version, then use a method-specific 2-byte suffix. See [SDK Macros](/reference/sdk-macros/) and the [contract spec reference](/reference/contract-spec/) for the developer-facing shape.
+
+#### Artifact Shape
+
+Most developers should let the [Groundhog CLI](/tools/groundhog-cli/) produce RV32 artifacts. Under the hood, the RV32 lowerer:
+
+- Parses the `riscv32im-unknown-none-elf` contract binary.
+- Validates the layout expected by the Groundhog RV32 runtime.
+- Packs code, initial memory, metadata, and section digests into the `.rv32a` artifact.
+- Self-verifies the artifact before writing it.
+
+The node executes the lowered artifact through the RV32 runtime. Contract state does not live in guest memory. Durable state must be written through Groundhog storage APIs.
+
+### Legacy WASM Contracts
+
+The protocol still has a `Contract::kWasmi` variant for the WASM compatibility path. Use it only when you intentionally build with `groundhog build --target wasm`, run the legacy `groundhog test` harness, or compare RV32 against WASM with differential tests.
+
+Legacy WASM contracts identify methods by exporting a function whose name is the uppercase hex encoding of the 8-byte entrypoint ID, such as:
+
 ```wasm
 (export "01CC155247140001" (func $transfer))
 ```
 
-In this example:
-- The entrypoint ID is `0x01CC155247140001` (8 bytes)
-- The export name is `"01CC155247140001"` (16 hex characters)
-- This function is callable via an `Invocation` with `entrypoint = 0x01CC155247140001`
-
-**Entrypoint ID Encoding:**
-- The 8-byte entrypoint ID is encoded as uppercase hexadecimal
-- Each byte becomes 2 hex characters (e.g., `0x01` -> `"01"`, `0xCC` -> `"CC"`)
-- The resulting 16-character string is used as the WebAssembly export name
-
-**Note:** Entrypoint IDs can be arbitrary 8-byte values. The SDK provides a conventional scheme for deriving entrypoint IDs from interface names, major versions, and method signatures (see [SDK Macros](/reference/sdk-macros/)), but contracts are free to use any 8-byte identifiers they choose.
-
-**Multiple methods:**
-
-A contract can export multiple methods:
-```wasm
-(export "01CC155247140001" (func $transfer))
-(export "01CC155247140002" (func $approve))
-(export "01CC155247140003" (func $balance_of))
-```
-
-Each exported method must have a unique entrypoint ID. When a transaction invokes the contract, the runtime looks up the exported function by its hex-encoded entrypoint ID and executes it.
+That export-name convention is not how the default RV32 path dispatches methods.
 
 ### Native Precompiled Contracts
 
-System contracts implemented directly within the Groundhog system. These contracts
-generally can have elevated permissions within the system (they are not constrained
-by the WebAssembly sandbox boundary) and are used to implement functionality that requires
-trusted logic, like management of the native token.
+Native precompiled contracts are implemented directly inside the Groundhog runtime. They are used for trusted system behavior, such as the native token contract, and can have permissions that user-deployed guest contracts do not have.
 
-It is (currently) impossible for a native contract to be deployed; instead, these contracts
-are predeployed at hardcoded addresses within the Groundhog chain.
-These contracts are identified by a value from the `HogexecPrecompiledNativeContracts` enum (a 32-bit identifier).
-
-Currently, two native contracts are deployed at genesis: the **HOG token contract** (which manages the native token) and the **initial token claim contract** (which handles genesis token distribution).
+Users cannot deploy native contracts. They are predeployed at hardcoded addresses and identified by a value from the `HogexecPrecompiledNativeContracts` enum.
 
 ### Test Mocks
 
-Local test environments can also deploy a mock contract (to, for example, run unit tests),
-which directly executes arbitrary user-defined code. These can never be deployed on chain.
+Local test environments can deploy mock contracts that execute host-side test code. Mock contracts are useful for native unit tests and simulation, but they cannot be deployed on chain.
 
 ## Contract Deployment
 
-Contracts are deployed by the DeployContract [system call](/reference/syscalls/).
+Contracts are deployed by the DeployContract [system call](/reference/syscalls/). In normal CLI usage, `groundhog deploy` invokes the active wallet contract, and the wallet contract calls DeployContract with the artifact hash and deployment nonce.
 
 ### Contract Identification
 
-Contracts are uniquely identified by the SHA256 hash of the `Contract` enum structure (as defined in the XDR schema):
+Contracts are identified by the SHA256 hash of the XDR-encoded `Contract` union:
 
 ```rust
 pub enum Contract {
-    kWasmi { wasmi_contract: ContractBlob },   // historical name; runtime is wasmtime
-    kNative { native_contract_id: i32 },
+    kWasmi { wasmi_contract: ContractBlob },
+    kNative { native_contract_id: HogexecPrecompiledNativeContracts },
     kMockTest { mock_contract_id: i32 },
+    kRv32 { rv32_contract: ContractBlob },
 }
 ```
 
-For WebAssembly contracts, this is effectively `SHA256(XDR(Contract::kWasmi { wasmi_contract: ContractBlob { wasm: <bytecode> } }))`. The `kWasmi` tag is historical: the production WebAssembly runtime is **wasmtime** (the legacy `Wasmi`-based runtime has been replaced), but the XDR enum value was preserved for wire compatibility.
+For RV32 contracts, the deploy hash is:
+
+```txt
+SHA256(XDR(Contract::kRv32 {
+    rv32_contract: ContractBlob {
+        data: <.rv32a artifact bytes>
+    }
+}))
+```
+
+This is not just the SHA256 hash of the raw `.rv32a` bytes. The XDR wrapper and `kRv32` type tag are part of the hash preimage.
 
 ### DeployContract Syscall
 
-To deploy a contract, the caller invokes the DeployContract syscall with two arguments:
-- **`nonce`**: A 32-byte value chosen by the caller
-- **`contract_hash`**: The SHA256 hash identifying the contract to deploy
+To deploy a contract, the caller invokes DeployContract with two arguments:
+
+- `nonce`: a 32-byte value chosen by the caller
+- `contract_hash`: the SHA256 hash identifying the contract artifact to deploy
 
 The system then:
-1. Verifies the contract (identified by `contract_hash`) is available (see Deployment Eligibility below)
-2. Computes the deployment address: `ContractAddress = SHA256(XDR(ContractDeploymentHashPreimage))`
-3. Writes `AddressMetadata` to the ledger at the computed address
-4. The contract code itself is stored separately in a deduplicated contract code store (not associated with any particular address)
+
+1. Verifies that the contract identified by `contract_hash` is available for deployment.
+2. Computes the deployment address: `ContractAddress = SHA256(XDR(ContractDeploymentHashPreimage))`.
+3. Writes `AddressMetadata` at the computed address.
+4. Stores the contract code separately in the deduplicated contract code store.
 
 ### Deterministic Address Derivation
 
-The address to which a contract is deployed is deterministically computed from deployment parameters. This allows anyone to predict the address before deployment. A contract can be deployed at multiple addresses. Multiple deployments of the same contract are completely separate from each other, with their own separate storage.
+The address to which a contract is deployed is computed from the deployer address, nonce, and contract hash. Anyone can predict the address before deployment.
+
+A single contract artifact can be deployed at many addresses. Each deployment has separate metadata and separate storage.
 
 ### Deployment Preimage
 
 ```rust
 pub struct ContractDeploymentHashPreimage {
-    /// Address of the contract performing the deployment
+    /// Address of the contract performing the deployment.
     pub deployer_address: ContractAddress,
 
-    /// Arbitrary 32-byte nonce chosen by deployer
+    /// Arbitrary 32-byte nonce chosen by the deployer.
     pub nonce: SHA256Hash,
 
-    /// SHA256 hash of the contract code
+    /// SHA256 hash of the contract artifact.
     pub contract_hash: SHA256Hash,
 }
 ```
 
 Under XDR encoding, this structure serializes as the concatenation of its fields:
-```
+
+```txt
 XDR(ContractDeploymentHashPreimage) = deployer_address || nonce || contract_hash
 ```
 
 ### Example
 
-Contract A (address `0x1234...`) deploys Contract B:
+A wallet contract at address `0x1234...` deploys `counter.rv32a`:
 
-```
+```txt
 deployer_address = 0x1234...
-nonce           = 0x5678...
-contract_hash   = SHA256(wasm_blob) = 0xabcd...
+nonce            = 0x5678...
+contract_hash    = SHA256(XDR(Contract::kRv32 {
+                       rv32_contract: ContractBlob { data: bytes(counter.rv32a) }
+                   }))
+                 = 0xabcd...
 
-ContractAddress = SHA256(0x1234... || 0x5678... || 0xabcd...)
-                = 0x9999...
+ContractAddress  = SHA256(0x1234... || 0x5678... || 0xabcd...)
+                 = 0x9999...
 ```
 
-Contract B's address is now `0x9999...`.
+The deployed counter contract's address is now `0x9999...`.
 
-This scheme is analogous to Ethereum's `CREATE2` opcode and enables deterministic address computation before deployment.
+This scheme is analogous to Ethereum's `CREATE2` opcode because the address can be calculated before deployment.
 
 ## Deployment Eligibility
 
-To be deployed via the DeployContract syscall, a contract (identified by its hash) must be available in the context of the current transaction.
+To be deployed via DeployContract, a contract identified by `contract_hash` must be available in the context of the current transaction.
 
 A contract is available if either of the following holds:
-- The contract code (identified by `contract_hash`) already exists in the on-chain contract code store (i.e., it has been deployed to at least one address previously, anywhere on the chain)
-- It is included in the `contracts_to_deploy` field of the current `Transaction`
+
+- The contract code already exists in the on-chain contract code store.
+- The contract is included in the `contracts_to_deploy` field of the current transaction.
 
 ```rust
 pub struct Transaction {
     pub invocation: Invocation,
     pub uniquifier: Uniquifier,
 
-    /// New contract code to make available for deployment
+    /// New contract code to make available for deployment.
     pub contracts_to_deploy: VecM<Contract>,
 
-    /// Authorization claim specifying required signatures
+    /// Authorization claim specifying required signatures.
     pub auth_claim: AuthClaim,
 }
 ```
 
-The `contracts_to_deploy` field makes contract code *available* for deployment within the transaction, but does **not** automatically deploy it to any address. Actual deployment to a specific address happens when a contract invokes the DeployContract syscall.
+`contracts_to_deploy` makes contract code available, but it does not deploy the code to an address by itself. Deployment to a specific address happens when a contract invokes DeployContract.
 
-**Example flow:**
-1. Transaction includes `contracts_to_deploy: [Contract::kWasmi { wasmi_contract: <bytecode> }]`
-2. This makes the contract code available (identified by its hash)
-3. During execution, a contract calls `DeployContract(nonce, contract_hash)` to deploy it to a specific address
-4. The system computes the address and writes the metadata
+Example flow:
+
+1. The transaction includes `contracts_to_deploy: [Contract::kRv32 { rv32_contract: ContractBlob { data: <artifact bytes> } }]`.
+2. The contract code becomes available under its `contract_hash`.
+3. During execution, a contract calls `DeployContract(nonce, contract_hash)`.
+4. The system computes the deployed address and writes its metadata.
 
 ## Address Metadata
 
-When a contract is deployed, the system writes `AddressMetadata` to the storage key `(contract_address, StorageKeyType::Metadata)` (see `protocol/types.x`).
+When a contract is deployed, the system writes `AddressMetadata` to the storage key `(contract_address, StorageKeyType::Metadata)`.
 
 ```rust
 pub struct AddressMetadata {
@@ -194,43 +197,40 @@ pub struct AddressMetadata {
 }
 
 pub struct DeployedContractHash {
-    /// SHA256 hash of the contract code
+    /// SHA256 hash of the contract code.
     pub hash: SHA256Hash,
 
-    /// Size of the contract in bytes
+    /// Size of the contract in bytes.
     pub contract_size: u32,
 
-    /// Type of contract (kWasmi, kNative, or kMockTest)
+    /// Type of contract: kRv32, kWasmi, kNative, or kMockTest.
     pub contract_type: ContractType,
 }
 ```
 
-This metadata allows anyone to:
-- Verify what code is running at an address
-- Determine the contract type without loading bytecode
-- Calculate storage costs based on contract size
+This metadata allows the executor and off-chain tools to:
+
+- Verify what code is running at an address.
+- Determine the contract type without loading bytecode.
+- Calculate storage costs from the contract size.
 
 The metadata is set during deployment and persists for the lifetime of the contract address.
 
 ## Deployment Concurrency
 
-Multiple transactions may deploy a contract to the same address in the same block. Groundhog does not consider two concurrent deployments of the same contract to the same address to be in conflict. Collision-resistance of SHA256 implies that it is impossible to deploy different contracts to the same address.
+Multiple transactions may deploy the same contract to the same address in the same block. Groundhog does not consider concurrent deployments of the same contract to the same address to be in conflict. Collision resistance of SHA256 implies that different contracts cannot be deployed to the same address.
 
-One-time initialization guards can be implemented within a new contract, if such behavior is required.
+If a contract requires one-time initialization, implement that guard in contract storage.
 
 ## Redeployment and Immutability
 
 Once a contract is deployed to an address, that address's `AddressMetadata` cannot be changed. Deployed contracts are immutable.
 
-## Miscellaneous
-
-- We expect that in nearly all use cases, a transaction that deploys a contract will soon invoke that contract (to initialize state, for example).
-Groundhog defers some WebAssembly validation criteria (such as lack of a start function) to the time when a contract is first invoked.
-This means that it is technically possible to deploy a contract that can never be invoked. Invoking a contract in the same transaction in which it is deployed will catch this error (as the invocation would fail).
-
 ## Related Documentation
 
-- [Invocation Frames](/how-it-works/invocation-frames/): Execution context and call stack management
-- [Syscalls](/reference/syscalls/): System calls available to contracts
-- [SDK Macros](/reference/sdk-macros/): How the SDK generates entrypoint IDs and client code
-- [Architecture](/how-it-works/architecture/): The big-picture design
+- [Groundhog CLI](/tools/groundhog-cli/): RV32 builds, local nodes, deployment, and codegen
+- [Invocation Frames](/how-it-works/invocation-frames/): execution context and call stack management
+- [Syscalls](/reference/syscalls/): system calls available to contracts
+- [SDK Macros](/reference/sdk-macros/): SDK entrypoint IDs and generated clients
+- [Contract Spec](/reference/contract-spec/): generated method, type, event, and error metadata
+- [Architecture](/how-it-works/architecture/): the big-picture design
