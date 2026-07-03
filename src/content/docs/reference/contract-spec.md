@@ -289,7 +289,7 @@ See [SDK Macros](/reference/sdk-macros/) for the full macro reference and [Add E
 
 ## Consuming the Spec
 
-- [`groundhog codegen ts`](/tools/typescript-sdk/) generates TypeScript bindings from a `.spec.xdr`. It can also read a legacy `.wasm` artifact with an embedded spec.
+- [`groundhog codegen ts`](/tools/typescript-bindings/) generates TypeScript bindings from a `.spec.xdr`. It can also read a legacy `.wasm` artifact with an embedded spec.
 - `groundhog build --target wasm --bindings ts` generates TypeScript in one step for the WASM compatibility path. For RV32, build first and run `groundhog codegen ts target/groundhog/<name>.spec.xdr`.
 - `groundhog call` uses local contract metadata when it can resolve it from the project or artifact.
 - Indexers and explorers can read the `.spec.json` sidecar to label methods and decode events.
@@ -298,6 +298,6 @@ See [SDK Macros](/reference/sdk-macros/) for the full macro reference and [Add E
 
 - [SDK Macros](/reference/sdk-macros/) for the macros that generate spec metadata
 - [Add Events to a Contract](/tutorials/add-events-to-a-contract/) for the events workflow end to end
-- [TypeScript Bindings](/tools/typescript-sdk/) for spec-driven codegen
+- [TypeScript Bindings](/tools/typescript-bindings/) for spec-driven codegen
 - [JSON-RPC API](/reference/json-rpc-api/) for querying emitted events
 - [Contracts](/how-it-works/contracts/) for entrypoint ID encoding and deployment

@@ -193,4 +193,4 @@ groundhog codegen ts \
 
 The shortcut `groundhog build --target wasm --bindings ts` is WASM-only today. For RV32, use `groundhog codegen ts` against `.spec.xdr`.
 
-For package setup and TypeScript usage, see [TypeScript Bindings](/tools/typescript-sdk/).
+For generated contract bindings, see [TypeScript Bindings](/tools/typescript-bindings/). For the app-facing client package, see [TypeScript SDK](/tools/typescript-sdk/).

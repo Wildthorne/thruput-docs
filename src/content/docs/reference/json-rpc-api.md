@@ -96,20 +96,6 @@ Two things to notice. First, the response always carries `blockHeight` — even 
 
 `unknown` is a forward-compatibility variant. If a future protocol release adds a new storage kind, clients built against an older spec see `{ "kind": "unknown", "typeId": 99 }` rather than a parse failure.
 
-#### Wallet Balance, End to End
-
-The HogToken precompile stores HOG balances under per-address storage keys. To read a wallet's balance, a client calls `groundhog_getStorageAt(hogTokenAddress, walletBalanceKey)` and pattern-matches on the response:
-
-```js
-const { item } = await rpc.getStorageAt(HOG_TOKEN_ADDRESS, balanceKey(wallet));
-if (item?.kind === "nonnegativeInt") {
-  return BigInt(item.value);
-}
-return 0n;  // key absent or different kind
-```
-
-No XDR codec, no storage-layout library, no `keccak256(abi.encode(...))` slot derivation in the client. The wallet derives its own balance key, asks the chain, and reads a decimal string.
-
 ### Wire Conventions
 
 A few conventions the API follows consistently:
@@ -180,6 +166,7 @@ Get the execution result and emitted events for a committed transaction.
 | `{"result": "ok"}` | Transaction executed and committed |
 | `{"result": "reverted", "message": "..."}` | Transaction executed but was reverted |
 | `{"result": "deterministicError", "kind": "..."}` | Transaction failed deterministically (e.g., WASM trap) |
+| `{"result": "nonDeterministicError"}` | Commit failed due to a race or proposal-time storage conflict |
 | `{"result": "failedGasSponsorship"}` | Gas sponsorship check failed |
 | `{"result": "other"}` | Unclassified execution outcome |
 
@@ -198,7 +185,7 @@ Check whether a transaction is pending, committed, or unknown.
 | Status | Meaning |
 |--------|---------|
 | `Pending` | Transaction is in the mempool, not yet committed |
-| `Committed` | Transaction has been included in a block (includes `height` and `blockHash`) |
+| `Committed` | Transaction has been included in a block (includes `height`) |
 | `Invalid` | Transaction was rejected |
 | `Unknown` | Transaction not found in mempool or committed history |
 
@@ -216,6 +203,66 @@ Get the current chain tip.
 
 ---
 
+### groundhog_version
+
+Return gateway implementation and JSON-RPC wire-format version information.
+
+**Parameters:** None.
+
+**Returns:** `VersionInfo`.
+
+```json
+{
+  "wireFormat": "2.1.0",
+  "implementation": "groundhog-rpc",
+  "commitHash": "abc123"
+}
+```
+
+`commitHash` may be `null` when the gateway cannot report a build commit.
+
+---
+
+### groundhog_view
+
+Execute a read-only contract invocation against committed state. The invocation is sandboxed and does not enter the mempool.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `request` | `ViewRequest` | Contract address, entrypoint ID, calldata, and optional caller |
+
+**Returns:** `ViewResponse` with root output, emitted events, and snapshot height.
+
+`output.result` is one of `return`, `abort`, or `fault`. Successful returns carry `returnData`; aborts carry `abortData`.
+
+:::caution[Backend Dependent]
+Deployments without a configured view gateway return error code `-32052`.
+:::
+
+---
+
+### groundhog_getBalance
+
+Read the latest committed native HOG balance for an address.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `address` | `0x`-prefixed hex (64 chars) | Address whose native HOG balance to read |
+
+**Returns:** `BalanceResponse`.
+
+```json
+{
+  "address": "0x7171...7171",
+  "rawBalance": "1000000000",
+  "height": 4567
+}
+```
+
+`rawBalance` is a decimal string in raw protocol units. `height` is the committed block height used for the read.
+
+---
+
 ### groundhog_getStorageAt
 
 Read the latest committed storage item at an address/key pair.
@@ -227,7 +274,7 @@ Read the latest committed storage item at an address/key pair.
 
 **Returns:** `StorageItemRead { blockHeight, item: StorageItemInfo | null }`. `blockHeight` is always the snapshot the read was performed against; `item` is `null` when no value exists at the key.
 
-See [Reading State](#reading-state) for the full `StorageItemInfo` variant table and the wallet-balance walkthrough.
+See [Reading State](#reading-state) for the full `StorageItemInfo` variant table.
 
 ---
 
@@ -272,19 +319,19 @@ This method returns error code `-32052`. Requires a scheduler size RPC that is n
 
 ---
 
-### groundhog_getContractEvents
+### groundhog_getEvents
 
-Query events emitted by a contract within a block range.
+Query emitted contract events with cursor pagination and topic filters.
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `address` | `0x`-prefixed hex (64 chars) | Contract address |
-| `fromBlock` | integer | Start of block range (inclusive) |
-| `toBlock` | integer | End of block range (inclusive) |
+| `query` | `EventQuery` | Cursor, ordering, anchor, contract-address filters, and topic filters |
 
-**Returns:** Array of `IdentifiedEvent` objects, each containing the event data, topics, block height, and transaction hash.
+**Returns:** `EventPage` with matched events, pagination cursor, latest indexed block, and oldest retained block.
 
-The gateway enforces a maximum block range per request (default: 1000 blocks).
+`EventQuery.filters` ORs across filters and ANDs within each filter. Contract address filters are required. Topic filters are positional: `topic0`, `topic1`, and `topic2`.
+
+See [Add Events to a Contract](/tutorials/add-events-to-a-contract/#step-5-query-it-on-chain) for an end-to-end event query example.
 
 ## Error Codes
 
@@ -297,24 +344,21 @@ Standard JSON-RPC 2.0 error codes apply. The gateway also defines application-sp
 | `-32001` | TX_REJECTED | Scheduler rejected the transaction |
 | `-32002` | TX_NOT_FOUND | Transaction not found in mempool or history |
 | `-32010` | BLOCK_NOT_FOUND | No block at the requested height |
-| `-32011` | RANGE_TOO_LARGE | Event query block range exceeds maximum |
-| `-32050` | BACKEND_UNAVAILABLE | Internal backend (indexer or scheduler) is not connected |
+| `-32050` | BACKEND_UNAVAILABLE | Internal backend (indexer, scheduler, or view gateway) is not connected |
 | `-32051` | BACKEND_TIMEOUT | Internal backend did not respond in time |
 | `-32052` | NOT_IMPLEMENTED | Method exists but is not yet functional |
+| `-32053` | OVERLOADED | Gateway or backend is overloaded; retry with backoff |
 
 ## Client Libraries
 
-**TypeScript/JavaScript.** The `@groundhogchain/client`, `@groundhogchain/protocol`, and related packages provide TypeScript types, codecs, and helpers for building gateway calls. See [TypeScript Bindings](/tools/typescript-sdk/) for details.
+**TypeScript/JavaScript.** The `@groundhogchain/client`, `@groundhogchain/protocol`, and related packages provide TypeScript types, codecs, and helpers for building gateway calls. See [TypeScript SDK](/tools/typescript-sdk/) for details.
 
 **Rust.** The `groundhog-rpc` crate includes a typed JSON-RPC client generated from the same trait that defines the gateway. Import `groundhog_rpc_client` for a ready-made client.
 
 ## Future Phases
 
-| Phase | Planned |
-|-------|---------|
-| Phase 2 | WebSocket subscriptions (new blocks, pending transactions, contract events) |
-| Phase 3 | SDK client and CLI integration |
-| Phase 4 | Production hardening (rate limiting, caching, metrics) |
+- WebSocket subscriptions (new blocks, pending transactions, contract events)
+- Production hardening (rate limiting, caching, metrics)
 
 ## Related Documentation
 

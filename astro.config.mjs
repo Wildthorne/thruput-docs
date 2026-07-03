@@ -26,6 +26,7 @@ export default defineConfig({
             'tools/groundhog-cli',
             'tools/rust-api-docs',
             'tools/typescript-sdk',
+            'tools/typescript-bindings',
             'tools/block-explorer',
             'tools/wallet-integration',
             'tools/faucet',
