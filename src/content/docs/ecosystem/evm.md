@@ -377,5 +377,5 @@ These EVM features have no Groundhog equivalent. Set your expectations:
 - [Getting Started](/start/getting-started/) for SDK setup and project structure
 - [Build a Counter](/tutorials/build-a-counter/) for a step-by-step first contract
 - [Build a Token](/tutorials/build-a-token/) for the full ERC-20 implementation
-- [Execution Model](/how-it-works/execution-model/) for snapshots, deltas, and merge rules
+- [Merged Deltas](/programming-model/execution/#merged-deltas) for the contract-level merge model
 - [Storage Types](/reference/storage-types/) for the full NNInt, Map, and Bytestring API

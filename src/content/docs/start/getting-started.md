@@ -133,7 +133,7 @@ my-counter/
     test_wasm.rs          # WASM test, run by `groundhog test --target wasm`
 ```
 
-The counter has four core methods: `initialize`, `increment`, `decrement`, and `get`. The scaffold also includes a small event example (`ping`) and an explicit error example (`error`). All counter mutations use `strict_inc` (delta operations that commute). The native test deploys the contract into a mock environment and calls it through a generated client.
+The counter has four core methods: `initialize`, `increment`, `decrement`, and `get`. The scaffold also includes a small event example (`ping`) and an explicit error example (`error`). All counter mutations use `strict_inc`, which records signed changes instead of replacement values. Those [deltas can merge](/programming-model/execution/#merged-deltas) across concurrent calls. The native test deploys the contract into a mock environment and calls it through a generated client.
 
 For a line-by-line walkthrough of this code, see [Build a Counter](/tutorials/build-a-counter/).
 
@@ -173,5 +173,5 @@ The [Groundhog CLI reference](/tools/groundhog-cli/) documents individual comman
 - **[Develop on Devnet with the CLI](/tutorials/develop-on-devnet/)**: Create a persistent key-owned wallet and deploy the counter to Devnet
 - **[Rust API Docs](/tools/rust-api-docs/)**: Find generated Rustdoc for the SDK crates
 - **[Build a Counter](/tutorials/build-a-counter/)**: Line-by-line walkthrough of the contract you just generated
-- **[Programming Model](/programming-model/execution/)**: Understand why this works (snapshots, deltas, commutativity)
+- **[Merged Deltas](/programming-model/execution/#merged-deltas)**: Understand how concurrent state changes combine
 - **[Build a Token](/tutorials/build-a-token/)**: Build a full ERC-20 token
