@@ -179,14 +179,32 @@ The value should remain `15`.
 
 ## Integration Test Mode
 
-`groundhog test --integration` starts its own disposable local node, deploys the selected artifact, and runs `tests/integration.rs`. The scaffold does not create that file, so add the Cargo integration-test target before using this mode.
+`groundhog test --integration` starts its own disposable local node, deploys
+the selected artifact, and runs `tests/integration.rs` (not provided by the
+scaffold).  Invoke it like this:
 
 ```bash
 GROUNDHOG_DEVNODE_BINARY="/path/to/hog-devnode" \
   groundhog test --integration
 ```
 
-Use integration mode for automated RPC tests. Use the long-running `groundhog node` flow above for interactive development across several commands.
+A cargo target like the following will prevent the test from being run except
+when explicitly requested (as `groundhog test --integration` does):
+
+```toml
+[[test]]
+name = "integration"
+test = false
+# test usage: GROUNDHOG_DEVNODE_BINARY=/path/to/hog-devnode groundhog test --integration
+```
+
+Your integration test will need to interact with the local node via groundhog's
+JSON-RPC interface.  For an example, see `counter` or `erc20` in the
+`groundhog-examples` repository (via the groundhog package registry); it uses a
+helper library called `integration-test`, in that same repository.
+
+Use this integration mode for automated RPC tests. For interactive development
+across several commands, use the long-running `groundhog node` flow above.
 
 ## Troubleshooting
 
