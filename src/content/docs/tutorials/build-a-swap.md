@@ -143,7 +143,7 @@ pub struct SwapV2Pair {
 
 (Source: `example-contracts/swap/src/swapv2_pair.rs:14-25`.)
 
-`Reserves` is a user struct carried inside `Value`. It pairs the two balances with their cumulative price accumulators (for an on-chain TWAP oracle) and the last block timestamp:
+`Reserves` is a user struct carried inside [`Value`](/programming-model/storage-types/). It pairs the two balances with their cumulative price accumulators (for an on-chain TWAP oracle) and the last block timestamp:
 
 ```rust
 #[contract_type]
@@ -439,9 +439,9 @@ Cross-contract calls contribute all nested events to the transaction result. Ass
 
 ## Concurrency Notes
 
-- Different pairs are fully independent. Two pairs (ETH/USDC, BTC/USDC) execute swaps in the same block with zero interaction.
-- Swaps on the same pair conflict. `reserves` is a `Value`, and two swaps produce different post-images, so one gets returned to the mempool.
-- LP transfers between users on the same pair parallelize. They live on the LP contract, which uses `NNInt` balances internally, so balance deltas commute.
+- Different pairs use separate storage. Two pairs (ETH/USDC, BTC/USDC) can execute swaps in the same block without conflicting.
+- Swaps on the same pair generally conflict. Each swap replaces the entire `reserves` value with newly calculated state. If two swaps calculate different states, one gets returned to the mempool.
+- LP transfers between users on the same pair can execute concurrently. The LP contract uses [`NNInt`](/programming-model/nnint/) balances, so concurrent credits and debits can combine when the available balance is sufficient.
 
 ## Closing Notes
 
