@@ -15,7 +15,7 @@ That said, the CLI is a convenience, not a requirement. You can also:
 The CLI is just a consumer of the SDK. It generates the same Rust crate you'd write by hand: a standard Cargo project that depends on the SDK, uses the SDK's storage types and macros, and builds to RV32 by default.
 
 :::note[Version checked]
-This workflow was last checked against Groundhog CLI `0.5.10` and SDK `0.15.4` on June 26, 2026.
+This workflow was last checked against Groundhog CLI `0.5.17` and SDK `0.17.1` on July 13, 2026.
 :::
 
 ## Install
@@ -55,11 +55,12 @@ Generated projects work with both `cargo` and `groundhog`. Use `cargo` for nativ
 |---------|-------------|---------|
 | `cargo build` | Compiles as native code for your host machine | IDE support, rust-analyzer |
 | `cargo test` | Runs tests natively. Faults are Rust panics caught by `catch_unwind`. | Fast logic tests, step-through debugging |
-| `groundhog build` | Builds the deployable RV32 artifact and spec sidecars | Deployable contract artifact |
+| `groundhog build` | Builds the deployable RV32 artifact and lowering metadata | Deployable contract artifact |
 | `groundhog node` | Starts a standalone local `hog-devnode` on port `9545` | Local deploy/call testing |
 | `groundhog deploy` | Signs and submits the selected built artifact | Deploy to the selected profile |
+| `groundhog test` | Runs executor-backed RV32 artifact tests | Contract artifact tests |
 | `groundhog test --integration` | Starts an ephemeral `hog-devnode`, deploys the contract, and runs `tests/integration.rs` | End-to-end RPC tests |
-| `groundhog test` | Runs the WASM compatibility harness | Legacy WASM checks |
+| `groundhog test --target wasm` | Runs the WASM compatibility tests | Legacy WASM checks |
 
 For a command-by-command map, including the Foundry/Anvil mental model for local development, see [Groundhog CLI](/tools/groundhog-cli/).
 
@@ -69,8 +70,6 @@ For a command-by-command map, including the Foundry/Anvil mental model for local
 
 - `target/groundhog/<name>.rv32a`: deployable contract artifact
 - `target/groundhog/<name>.rv32.json`: RV32 lowering metadata
-- `target/groundhog/<name>.spec.xdr`: canonical contract spec
-- `target/groundhog/<name>.spec.json`: human-readable contract spec
 
 The effective Cargo build is:
 
@@ -85,7 +84,7 @@ cargo build \
 
 Then the CLI lowers the ELF into the `.rv32a` artifact consumed by the node.
 
-WASM is still available with `groundhog build --target wasm`, but RV32 is the default path. Use WASM only for compatibility checks or legacy tooling that still depends on it.
+WASM is still available with `groundhog build --target wasm`, but RV32 is the default path. The WASM build extracts embedded contract specs and can emit `.spec.xdr` and `.spec.json` sidecars. Use WASM only for compatibility checks or tooling that still depends on it.
 
 ### Integration Tests
 
@@ -117,7 +116,8 @@ my-counter/
     main.rs               # RV32 entrypoint wrapper
   tests/
     test.rs               # Native SDK tests through the generated client
-    test_wasm.rs          # WASM compatibility test, run by `groundhog test`
+    test_rv32.rs          # RV32 artifact test, run by `groundhog test`
+    test_wasm.rs          # WASM test, run by `groundhog test --target wasm`
 ```
 
 The counter has four core methods: `initialize`, `increment`, `decrement`, and `get`. The scaffold also includes a small event example (`ping`) and an explicit error example (`error`). All counter mutations use `strict_inc` (delta operations that commute). The native test deploys the contract into a mock environment and calls it through a generated client.
@@ -158,11 +158,12 @@ groundhog storage <addr> 0x<key>     # read raw committed storage
 
 `--profile` selects which network the command targets. Profiles live in `groundhog.toml` and `~/.config/groundhog/`; keys are stored globally at `~/.config/groundhog/keys/`. `GROUNDHOG_RUNTIME_MANIFEST` can point the CLI at a specific runtime manifest when you are not using the project-local node state. Run `groundhog status` for a non-interactive diagnostic of toolchain, keys, credentials, and project config.
 
-A hosted testnet faucet is not yet available; for now, fund accounts via the local dev node.
+For the hosted wallet, faucet, deployment, and call workflow, follow [Test the CLI on Devnet](/tutorials/test-cli-on-devnet/).
 
 ## Next Steps
 
 - **[Groundhog CLI](/tools/groundhog-cli/)**: Map each CLI command to the development job it handles
+- **[Test the CLI on Devnet](/tutorials/test-cli-on-devnet/)**: Create a hosted wallet and deploy the counter from isolated local state
 - **[Rust API Docs](/tools/rust-api-docs/)**: Find generated Rustdoc for the SDK crates
 - **[Build a Counter](/tutorials/build-a-counter/)**: Line-by-line walkthrough of the contract you just generated
 - **[Programming Model](/programming-model/execution/)**: Understand why this works (snapshots, deltas, commutativity)

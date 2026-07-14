@@ -8,16 +8,17 @@ description: "How to test Groundhog contracts: native logic tests, RV32 integrat
 Groundhog contracts have three useful test paths:
 
 :::note[Version checked]
-This page was last checked against Groundhog CLI `0.5.10` and SDK `0.15.4` on June 26, 2026.
+This page was last checked against Groundhog CLI `0.5.17` and SDK `0.17.1` on July 13, 2026.
 :::
 
 | Command | What it covers | Use for |
 |---------|----------------|---------|
 | `cargo test` | Native SDK execution in process | Fast logic tests, error-path assertions, debugging |
+| `groundhog test` | Executor-backed RV32 artifact test | Contract artifact behavior without an RPC node |
+| `groundhog test --target wasm` | WASM compatibility test | Legacy WASM checks |
 | `groundhog test --integration` | Ephemeral `hog-devnode`, deployed artifact, RPC client path | End-to-end deploy/call tests. Defaults to RV32 (32-bit RISC-V). |
-| `groundhog test` | WASM compatibility harness | Legacy WASM checks |
 
-Start with `cargo test`. Add `groundhog test --integration` when you need to test the same path a partner or app will use: build artifact, local node, deployment, signing profile, RPC URL, and generated client behavior.
+Start with `cargo test`, then run `groundhog test` against the RV32 artifact. Add `groundhog test --integration` when you need to test the same path a partner or app will use: build artifact, local node, deployment, signing profile, RPC URL, and generated client behavior.
 
 `groundhog test --integration` deploys RV32 by default. Use `--target wasm` only for legacy comparison, or `--differential` when you intentionally want to run the same integration test against both RV32 and WASM local nodes.
 

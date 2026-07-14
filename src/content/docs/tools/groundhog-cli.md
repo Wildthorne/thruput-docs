@@ -6,7 +6,7 @@ description: How Groundhog CLI commands fit into RV32 builds, local nodes, tests
 Run normal Rust loops with `cargo`. Run Groundhog-specific work with `groundhog`: scaffolds, RV32 artifacts, local nodes, deployments, RPC calls, state inspection, keys, wallets, and generated bindings. RV32 is Groundhog's 32-bit RISC-V contract target.
 
 :::note[Version checked]
-This page was last checked against Groundhog CLI `0.5.10` and SDK `0.15.4` on June 26, 2026.
+This page was last checked against Groundhog CLI `0.5.17` and SDK `0.17.1` on July 13, 2026.
 :::
 
 ## Foundry Mental Model
@@ -31,7 +31,7 @@ Start with native tests and the default RV32 build:
 groundhog new my-counter     # create the project
 cd my-counter
 cargo test                   # fast native tests
-groundhog build              # write target/groundhog/*.rv32a and spec sidecars
+groundhog build              # write the RV32 artifact and lowering metadata
 ```
 
 Run a local chain in a second terminal:
@@ -50,6 +50,8 @@ groundhog view my-counter get
 
 On a successful deploy, the CLI saves a project-name contract alias in `groundhog.toml`. Use that alias, such as `my-counter`, or the `0x...` address printed by `groundhog deploy`.
 
+For a clean-room workflow that creates a key and wallet, then deploys to a hosted network, follow [Test the CLI on Devnet](/tutorials/test-cli-on-devnet/).
+
 ## Which Command Should I Use?
 
 | Goal | Command |
@@ -58,6 +60,7 @@ On a successful deploy, the CLI saves a project-name contract alias in `groundho
 | Check local setup | `groundhog status` |
 | Run fast logic tests | `cargo test` |
 | Build a deployable RV32 artifact | `groundhog build` |
+| Run executor-backed RV32 tests | `groundhog test` |
 | Keep a local chain running | `groundhog node` |
 | Deploy to the selected profile | `groundhog deploy` |
 | Send a state-changing contract call | `groundhog call <contract> <method> [args...]` |
@@ -67,7 +70,7 @@ On a successful deploy, the CLI saves a project-name contract alias in `groundho
 | Generate TypeScript contract bindings | `groundhog codegen ts <spec.xdr> -o <file.ts>` |
 
 :::caution[RV32 default]
-`groundhog build` and `groundhog test --integration` default to RV32. Plain `groundhog test` runs the WASM compatibility harness today. For the default RV32 path, use `cargo test` for native logic tests and `groundhog test --integration` for local-node RPC tests.
+`groundhog build`, `groundhog test`, and `groundhog test --integration` default to RV32. Use `cargo test` for fast native logic tests, `groundhog test` for executor-backed artifact tests, and `groundhog test --integration` for local-node RPC tests.
 :::
 
 ## Setup and Flags
@@ -83,18 +86,18 @@ groundhog --json status
 groundhog --quiet build
 ```
 
-Most network-facing commands accept `--profile` (also available as `--network`) to select a profile from `groundhog.toml` or `~/.config/groundhog/`.
+Most network-facing commands accept `--profile` to select a profile from `groundhog.toml` or `~/.config/groundhog/`.
 
 ## Build and Test
 
-`groundhog build` defaults to `--target rv32` and writes the deployable 32-bit RISC-V artifact plus spec sidecars:
+`groundhog build` defaults to `--target rv32` and writes the deployable 32-bit RISC-V artifact plus lowering metadata:
 
 ```text
 target/groundhog/<name>.rv32a
 target/groundhog/<name>.rv32.json
-target/groundhog/<name>.spec.xdr
-target/groundhog/<name>.spec.json
 ```
+
+The WASM compatibility build extracts the embedded contract spec and can emit `.spec.xdr` and `.spec.json` sidecars. RV32 spec sidecars are not emitted yet.
 
 Use the WASM target only for compatibility work:
 
@@ -107,7 +110,8 @@ Test modes:
 | Command | What runs |
 |---------|-----------|
 | `cargo test` | Native Rust tests on your host. Best for fast contract logic feedback. |
-| `groundhog test` | WASM compatibility harness using `tests/test_wasm.rs`. |
+| `groundhog test` | Executor-backed RV32 tests using `tests/test_rv32.rs`. |
+| `groundhog test --target wasm` | WASM compatibility tests using `tests/test_wasm.rs`. |
 | `groundhog test --integration` | Ephemeral local node, deploy, then `tests/integration.rs`. Defaults to RV32. |
 | `groundhog test --integration --differential` | Runs the same integration target against isolated RV32 and WASM nodes. |
 
@@ -149,7 +153,7 @@ Useful flags and environment variables:
 | `GROUNDHOG_RUNTIME_MANIFEST` | Point commands at a specific runtime manifest for `dev-N` accounts. |
 | `RUST_LOG` | Control supervisor and forwarded node logs. |
 
-When run from a project directory, `groundhog node` records project-local node state so later CLI commands can resolve `dev-0` and the runtime manifest without copying the manifest path by hand. The command also prints an export line for `GROUNDHOG_RUNTIME_MANIFEST` when the node reports a manifest.
+`groundhog node` records the active local endpoint and runtime manifest in global CLI state so profiles with `network = "local"` can resolve `dev-0` without copying the manifest path by hand. The command also prints an export line for `GROUNDHOG_RUNTIME_MANIFEST` when the node reports a manifest.
 
 Use `groundhog test --integration` when you want disposable state per test run.
 
@@ -170,27 +174,27 @@ groundhog keys use alice
 groundhog keys rm alice
 ```
 
-Contract wallets are project config entries used by the local-node wallet flow:
+Contract wallets are profile entries that bind a signing key to its deployed wallet contract:
 
 ```bash
-groundhog wallet create --key alice --name alice
-groundhog wallet ls
-groundhog wallet rm alice
+groundhog wallet create --key alice --profile devnet
+groundhog wallet ls --profile devnet
+groundhog wallet rm alice --profile devnet
 ```
 
-Generated local profiles use `dev-0` by default, so you usually do not need to create a key or wallet before the first local deploy.
+Generated local profiles use `dev-0` by default, so you usually do not need to create a key or wallet before the first local deploy. Hosted profiles use the configured faucet for prefund-first wallet creation. See [Test the CLI on Devnet](/tutorials/test-cli-on-devnet/) for the complete remote flow.
 
 ## TypeScript Bindings
 
-For the RV32 path, generate TypeScript from the spec sidecar produced by `groundhog build`:
+`groundhog codegen ts` accepts a WASM artifact or an existing `.spec.xdr` file:
 
 ```bash
-groundhog build
+groundhog build --target wasm
 groundhog codegen ts \
-  ./target/groundhog/my_counter.spec.xdr \
+  ./target/wasm32-unknown-unknown/release/my_counter.wasm \
   -o ./web/src/contracts/my-counter.ts
 ```
 
-The shortcut `groundhog build --target wasm --bindings ts` is WASM-only today. For RV32, use `groundhog codegen ts` against `.spec.xdr`.
+The shortcut `groundhog build --target wasm --bindings ts` builds the WASM compatibility artifact and generates TypeScript in one command. RV32 builds do not emit contract spec sidecars yet.
 
 For generated contract bindings, see [TypeScript Bindings](/tools/typescript-bindings/). For the app-facing client package, see [TypeScript SDK](/tools/typescript-sdk/).
