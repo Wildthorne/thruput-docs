@@ -5,9 +5,13 @@ description: Generating typed TypeScript bindings for Groundhog contracts via gr
 
 TypeScript bindings are contract-specific files generated from a Groundhog contract spec. They give app code typed entrypoint helpers, contract types, event decoders, and interface metadata for one contract.
 
-Use this page when you have a contract artifact or `.spec.xdr` file and want TypeScript code for that contract.
+Use this page when you have a `.spec.xdr` sidecar or a legacy `.wasm` artifact and want TypeScript code for that contract. `groundhog codegen ts` does not accept `.rv32a` or `.spec.json` files.
 
 For the general JSON-RPC client, transports, signing, and package map, see [TypeScript SDK](/tools/typescript-sdk/).
+
+:::caution[Source checkout required]
+Current CLI-generated bindings target the unreleased `client-ts` source and protocol package `0.4.x` shapes. Published `@groundhogchain/client@0.1.4` has no `./contracts` export and uses an older contract-spec type without events. Follow the source installation in [TypeScript SDK](/tools/typescript-sdk/#install) until a compatible client is published.
+:::
 
 ## What Bindings Provide
 
@@ -32,6 +36,7 @@ For a crate named `my-contract`, the RV32 build writes:
 
 ```text
 target/groundhog/my_contract.rv32a
+target/groundhog/my_contract.rv32.json
 target/groundhog/my_contract.spec.xdr
 target/groundhog/my_contract.spec.json
 ```
@@ -45,6 +50,8 @@ groundhog codegen ts \
 ```
 
 You can also pass a `.wasm` file when you intentionally build the legacy WASM artifact with `groundhog build --target wasm`. The shortcut `groundhog build --target wasm --bindings ts` is WASM-only today. For the default RV32 path, run `groundhog codegen ts` against `.spec.xdr`.
+
+The generated file directly imports `@groundhogchain/client`, `@groundhogchain/protocol`, and `@groundhogchain/contract-spec`. Bindings with events also import `@groundhogchain/xdr`. Declare those packages in the consuming application; see [TypeScript SDK installation](/tools/typescript-sdk/#install).
 
 See `groundhog codegen ts --help` for the full set of flags.
 
@@ -121,9 +128,15 @@ The codegen maps Rust contract types to TypeScript as follows:
 
 `u8` is intentionally rejected as a bare type. It must appear inside `Vec`, `Bytes`, or an array so the generated TypeScript can use `Uint8Array`.
 
+`Signer<T>` and its `SignedToken` contract-spec representation are not supported by the current TypeScript generator. Codegen exits with an unsupported-type error when either appears in the spec.
+
 ## Standard Contract Bindings
 
 `@groundhogchain/client` also ships generated bindings for standard interfaces under the `./contracts` subpath. These are useful when your app talks to well-known contracts without generating local bindings first.
+
+:::caution[Bundled ERC-20 version]
+The current unreleased client source bundles ERC-20 spec metadata from interface `0.1.3`; the current Rust standard interface source is `0.1.4`. Published client `0.1.4` does not export the `./contracts` subpath at all. The shown helper signatures target the source checkout, but generated metadata is not the current interface source of truth.
+:::
 
 The ERC-20 binding includes helpers such as:
 
@@ -146,9 +159,16 @@ const addr = addressFromHex("0x<64-character-owner-address>");
 const invocation = ERC20.getBalanceOf(token, gasAmount(500_000n), {
   addr,
 });
+
+const response = await client.view({
+  contract: invocation.invoked_address,
+  entrypoint: invocation.entrypoint,
+  calldata: invocation.calldata,
+  caller: addr,
+});
 ```
 
-Pass the resulting `invocation` to `client.view` for a read-only simulation, or wrap it in a transaction when you want to submit a state-changing call. The binding owns contract-specific entrypoint IDs and calldata encoding; the SDK owns transport, signing, and submission.
+`client.view` accepts a `ViewRequest`, not an `Invocation`, so pass the generated invocation fields as shown. For state-changing calls, the generated invocation is normally wrapped inside the wallet contract's root `do_action` invocation. The published TypeScript client does not yet provide that high-level wallet builder; use the CLI rather than submitting the generated invocation directly.
 
 ## Bindings vs SDK
 
@@ -162,7 +182,7 @@ Generated bindings do not replace the SDK. They sit on top of it.
 | Decode your contract event payload | Generated binding |
 | Keep TypeScript code aligned with a contract spec | Generated binding |
 
-Most apps use both: generated bindings produce invocations and decode contract-specific values; `@groundhogchain/client` sends views, transactions, and queries to the gateway.
+Most apps use both: generated bindings produce invocations and decode declared event payloads; `@groundhogchain/client` sends views and queries to the gateway. View and receipt return data remains raw CXS bytes and needs contract-specific decoding code.
 
 ## Related Documentation
 

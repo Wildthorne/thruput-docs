@@ -1,11 +1,15 @@
 ---
-title: Build a Swap
-description: "Tutorial: build a constant-product AMM pair on Groundhog."
+title: Understand a Swap Contract
+description: Walk through the SDK's constant-product AMM example and its cross-contract execution model.
 ---
 
-We're building a UniswapV2-style pair contract: two reserves, an LP token, and a constant-product swap. After Counter (storage primitives) and Token (delta-based ERC-20), this is the first tutorial where one contract drives another. The pair deploys a second contract for its LP token and calls into it through a generated client.
+This source walkthrough studies the SDK's UniswapV2-style pair contract: two reserves, an LP token, and a constant-product swap. After Counter and Token, it shows how one contract drives another through generated clients.
 
-**Prerequisites:** Complete [Build a Token](/tutorials/build-a-token/) first. The LP token reuses that ERC-20 contract verbatim.
+**Prerequisites:** Complete [Build a Token](/tutorials/build-a-token/) first. The pair deploys an ERC-20-compatible contract whose code hash is supplied to `initialize`.
+
+:::note[Source walkthrough]
+This page was checked against SDK `0.17.1` on July 13, 2026. It presents selected excerpts from `sdk_rs/example-contracts/swap`; it is not a complete standalone crate. Use the SDK repository for the big-number module, events, Cargo configuration, companion token contract, and full test harness.
+:::
 
 ## What You'll Build
 
@@ -17,7 +21,7 @@ A `SwapV2Pair` contract that:
 - Redeems LP tokens for reserves (`burn_lp`)
 - Executes swaps against `x * y = k` with a 0.3% fee
 
-The full source lives in `example-contracts/swap` in the SDK repo. This tutorial mirrors that crate.
+The complete source lives in `example-contracts/swap` in the SDK repository.
 
 ## Architecture
 
@@ -36,7 +40,7 @@ The pair is one contract. The LP token is a *separate, freshly deployed* contrac
 ```
 
 :::note[Reentrancy]
-The runtime forbids reentrancy: any `invoke` whose target is already on the call stack errors with `Reentrance` (enforced in `hogexec/runtime/syscall_handler.cc`). You don't need defensive guards. The pair calls into three other contracts during `swap` (two reserve tokens and the LP) and the engine guarantees none of those can call back into the pair within the same call tree.
+During `swap`, the pair invokes the two reserve-token contracts. `mint_lp` and `burn_lp` also invoke the LP-token contract. Cross-contract code should not assume an EVM-style call graph; follow the current runtime's invocation rules in [Invocation Frames](/how-it-works/invocation-frames/) rather than adding or omitting guards based on this abbreviated example.
 :::
 
 ## Step 1: Define the Interface
@@ -69,7 +73,7 @@ pub enum ISwapV2PairError {
 }
 ```
 
-`LPTokenFailure(ERC20Error)` wraps the LP contract's error type so callers see one error domain. `throws(ISwapV2PairError, ERC20Error)` on the trait below lets the macro generate the right client-side surface.
+`throws(ISwapV2PairError, ERC20Error)` generates separate client error variants for pair errors and token errors. LP `initialize`, `mint`, and `burn` failures propagate as `ERC20Error`. Reserve-token transfer helpers deliberately map client failures to `ISwapV2PairError::TransferFailed`. The declared `LPTokenFailure` variant is not constructed by the current implementation.
 
 The trait itself:
 
@@ -110,7 +114,7 @@ pub trait ISwapV2Pair {
 }
 ```
 
-(Source: `example-contracts/swap/src/interfaces/iswapv2_pair.rs:1-78`.)
+(Source: `example-contracts/swap/src/interfaces/iswapv2_pair.rs`.)
 
 `initialize` takes a `SHA256Hash` of an ERC-20 contract. The pair deploys that hash at init time. Callers don't pass an LP address: the pair owns its LP.
 
@@ -165,7 +169,7 @@ impl ISwapV2Pair for SwapV2Pair {
         token1: &Address,
         lp_token_hash: &SHA256Hash,
     ) {
-        if self.lp_addr.try_get().is_some() {
+        if self.lp_addr.try_get().none_if_missing().is_some() {
             throw(ISwapV2PairError::AlreadyInitialized);
         }
 
@@ -381,9 +385,9 @@ A few things worth flagging.
 
 **Fees encoded in the invariant.** The 0.3% fee shows up as `* 1000 - amount_in * 3` on each side. Compared against `reserve * 1000` on each side, both sides are scaled identically and the fee falls out as an asymmetric haircut on the inputs.
 
-## Step 7: Test It
+## Step 7: Follow the Test Flow
 
-The crate ships a serial swap test. Trimmed:
+The crate ships a serial swap harness. The following is adapted pseudocode for the flow; the real helper performs multiple transactions and explicit block advances:
 
 ```rust
 mod common;
@@ -419,9 +423,17 @@ fn serial_swap_one() {
 }
 ```
 
-(Source: `example-contracts/swap/tests/swap.rs:18-32`.)
+The test transfers token0 to the pair, advances a block, then calls `swap` asking for token1 out. In the real harness, `transact_assert_success` unwraps a result spanning several `env.transact` calls and reports the first failed `TransactResult`; it does not run the whole closure as one transaction.
 
-The test transfers token0 to the pair, advances a block, then calls `swap` asking for token1 out. `transact_assert_success` runs the closure inside a transaction harness and asserts no error escapes.
+## Event Ordering
+
+Cross-contract calls contribute all nested events to the transaction result. Assertions must account for more than the final pair event:
+
+| Operation | Event sequence includes |
+|-----------|-------------------------|
+| `mint_lp` | `SyncEvent`, LP-token transfer events, then `MintEvent` |
+| `burn_lp` | LP burn transfer, reserve-token transfers, `SyncEvent`, then `BurnEvent` |
+| `swap` | Reserve-token transfers, `SyncEvent`, then `SwapEvent` |
 
 ## Concurrency Notes
 
@@ -431,7 +443,7 @@ The test transfers token0 to the pair, advances a block, then calls `swap` askin
 
 ## Closing Notes
 
-What you just built mirrors the real `example-contracts/swap` crate. The full source includes:
+The selected excerpts are adapted from the real `example-contracts/swap` crate. The full source includes:
 
 - `Reserves::update`, which advances the cumulative-price oracle using a `UQ112x112` fixed-point representation
 - `skim` and `sync`, the UniswapV2 reconciliation helpers
@@ -439,7 +451,7 @@ What you just built mirrors the real `example-contracts/swap` crate. The full so
 - Custom `U112` / `U256` types in `src/bignum/`
 - A full integration test harness in `tests/common/`
 
-Read `example-contracts/swap/src/swapv2_pair.rs` end to end for the parts trimmed here. Everything in this tutorial is a faithful subset.
+Read `example-contracts/swap/src/swapv2_pair.rs` end to end, then use its workspace tests for the omitted wiring and helpers.
 
 ## Next Steps
 
