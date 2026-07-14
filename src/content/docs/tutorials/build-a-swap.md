@@ -7,8 +7,10 @@ This source walkthrough studies the SDK's UniswapV2-style pair contract: two res
 
 **Prerequisites:** Complete [Build a Token](/tutorials/build-a-token/) first. The pair deploys an ERC-20-compatible contract whose code hash is supplied to `initialize`.
 
-:::note[Source walkthrough]
-This page was checked against SDK `0.17.1` on July 13, 2026. It presents selected excerpts from `sdk_rs/example-contracts/swap`; it is not a complete standalone crate. Use the SDK repository for the big-number module, events, Cargo configuration, companion token contract, and full test harness.
+:::note[Source status]
+This page currently follows `sdk_rs/example-contracts/swap` because that copy is aligned with SDK `0.17.1`. The product-facing example under `groundhog-examples/contracts/swap` contains newer example-level work but is still pinned to SDK `0.15.5`. Once the two copies are upgraded and reconciled, this walkthrough should follow `groundhog-examples` as the canonical source.
+
+The excerpts below are not a complete standalone crate. Use the SDK copy for the current big-number module, events, Cargo configuration, companion token contract, and full test harness.
 :::
 
 ## What You'll Build
