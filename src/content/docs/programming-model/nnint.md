@@ -74,6 +74,6 @@ Since `None` resolves to the start-of-block value, commutativity depends on what
 
 Transaction ordering does not matter on Groundhog. When every concurrent write resolves to the same base, the deltas are addition. Addition commutes.
 
-This is what "compatible" means in the [Execution Model](/programming-model/execution/): at reservation, the system checks whether all deltas for a given storage location share the same resolved set value. If they do, the adds merge. If they don't, one transaction is excluded.
+This is what "compatible" means in [Merged Deltas](/programming-model/execution/#merged-deltas): at reservation, the system checks whether all deltas for a given storage location share the same resolved set value. If they do, the adds merge. If they don't, one transaction is excluded.
 
 Pick the right storage type, use `strict_inc` on hot paths, and the runtime handles concurrency for you.

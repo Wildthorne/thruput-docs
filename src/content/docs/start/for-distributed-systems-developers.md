@@ -11,7 +11,7 @@ description: Map your distributed systems experience to Groundhog's programming 
 
 You already think in terms of commutative operations. You know that `x + 5` and `x + 3` produce the same result in any order. You know that operations on independent keys don't interact. You've designed systems around these properties.
 
-That instinct is exactly right for Groundhog. The core storage type, `NNInt`, works like a counter whose increments merge additively. `Map<K, V>` gives you key-level independence. If you've ever reached for a PN-Counter or a per-key CRDT map, you already know why these primitives exist.
+That instinct is exactly right for Groundhog. The core storage type, [`NNInt`](/programming-model/storage-types/#nnint), works like a counter whose signed changes combine additively. `Map<K, V>` gives you key-level independence. If you've ever reached for a PN-Counter or a per-key CRDT map, you already know why these primitives exist.
 
 The difference: **you don't need to think about any of the hard parts.**
 
@@ -21,13 +21,13 @@ The difference: **you don't need to think about any of the hard parts.**
 
 **Groundhog has consensus.** CRDTs solve the problem of replicas that diverge and must eventually agree without coordination. Groundhog has a consensus protocol. Every block is agreed upon by the network. The types don't exist to achieve convergence across unsynchronized replicas. They exist to enable parallel execution *within* a single consensus round.
 
-All transactions in a block execute against the same frozen snapshot. They produce deltas. At block close, the deltas merge atomically. There's no divergence to reconcile.
+All transactions in a block execute against the same frozen snapshot. They produce typed changes, called [deltas](/programming-model/execution/#merged-deltas). The runtime checks which changes can coexist, and each finalized block contains one committed result. There's no divergence to reconcile.
 
 This means:
 
 - **No causal metadata.** No vector clocks, no dot stores, no version vectors. The block boundary is the synchronization point. There's no partial order to resolve.
-- **Invariants are enforced.** A PN-Counter can go negative. With ordinary nonnegative bases, NNInt deltas cannot. If merged deltas would drive the value below zero, the offending transaction is excluded and returned to the mempool. No tombstones, no compensating operations.
-- **Merge happens once.** Not continuously through anti-entropy or gossip. All deltas merge atomically at block close. After finalization, every node has identical state.
+- **Balance limits are enforced.** A PN-Counter can go negative. For ordinary balances and counters, combined NNInt debits cannot exceed the available value. If they do, one or more transactions are excluded and returned to the mempool. No tombstones, no compensating operations.
+- **Each block has one result.** There is no continuous merge through anti-entropy or gossip. After finalization, every node has identical state.
 - **No convergence latency.** No "eventually" in "eventually consistent." State is consistent at every block boundary.
 
 ---
@@ -40,6 +40,6 @@ That's fine. Groundhog doesn't require distributed systems knowledge. Use `stric
 
 ## Next Steps
 
-For the full execution model (snapshots, deltas, merge rules, reservation), see the [Programming Model](/programming-model/execution/). For the storage type API, see [Storage Types](/programming-model/storage-types/).
+For the contract-level model, see [Merged Deltas](/programming-model/execution/#merged-deltas). For the storage type API, see [Storage Types](/programming-model/storage-types/). For eager capacity reservation and the engine's actual conflict timing, see [How Conflicts Are Resolved](/how-it-works/execution-model/#how-conflicts-are-resolved).
 
 Ready to write code? [Getting Started](/start/getting-started/) walks you through the SDK setup and your first contract.

@@ -31,7 +31,7 @@ fn transfer(&mut self, receiver: &ContractAddress, amount: Amount) {
 }
 ```
 
-Familiar structure. Shorter. Each balance is an `NNInt`, Groundhog's commutative integer storage primitive. `strict_inc(delta)` produces a **delta** ("adjust by this amount") instead of an absolute write ("set to this value"). That one change eliminates entire classes of bugs.
+Familiar structure. Shorter. Each balance is an [`NNInt`](/programming-model/storage-types/#nnint), Groundhog's integer storage type for balances and counters. `strict_inc(delta)` records a [delta](/programming-model/execution/#merged-deltas), meaning "adjust by this amount," instead of an absolute write meaning "set to this value." That change avoids several common balance and concurrency bugs.
 
 ---
 
@@ -69,7 +69,7 @@ fn withdraw(&mut self, amount: Amount) {
 }
 ```
 
-That's it. No reentrancy guard: the runtime rejects any `invoke` whose target contract address is already on the active call stack with the `Reentrance` syscall error. The check is per-contract-address and applies to both `invoke` and `try_invoke`. Separately, every contract call also reads from a frozen snapshot, so even allowed call patterns cannot observe partial state. No manual balance check: `strict_inc` rejects balance updates that would go below zero. No ordering discipline: deltas are deltas regardless of when they're produced.
+That's it. No reentrancy guard: the runtime rejects any `invoke` whose target contract address is already on the active call stack with the `Reentrance` syscall error. The check is per-contract-address and applies to both `invoke` and `try_invoke`. Separately, every contract call also reads from a frozen snapshot, so even allowed call patterns cannot observe partial state. No manual balance check: `strict_inc` rejects balance updates that would go below zero. No ordering discipline: balance changes are recorded as adjustments that concurrent transactions can combine when they are safe to apply.
 
 This isn't just reentrancy. The delta model eliminates several classes of bugs at once:
 
@@ -95,11 +95,13 @@ Everything on this list exists because other chains execute transactions sequent
 
 ## The Programming Model in Brief
 
-Under the hood, each NNInt maintains two pending values: a **set** (absolute base) and an **add** (accumulated delta). The underlying operation is `set_add(set, add)`, and the final value is `set + add`, subject to a commit-time floor. Two operations commute **if their resolved set values match**. `strict_inc()` loads the current base (usually the snapshot value) and records a delta against it, so concurrent calls agree. Commutativity comes for free.
+`NNInt` records signed changes to balances and counters. If two transactions read a balance of 100 and call `strict_inc(-20)` and `strict_inc(-30)`, both can land and the next balance is 50. The operations **commute** because applying them in either order gives the same result. If their combined debits exceed the balance, one or more transactions are excluded. This is the [merged-delta model](/programming-model/execution/#merged-deltas).
+
+Most contract authors only need `strict_inc`. [NNInt In Depth](/programming-model/nnint/) explains the underlying `set_add` representation, resolved bases, and commit-time floor.
 
 NNInt is the workhorse, but it's not the only storage type. `Bytestring` stores up to 1024 bytes of arbitrary data (config, metadata, serialized structs). For higher-level patterns, `Map<K, V>` gives you per-key independence (like `mapping` in Solidity), and `RetrocausalQueue` handles producer-consumer workflows where inserts commute but consumption needs sequencing.
 
-Not everything commutes. Order book matching, unique name registration, and some governance operations need sequencing. Groundhog doesn't force you to do acrobatics for these: `Bytestring` and `RetrocausalQueue` give you the tools to handle serialized workflows cleanly. Meanwhile, the vast majority of on-chain activity (payments, transfers, balance updates) flows with zero effort, giving you all the compute capacity you need to make your applications as rich as you want them to be. For the full treatment, see the [Programming Model](/programming-model/execution/) section.
+Not everything commutes. Order book matching, unique name registration, and some governance operations need sequencing. Groundhog doesn't force you to do acrobatics for these: `Bytestring` and `RetrocausalQueue` give you the tools to handle serialized workflows cleanly. Meanwhile, payments, transfers, and other balance updates fit the merged-delta model directly. For the full treatment, see [Merged Deltas](/programming-model/execution/#merged-deltas).
 
 ---
 
@@ -107,14 +109,14 @@ Not everything commutes. Order book matching, unique name registration, and some
 
 On every other chain, correctness and performance are at odds. You optimize gas, pack storage slots, split transactions to fit compute budgets. You fight for performance, and every optimization makes your code harder to audit.
 
-Groundhog inverts this. The same delta model that eliminates reentrancy and race conditions is what enables parallel execution. `strict_inc(5)` and `strict_inc(3)` from different transactions merge to `+8` with no coordination. The runtime doesn't need locks, dependency graphs, or speculative execution. It just merges deltas. The simpler your code, the more it parallelizes.
+Groundhog's storage rules support both correctness and parallel execution. `strict_inc(5)` and `strict_inc(3)` from different transactions combine to `+8` without coordination. The runtime does not need contracts to declare locks or dependency graphs. The simpler your storage operations, the more work can run in parallel.
 
-Getting the primitive right at the most fundamental level (typed deltas with known merge semantics) means you don't choose between correct and fast. The 3-line transfer that eliminated four classes of bugs? It also runs in parallel with every other transfer in the block.
+Storage types define which concurrent changes can safely coexist, so the three-line transfer above is both easier to audit and able to run alongside other transfers in the block.
 
 ---
 
 ## Next Steps
 
-For a detailed Solidity-to-Groundhog mapping, see [EVM & Solidity](/ecosystem/evm/). For the full execution model (snapshots, deltas, merge rules), see the [Programming Model](/programming-model/execution/).
+For a detailed Solidity-to-Groundhog mapping, see [EVM & Solidity](/ecosystem/evm/). For the contract-level execution model, see [Merged Deltas](/programming-model/execution/#merged-deltas).
 
 Ready to write code? [Getting Started](/start/getting-started/) walks you through the SDK setup and your first contract.
