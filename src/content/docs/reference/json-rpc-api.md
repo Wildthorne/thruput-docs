@@ -333,6 +333,22 @@ Query emitted contract events with cursor pagination and topic filters.
 
 See [Add Events to a Contract](/tutorials/add-events-to-a-contract/#step-5-query-it-on-chain) for an end-to-end event query example.
 
+---
+
+### groundhog_getTransactionsByAddress
+
+Query paginated transaction history whose root invocation targets one address.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `query` | `AddressTransactionQuery` | Address, order, anchor, cursor, and page limit |
+
+The initial request uses cursor `"0x"`. A limit of `0` selects the server default of 50; values above the server cap, normally 200, are rejected. A non-empty response cursor carries the iteration order and anchor for the next request.
+
+**Returns:** `TransactionRefPage` containing transaction hash and block-height references, the next cursor, latest indexed block, and oldest retained block. Hydrate each reference with `groundhog_getTransactionReceipt`.
+
+This is root-address history. Transactions that only invoke or touch the address below the root do not match.
+
 ## Error Codes
 
 Standard JSON-RPC 2.0 error codes apply. The gateway also defines application-specific codes:

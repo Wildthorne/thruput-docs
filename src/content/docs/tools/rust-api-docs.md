@@ -8,7 +8,7 @@ Groundhog's guide docs live on this site. Generated Rustdoc for the Rust crates 
 During early access, Rustdoc may require the credentials from your onboarding instructions. Use the [`sdk` crate root](https://groundhog.dev/docs/sdk/latest/sdk/) first for SDK overview sections on storage, macros, calling and errors, events, and testing. Use item pages when you need exact signatures, trait bounds, re-exports, source links, or crate-level API details. Use this site for workflows, tutorials, and programming model guidance.
 
 :::note[Version checked]
-This page was last checked against SDK `0.15.4` on June 26, 2026.
+This page was last checked against the published SDK `0.17.1` Rustdoc on July 13, 2026.
 :::
 
 ## Common Links

@@ -12,13 +12,15 @@ The normal user-deployed contract path is RV32, Groundhog's 32-bit RISC-V contra
 
 ### RV32 Contracts
 
-RV32 contracts are the default user contract type. `groundhog build` compiles the contract's RV32 entrypoint wrapper for `riscv32im-unknown-none-elf` and lowers that ELF into a deployable `.rv32a` artifact.
+RV32 contracts are the default user contract type. `groundhog build` compiles the contract's RV32 entrypoint wrapper for `riscv32im-unknown-none-elf`, lowers that ELF into a deployable `.rv32a` artifact, and finalizes its contract-spec sidecars.
 
 For a crate named `counter`, the default build writes:
 
 ```txt
 target/groundhog/counter.rv32a
 target/groundhog/counter.rv32.json
+target/groundhog/counter.spec.xdr
+target/groundhog/counter.spec.json
 ```
 
 The `.rv32a` file is the executable contract artifact. `groundhog deploy` wraps those bytes in the protocol's `Contract::kRv32` variant before signing and submitting the deploy transaction.

@@ -5,7 +5,7 @@ description: "How to test Groundhog contracts: native logic tests, RV32 integrat
 
 ## Test Modes
 
-Groundhog contracts have three useful test paths:
+Groundhog contracts have four useful test paths:
 
 :::note[Version checked]
 This page was last checked against Groundhog CLI `0.5.17` and SDK `0.17.1` on July 13, 2026.
@@ -21,6 +21,8 @@ This page was last checked against Groundhog CLI `0.5.17` and SDK `0.17.1` on Ju
 Start with `cargo test`, then run `groundhog test` against the RV32 artifact. Add `groundhog test --integration` when you need to test the same path a partner or app will use: build artifact, local node, deployment, signing profile, RPC URL, and generated client behavior.
 
 `groundhog test --integration` deploys RV32 by default. Use `--target wasm` only for legacy comparison, or `--differential` when you intentionally want to run the same integration test against both RV32 and WASM local nodes.
+
+The CLI scaffold does not create `tests/integration.rs`. Add that Cargo integration-test target before running `groundhog test --integration`. Integration mode also requires a compatible `hog-devnode` supplied separately through `GROUNDHOG_DEVNODE_BINARY`, a sibling executable beside `groundhog`, or `PATH`.
 
 ## Test Setup
 

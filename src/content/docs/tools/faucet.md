@@ -22,6 +22,8 @@ Check that the faucet advertises the same RPC before using it:
 ```bash
 curl -fsS "<DEVNET_FAUCET_URL>/health" | jq .
 curl -fsS "<DEVNET_FAUCET_URL>/v1/network" | jq .
+curl -fsS "<DEVNET_FAUCET_URL>/v1/network" \
+  | jq -e --arg rpc "<DEVNET_RPC_URL>" '.endpoints.rpcUrl == $rpc'
 ```
 
 Create and inspect a wallet:
@@ -42,4 +44,6 @@ groundhog balance alice --profile devnet
 
 Hosted requests are subject to deployment-specific quotas. Remote airdrops use the amount selected by the faucet, so omit `--amount`.
 
-For the complete setup, wallet, deployment, and contract interaction workflow, follow [Test the CLI on Devnet](/tutorials/test-cli-on-devnet/).
+Wallet creation and airdrops keep idempotency records in the Groundhog cache. If either command reports a pending attempt, rerun the exact same command and keep the corresponding cache record until it completes.
+
+For the complete setup, wallet, deployment, and contract interaction workflow, follow [Develop on Devnet with the CLI](/tutorials/develop-on-devnet/).

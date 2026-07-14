@@ -8,7 +8,7 @@ We're extending the counter from [Build a Counter](/tutorials/build-a-counter/) 
 **Prerequisites:** A working counter contract from [Build a Counter](/tutorials/build-a-counter/).
 
 :::note[Version checked]
-This tutorial was last checked against Groundhog CLI `0.5.10` and SDK `0.15.4` on June 26, 2026.
+This tutorial was last checked against Groundhog CLI `0.5.17` and SDK `0.17.1` on July 13, 2026.
 :::
 
 ## How Events Work on Groundhog
@@ -39,7 +39,10 @@ pub struct CounterIncremented<'a> {
 Declare the event on the `#[contract]` attribute and emit it from `increment`:
 
 ```rust
-#[contract(throws = Error, emits(CounterIncremented))]
+#[contract(
+    throws = CounterError,
+    emits(PingEvent, CounterIncremented)
+)]
 impl Counter {
     pub fn initialize(&mut self, initial_value: u64) {
         self.value.strict_inc(initial_value as i128);
@@ -53,6 +56,12 @@ impl Counter {
 
     // decrement and get are unchanged
 }
+```
+
+The generated counter already declares and emits `PingEvent`. Keep it in the `emits(...)` list unless you also remove the scaffold's `ping` method. Export the new event from `src/lib.rs` so integration tests can import it:
+
+```rust
+pub use implementation::CounterIncremented;
 ```
 
 - **`emits(CounterIncremented)`** declares the event as part of the contract's interface, which records it in the [contract spec](/reference/contract-spec/#events) so codegen and indexers can decode it. Like `throws`, `emits` belongs on the interface: the trait definition or inherent impl, never a trait impl.
@@ -125,15 +134,20 @@ Alongside the RV32 artifact, the CLI writes the contract's [spec](/reference/con
   {
     "name": "CounterIncremented",
     "signature": "66e9e0dfc1e9d3815c880cbd26ab9635ed58a7d544a989998a483797c45ea1a0",
-    "topics": [{ "name": "by", "ty": { "kind": "address" } }],
-    "fields": [{ "name": "amount", "ty": { "kind": "u64" } }]
+    "topics": [{ "name": "by", "type": { "kind": "address" } }],
+    "fields": [{ "name": "amount", "type": { "kind": "u64" } }]
   }
 ]
 ```
 
 The `signature` is `sha256(MAJOR_VERSION :: CRATE_NAME :: TYPE_NAME)`. Here it is `sha256("0.1::counter::CounterIncremented")`, for the crate `counter` at version `0.1.x`. Yours will differ if your crate's name or major version differs. This is the hash that appears as topic 0 of every emitted instance, and it's stable across SemVer-compatible releases of your contract.
 
-Anything that consumes the spec now understands the event, including `groundhog codegen ts`, which regenerates [TypeScript bindings](/tools/typescript-bindings/) aware of it.
+Anything that consumes the spec now understands the event. Generate [TypeScript bindings](/tools/typescript-bindings/) from the RV32 spec sidecar:
+
+```bash
+groundhog codegen ts target/groundhog/counter.spec.xdr \
+  --output target/groundhog/counter.ts
+```
 
 ## Step 5: Query It On Chain
 

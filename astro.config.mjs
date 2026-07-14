@@ -36,7 +36,8 @@ export default defineConfig({
           label: 'Tutorials',
           items: [
             'start/getting-started',
-            'tutorials/test-cli-on-devnet',
+            'tutorials/develop-locally',
+            'tutorials/develop-on-devnet',
             'tutorials/build-a-counter',
             'tutorials/build-a-token',
             'tutorials/add-events-to-a-contract',
