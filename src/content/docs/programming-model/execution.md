@@ -3,7 +3,7 @@ title: Execution Model
 description: "How your contract runs: snapshot isolation, deltas, block lifecycle, and gas."
 ---
 
-Your contract reads from a frozen snapshot and produces deltas. It never sees other transactions' writes. At block close, deltas are checked for compatibility: compatible ones merge, incompatible ones are excluded and returned to the mempool.
+Your contract reads from a frozen snapshot and produces typed storage changes, called deltas. It never sees other transactions' writes. The runtime checks whether each transaction's deltas can coexist with the other changes landing in the block. Deltas that can coexist form the next committed state. Transactions with conflicting deltas are excluded and returned to the mempool.
 
 ## Snapshot Isolation
 
@@ -11,15 +11,35 @@ All transactions in a block read the same committed state from the previous bloc
 
 If you've used Postgres with `REPEATABLE READ` isolation, you already understand this model.
 
-## Deltas, Not State
+## Merged Deltas
 
-Your contract produces changes, not final state. When you write:
+A delta describes how one transaction changes a storage location. It is not necessarily an arithmetic difference. The storage type gives the delta its meaning and defines whether it can coexist with other changes to the same location.
+
+For an `NNInt` balance, the delta is a signed change. When you write:
 
 ```rust
 self.balance.strict_inc(5);
 ```
 
-This says "add 5 to the balance." It does not say "set the balance to 105." The difference matters: deltas from independent transactions can be merged. Absolute assignments cannot.
+This says "add 5 to the balance." It does not say "set the balance to 105."
+
+Suppose two transactions read a balance of 100:
+
+```text
+Tx A: strict_inc(-20)
+Tx B: strict_inc(-30)
+Both land: 100 - 20 - 30 = 50
+```
+
+Both changes can land because addition gives the same result in either order and the combined debit fits within the balance. We say the operations **commute**, and the runtime can merge their deltas. If the transactions instead try to debit 80 and 30, the combined debit is too large, so one or more transactions are excluded.
+
+Merge rules depend on the storage type:
+
+- `NNInt` combines signed changes while enforcing its bounds.
+- Changes to different `Map` keys are independent.
+- Two `Value` writes to the same key can coexist only when they store the same value.
+
+In these docs, **compatible deltas** means the storage type allows both changes to land. See [`NNInt`](/programming-model/storage-types/#nnint) for the main contract-level example and [NNInt In Depth](/programming-model/nnint/) for the underlying `set_add` rules.
 
 ## Block Lifecycle
 
@@ -29,16 +49,15 @@ Previous block's committed state
         v
    [Frozen Snapshot]
         |
-        +---> Tx A executes, produces deltas
-        +---> Tx B executes, produces deltas
-        +---> Tx C executes, produces deltas
+        +---> Tx A executes; deltas are checked
+        +---> Tx B executes; deltas are checked
+        +---> Tx C executes; deltas are checked
         |        (all read same snapshot, all run concurrently)
         v
-   [Reservation Phase]
+   [Transactions that can land together]
         |
-        +---> Check deltas for compatibility
-        +---> Compatible deltas merge
-        +---> Incompatible transactions excluded
+        +---> Type-specific deltas form the next state
+        +---> Conflicting transactions have been excluded
         v
    [New Committed State]
         |
@@ -46,9 +65,11 @@ Previous block's committed state
 ```
 
 1. **Snapshot**: the block boundary freezes state. All transactions read from this.
-2. **Execute**: all transactions run against the snapshot. Order does not matter. Each produces a set of deltas.
-3. **Reserve**: deltas are checked for compatibility using each storage type's merge rules (see [Storage Types](/programming-model/storage-types/)).
-4. **Merge or exclude**: compatible deltas merge into new state. Incompatible transactions are excluded and returned to the mempool.
+2. **Execute**: transactions run concurrently against the snapshot and produce typed deltas.
+3. **Check**: as deltas are produced, the runtime applies each storage type's merge rules (see [Storage Types](/programming-model/storage-types/)). For contract design, the useful question is whether the deltas can coexist.
+4. **Commit or exclude**: compatible transactions form the new state. Conflicting transactions are excluded and returned to the mempool.
+
+This is the contract developer's model. The engine resolves most conflicts eagerly while transactions execute rather than waiting for a separate end-of-block merge phase. See [How Conflicts Are Resolved](/how-it-works/execution-model/#how-conflicts-are-resolved) for that machinery.
 
 ## Exclusion
 

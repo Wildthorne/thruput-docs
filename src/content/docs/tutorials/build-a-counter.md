@@ -120,7 +120,7 @@ pub struct Counter {
 }
 ```
 
-The `#[sdk::storage]` macro generates serialization and persistence code. Each field becomes a storage slot. [`NNInt`](/programming-model/nnint/) is Groundhog's integer storage type for changes that can be combined across concurrent transactions.
+The `#[sdk::storage]` macro generates serialization and persistence code. Each field becomes a storage slot. [`NNInt`](/programming-model/storage-types/#nnint) is Groundhog's integer storage type for signed changes. Those [deltas can merge](/programming-model/execution/#merged-deltas) across concurrent transactions.
 
 One field is all this contract needs. More complex contracts use `Map<K, V>` for key-value storage (see [Build a Token](/tutorials/build-a-token/)).
 

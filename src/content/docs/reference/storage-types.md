@@ -15,17 +15,17 @@ Rustdoc shortcuts:
 
 ## NNInt
 
-Integer storage with a two-component (set, add) model and a commit-time floor. Used for balances, counters, and supply tracking.
+Integer storage for signed changes that concurrent transactions can combine. Used for balances, counters, and supply tracking.
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
 | `get` | `fn get(&self) -> i128` | Read current value. Aborts if the location has never been set. |
 | `try_get` | `fn try_get(&self) -> Option<i128>` | Read current value. Returns `None` if never set. |
 | `set` | `fn set(&mut self, set_value: i128)` | Set the value. Uses the keypath's locking mode. |
-| `inc` | `fn inc(&mut self, increment: i128)` | Add `increment` without forcing a snapshot read. Underflow caught at merge, not immediately. |
+| `inc` | `fn inc(&mut self, increment: i128)` | Add `increment` without forcing a snapshot read. Underflow is caught by later runtime checks, not immediately. |
 | `strict_inc` | `fn strict_inc(&mut self, increment: i128)` | Add `increment`, loading the current base for early underflow detection. Aborts immediately if the result would be negative. |
 
-Pass a negative value to `inc` or `strict_inc` to decrement. Use `strict_inc` by default. See [NNInt In Depth](/programming-model/nnint/) for commutativity rules.
+Pass a negative value to `inc` or `strict_inc` to decrement. Use `strict_inc` by default. See [Merged Deltas](/programming-model/execution/#merged-deltas) for the contract-level model and [NNInt In Depth](/programming-model/nnint/) for the underlying rules.
 
 Exclusivity is controlled by the **keypath flag** set at storage-derivation time, not by a `set_exclusive` method. For ad-hoc exclusive writes, use the free function `non_negative_int_set_exclusive` from `sdk::sys_exn::nnint`.
 

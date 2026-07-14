@@ -9,7 +9,7 @@ This page explains behavior and tradeoffs. For exact method signatures, see [Sto
 
 ## NNInt
 
-Integer storage with a two-component (set, add) model and a commit-time floor. It is the workhorse type for balances, counters, and any value that changes by deltas.
+Integer storage for signed changes that concurrent transactions can combine. It is the workhorse type for balances, counters, and supply tracking.
 
 ```rust
 use sdk::storage::NNInt;
@@ -30,9 +30,9 @@ self.value.strict_inc(-3);   // Tx B: "subtract 3"
 // Both land. Result: original + 2
 ```
 
-Pass negative values to `strict_inc` to subtract. For ordinary balances and counters, the base is nonnegative and the runtime enforces that concurrent debits cannot drive the value below zero. If debits exceed available capacity, one or more transactions are excluded.
+Pass negative values to `strict_inc` to subtract. Ordinary balances and counters stay nonnegative, and the runtime prevents concurrent debits from driving the value below zero. If debits exceed the available value, one or more transactions are excluded.
 
-How this works underneath (the `set_add` primitive and its commutativity rules) is covered in [NNInt In Depth](/programming-model/nnint/).
+See [Merged Deltas](/programming-model/execution/#merged-deltas) for the contract-level model. The underlying `set_add` representation and exact commutativity rules are covered in [NNInt In Depth](/programming-model/nnint/).
 
 ## Map\<K, V\>
 
