@@ -12,7 +12,7 @@ The normal user-deployed contract path is RV32, Groundhog's 32-bit RISC-V contra
 
 ### RV32 Contracts
 
-RV32 contracts are the default user contract type. `groundhog build` compiles the contract's RV32 entrypoint wrapper for `riscv32im-unknown-none-elf`, lowers that ELF into a deployable `.rv32a` artifact, and writes the contract spec sidecars used by CLI and TypeScript tooling.
+RV32 contracts are the default user contract type. `groundhog build` compiles the contract's RV32 entrypoint wrapper for `riscv32im-unknown-none-elf`, lowers that ELF into a deployable `.rv32a` artifact, and finalizes its contract-spec sidecars.
 
 For a crate named `counter`, the default build writes:
 
@@ -46,7 +46,7 @@ The node executes the lowered artifact through the RV32 runtime. Contract state 
 
 ### Legacy WASM Contracts
 
-The protocol still has a `Contract::kWasmi` variant for the WASM compatibility path. Use it only when you intentionally build with `groundhog build --target wasm`, run the legacy `groundhog test` harness, or compare RV32 against WASM with differential tests.
+The protocol still has a `Contract::kWasmi` variant for the WASM compatibility path. Use it only when you intentionally build with `groundhog build --target wasm`, run `groundhog test --target wasm`, or compare RV32 against WASM with differential tests.
 
 Legacy WASM contracts identify methods by exporting a function whose name is the uppercase hex encoding of the 8-byte entrypoint ID, such as:
 

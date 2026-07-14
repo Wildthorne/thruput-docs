@@ -1,232 +1,220 @@
 ---
 title: Build a Token
-description: "Tutorial: build an ERC-20 token on Groundhog, step by step."
+description: Build an ERC-20-compatible token with the Groundhog SDK and standard interface crate.
 ---
 
-We're building an ERC-20 token with transfer, approve, mint, and burn. The contract uses delta-based operations (`strict_inc`) instead of absolute writes. You express intent ("subtract 50 from this balance") and the system enforces the guarantee (balance never goes negative). No explicit balance checks, no race conditions. The bonus: because these operations are simple deltas, the system can execute them in parallel.
+This tutorial builds an ERC-20-compatible token with transfers, allowances, minting, burning, and standard events. Balances and allowances use `NNInt`, so compatible additive changes can merge without rewriting absolute balances.
 
-**Prerequisites:** Complete [Build a Counter](/tutorials/build-a-counter/) first (covers SDK setup, project structure, and basic patterns).
+**Prerequisites:** Complete [Build a Counter](/tutorials/build-a-counter/) first.
 
-## Step 1: Define the Interface
+:::note[Version checked]
+This tutorial was compiled and tested against Groundhog CLI `0.5.17` and the SDK `0.17.1` source checkout on July 13, 2026.
+:::
 
-The ERC-20 interface lives in its own crate (`groundhog-erc20-if`). Your contract will implement this trait, and the `#[contract]` macro generates an entrypoint for each method.
+## 1. Create the Project
 
-```rust
-use sdk::ContractAddress;
+Start from the minimal CLI template:
 
-pub type Amount = u128;
-pub type Difference = i128;
-
-#[contract(client = ERC20Client, throws = ERC20Error)]
-pub trait ERC20 {
-    fn initialize(&mut self, contract_owner: &ContractAddress);
-
-    /// Transfer from caller to `receiver` address
-    fn transfer(&mut self, receiver: &ContractAddress, amount: Amount);
-
-    /// Transfer from `owner` to `receiver` address, using allowance
-    fn transfer_from(
-        &mut self,
-        owner: &ContractAddress,
-        receiver: &ContractAddress,
-        amount: Amount,
-    );
-
-    /// Adjust allowance for `spender` by `amount` (positive or negative)
-    fn adjust_allowance(
-        &mut self,
-        spender: &ContractAddress,
-        diff: Difference,
-    );
-
-    /// Get `spender`'s allowance of `owner`'s tokens
-    fn allowance(
-        &self,
-        owner: &ContractAddress,
-        spender: &ContractAddress,
-    ) -> Amount;
-
-    /// Get balance for given address
-    fn get_balance_of(&self, addr: &ContractAddress) -> Amount;
-
-    /// Get balance for caller
-    fn get_balance(&self) -> Amount;
-
-    /// Create tokens into `receiver` address
-    fn mint(&mut self, receiver: &ContractAddress, amount: Amount);
-
-    /// Destroy tokens from `owner` address
-    fn burn(&mut self, owner: &ContractAddress, amount: Amount);
-
-    /// Get total supply of outstanding tokens
-    fn total_supply(&self) -> Amount;
-}
+```bash
+groundhog new erc20 --template stub
+cd erc20
 ```
 
-The `client = ERC20Client` parameter tells the macro to generate a client stub for cross-contract calls. The `throws = ERC20Error` parameter defines the error type returned on failure.
+The generated RV32 wrapper and Groundhog profiles can remain unchanged. This tutorial replaces the library implementation and native test. Remove the stub artifact tests because they refer to the generated `StubClient`:
 
-Notice `adjust_allowance` takes a signed `Difference`, not an absolute `Amount`. This is a deliberate design choice: delta-based approvals commute, absolute approvals don't. Two concurrent `adjust_allowance` calls with `+50` and `+100` produce the same result regardless of execution order. Two absolute `approve` calls to set `50` and `100` do not.
-
-The interface crate also defines the error type and conversion helpers:
-
-```rust
-#[sdk::contract_exception]
-#[non_exhaustive]
-pub enum ERC20Error {
-    AlreadyInitialized = 1,
-    MustBeContractOwner = 2,
-    TooLarge = 3,
-    Internal = 100,
-}
-
-/// Convert unsigned Amount to signed Difference.
-/// Throws if the value would overflow i128.
-pub fn amount_to_diff(amount: Amount) -> Difference {
-    amount.try_into().unwrap_or_else(|_| throw(ERC20Error::TooLarge))
-}
+```bash
+rm tests/test_rv32.rs tests/test_wasm.rs
 ```
 
-The `#[contract_exception]` macro generates serialization derives and XDR encoding. `amount_to_diff` converts the unsigned `Amount` (u128) to a signed `Difference` (i128), throwing if the value overflows. This is called before every balance or allowance adjustment.
+Add the standard interface dependency and extend the generated `dev` feature in `Cargo.toml`. Replace `/path/to/sdk_rs` with one SDK source checkout so both crates resolve from the same release:
 
-## Step 2: Define Storage
+```toml
+[features]
+entrypoints = []
+rv32-entrypoints = ["entrypoints"]
+default = ["dev"]
+dev = ["sdk/dev", "groundhog-erc20-if/dev"]
+
+[dependencies]
+sdk = { path = "/path/to/sdk_rs/crates/sdk" }
+groundhog-erc20-if = { path = "/path/to/sdk_rs/standard-interfaces/groundhog-erc20" }
+
+[dev-dependencies]
+erc20 = { path = ".", features = ["dev"] }
+```
+
+:::caution[Published interface compatibility]
+The published `groundhog-erc20-if@0.1.4` still depends on SDK `0.15.5` and cannot share a native test graph with SDK `0.17.1`. Use the two path dependencies above until a standard-interface package aligned with SDK `0.17.1` is published.
+:::
+
+The interface crate is the source of truth for:
+
+- `ERC20`, `ERC20Client`, and generated client errors
+- `Amount = u128` and `Difference = i128`
+- `ERC20Error`
+- `TransferEvent`, `ApprovalEvent`, and their logging helpers
+- The zero-address constant used for mint and burn events
+
+Its `#[contract]` declaration includes `throws = ERC20Error` and `emits(TransferEvent, ApprovalEvent)`, so implementations and generated clients share the same wire contract.
+
+## 2. Wire the Library
+
+Replace `src/lib.rs`:
 
 ```rust
-use crate::interface::*;
+#![cfg_attr(not(feature = "dev"), no_std)]
+
+sdk::declare_mock_contract!();
+
+mod implementation;
+
+pub use groundhog_erc20_if::{ERC20, ERC20Client, ERC20ClientError};
+pub use implementation::TokenContract;
+```
+
+`declare_mock_contract!()` generates `register_mock_contract` for native tests. The standard interface remains in its own crate rather than being copied into this project.
+
+## 3. Define Storage
+
+Replace `src/implementation.rs` with these imports and storage types:
+
+```rust
+use groundhog_erc20_if::*;
 use sdk::storage::{Map, NNInt, Value};
 use sdk::*;
 
 type Balance = NNInt;
 type Allowance = NNInt;
 
-#[derive(Debug)]
+#[contract_type]
+#[cfg_attr(feature = "dev", derive(Debug))]
+pub struct Config {
+    pub administrator: ContractAddress,
+}
+
 #[sdk::storage]
+#[cfg_attr(feature = "dev", derive(Debug))]
 pub struct TokenContract {
-    contract_owner: Value<ContractAddress>,
+    config: Value<Config>,
     balances: Map<ContractAddress, Balance>,
     allowances: Map<ContractAddress, Map<ContractAddress, Allowance>>,
     total_supply: NNInt,
 }
 ```
 
-Four fields:
+The fields have distinct jobs:
 
-- **`contract_owner`**: The address authorized to mint and burn, stored as a `Value<ContractAddress>`.
-- **`balances`**: Maps each address to its token balance. The value type is `NNInt` (aliased as `Balance`), so increments and decrements commute. See [Storage Types](/programming-model/storage-types/) for the full `NNInt` API.
-- **`allowances`**: Nested map. `allowances[owner][spender]` tracks how many tokens `spender` can transfer on behalf of `owner`.
-- **`total_supply`**: Total tokens in circulation. Also `NNInt`, so mints and burns commute with each other and with transfers.
+| Field | Purpose |
+|-------|---------|
+| `config` | Stores the administrator that can mint and burn. |
+| `balances` | Maps each account to an `NNInt` token balance. |
+| `allowances` | Maps owner and spender pairs to `NNInt` allowances. |
+| `total_supply` | Tracks all outstanding tokens. |
 
-The `#[sdk::storage]` macro generates the serialization and storage-access code. See [SDK Macros](/reference/sdk-macros/) for details.
+`Value<Config>` uses typed serialization. `Map` derives storage paths from keys. `NNInt` provides set-plus-add storage semantics with a nonnegative commit floor.
 
-The production `groundhog-erc20` standard interface in the SDK uses a single `config: Value<Config>` field that bundles the administrator address with optional metadata (name, symbol, decimals) behind feature flags. This tutorial keeps the four flat fields for clarity; the trade-offs are the same.
+## 4. Add Storage Helpers
 
-## Step 3: Helper Methods
-
-These private methods abstract over raw storage access. The pattern: `try_get().unwrap_or(0)` returns zero for addresses that have never been written to, so you don't need explicit initialization of every balance or allowance.
+Continue in `src/implementation.rs`:
 
 ```rust
 impl TokenContract {
-    fn _init(&mut self, contract_owner: &ContractAddress) {
-        // One-time initialization. Calling `initialize` twice is a bug.
-        ensure(self.contract_owner.try_get().is_none(), ERC20Error::AlreadyInitialized);
-        self.contract_owner.set_exclusive(contract_owner);
+    fn init(&mut self, administrator: &ContractAddress) {
+        if self.config.try_get().none_if_missing().is_some() {
+            throw(ERC20Error::AlreadyInitialized);
+        }
+
+        self.config.set(&Config {
+            administrator: *administrator,
+        });
     }
 
-    fn _contract_owner(&self) -> ContractAddress {
-        self.contract_owner.get()
+    fn administrator(&self) -> ContractAddress {
+        self.config.get().administrator
     }
 
-    // Balance stored at given owner address, or zero if empty
-    fn _balance_amount_of(&self, owner: &ContractAddress) -> Amount {
-        self.balances.at(owner).try_get().unwrap_or(0) as Amount
+    fn balance_of(&self, owner: &ContractAddress) -> Amount {
+        self.balances
+            .at(owner)
+            .try_get()
+            .none_if_missing()
+            .unwrap_or(0) as Amount
     }
 
-    // Adjust balance at given owner address, from zero if empty
-    fn _adjust_balance(&mut self, owner: &ContractAddress, diff: Difference) {
-        // For never-stored-to addresses, this acts as
-        // if the value was zero.  If the resulting balance
-        // would be negative, this aborts.
-        self.balances.at_mut(owner).strict_inc(diff);
+    fn adjust_balance(&mut self, owner: &ContractAddress, diff: Difference) {
+        self.balances
+            .at_mut(owner)
+            .try_strict_inc(diff)
+            .unwrap_or_else(|_| throw(ERC20Error::TooLarge));
     }
 
-    fn _allowance(
+    fn allowance_of(
         &self,
         owner: &ContractAddress,
         spender: &ContractAddress,
     ) -> Amount {
-        self.allowances.at(owner).at(spender).try_get().unwrap_or(0) as Amount
+        self.allowances
+            .at(owner)
+            .at(spender)
+            .try_get()
+            .none_if_missing()
+            .unwrap_or(0) as Amount
     }
 
-    // Adjust allowance for owner and spender, from zero if empty.
-    fn _adjust_allowance(
+    fn adjust_allowance_by(
         &mut self,
         owner: &ContractAddress,
         spender: &ContractAddress,
         diff: Difference,
     ) {
-        // This fails if the result would be negative
         self.allowances
             .at_mut(owner)
             .at_mut(spender)
-            .strict_inc(diff);
+            .try_strict_inc(diff)
+            .unwrap_or_else(|_| throw(ERC20Error::TooLarge));
 
         log_approval_event(owner, spender, diff);
     }
 
-    fn _adjust_total_supply(&mut self, diff: Difference) {
+    fn adjust_total_supply(&mut self, diff: Difference) {
         self.total_supply.strict_inc(diff);
     }
 
-    fn _total_supply(&self) -> Amount {
-        self.total_supply.try_get().unwrap_or(0) as Amount
+    fn supply(&self) -> Amount {
+        self.total_supply
+            .try_get()
+            .none_if_missing()
+            .unwrap_or(0) as Amount
     }
 }
 ```
 
-Every balance and allowance mutation goes through `strict_inc`. No method reads a value, computes a new absolute value, and writes it back. That read-modify-write pattern would create conflicts between concurrent transactions. `strict_inc` expresses intent ("add 50" or "subtract 30") as a delta; it may read the snapshot for early underflow detection, but it does not write an absolute final value.
+Three details matter:
 
-Map access uses `.at(key)` for reads and `.at_mut(key)` for writes. These return borrow guards that deref to the inner storage type. Nested maps chain naturally: `self.allowances.at_mut(owner).at_mut(spender)` walks through `Map<owner, Map<spender, NNInt>>` and returns a mutable reference to the inner `NNInt`.
+1. `try_get()` returns `Result<_, LibraryExn>`, not `Option`. `none_if_missing()` converts only missing storage into `None`; it preserves type, serialization, and host errors.
+2. The standard interface requires overdrafts to surface as `ERC20Error::TooLarge`. `try_strict_inc(...).unwrap_or_else(...)` translates the SDK library failure into that domain error.
+3. `amount_to_diff` from the interface crate rejects `u128` values that do not fit in the signed `i128` delta type.
 
-## Step 4: Implement the Interface
+## 5. Implement the Interface
 
-The implementation uses a few utility functions not shown here:
-
-- **`get_caller()`** returns the `ContractAddress` of the caller (the account or contract that invoked this method).
-- **`log_transfer_event(from, to, amount)`** and **`log_approval_event(owner, spender, diff)`** emit events. Events are recorded in the transaction and visible to off-chain indexers.
-- **`CONTRACT_ADDR_ZERO`** is the zero address, used by convention to represent minting (transfer from zero) and burning (transfer to zero).
-
-The `#[contract]` macro on the `impl` block generates the exported entrypoints. Each trait method becomes a callable contract function.
-
-### Initialize
+Add the implementation below the helpers:
 
 ```rust
-#[contract(version = "0.1.0")]
+#[contract(version = "0.1.2")]
 impl ERC20 for TokenContract {
-    fn initialize(&mut self, contract_owner: &ContractAddress) {
-        self._init(contract_owner);
+    fn initialize(&mut self, administrator: &ContractAddress) {
+        self.init(administrator);
     }
-```
 
-The `version` parameter tags this implementation for compatibility tracking. `initialize` runs once at deploy time and sets the contract owner.
-
-### Transfer
-
-```rust
     fn transfer(&mut self, receiver: &ContractAddress, amount: Amount) {
         let owner = get_caller();
-
         let diff = amount_to_diff(amount);
-        self._adjust_balance(&owner, -diff);
-        self._adjust_balance(receiver, diff);
 
+        self.adjust_balance(&owner, -diff);
+        self.adjust_balance(receiver, diff);
         log_transfer_event(&owner, receiver, amount);
     }
-```
 
-Two `strict_inc` calls: one negative (sender), one positive (receiver). Both are delta operations. Two transfers involving different sender/receiver pairs run in parallel with zero conflicts. Two transfers from the same sender run in parallel as long as neither causes underflow. That is the point.
-
-### Transfer From
-
-```rust
     fn transfer_from(
         &mut self,
         owner: &ContractAddress,
@@ -234,80 +222,21 @@ Two `strict_inc` calls: one negative (sender), one positive (receiver). Both are
         amount: Amount,
     ) {
         let spender = get_caller();
-
         let diff = amount_to_diff(amount);
-        self._adjust_allowance(owner, &spender, -diff);
-        self._adjust_balance(owner, -diff);
-        self._adjust_balance(receiver, diff);
 
+        self.adjust_allowance_by(owner, &spender, -diff);
+        self.adjust_balance(owner, -diff);
+        self.adjust_balance(receiver, diff);
         log_transfer_event(owner, receiver, amount);
     }
-```
 
-Three delta operations: reduce the allowance, reduce the owner's balance, increase the receiver's balance. All three are commutative.
-
-### Adjust Allowance
-
-```rust
     fn adjust_allowance(
         &mut self,
         spender: &ContractAddress,
         diff: Difference,
     ) {
         let owner = get_caller();
-
-        self._adjust_allowance(&owner, spender, diff);
-    }
-```
-
-This takes a signed `diff`, not an absolute value. To grant 100 tokens of spending approval, call `adjust_allowance(spender, 100)`. To revoke 50, call `adjust_allowance(spender, -50)`. The delta approach means concurrent approvals commute.
-
-### Mint and Burn
-
-```rust
-    fn mint(&mut self, receiver: &ContractAddress, amount: Amount) {
-        let caller = get_caller();
-        ensure(
-            caller == self._contract_owner(),
-            ERC20Error::MustBeContractOwner,
-        );
-
-        let diff = amount_to_diff(amount);
-        self._adjust_balance(receiver, diff);
-        self._adjust_total_supply(diff);
-
-        log_transfer_event(CONTRACT_ADDR_ZERO, receiver, amount);
-    }
-
-    fn burn(&mut self, owner: &ContractAddress, amount: Amount) {
-        let caller = get_caller();
-        ensure(
-            caller == self._contract_owner(),
-            ERC20Error::MustBeContractOwner,
-        );
-
-        let diff = amount_to_diff(amount);
-        self._adjust_balance(owner, -diff);
-        self._adjust_total_supply(-diff);
-
-        log_transfer_event(owner, CONTRACT_ADDR_ZERO, amount);
-    }
-```
-
-Only the contract owner can mint or burn. The [`ensure()` function](https://groundhog.dev/docs/sdk/latest/sdk/fn.ensure.html) aborts with `ERC20Error::MustBeContractOwner` if the caller doesn't match. See [Error Handling](/reference/error-handling/) for more on the `ensure()` pattern.
-
-Mint logs a transfer event from the zero address. Burn logs a transfer to the zero address. This follows the ERC-20 convention.
-
-### Read Methods
-
-```rust
-    fn get_balance_of(&self, owner: &ContractAddress) -> Amount {
-        self._balance_amount_of(owner)
-    }
-
-    fn get_balance(&self) -> Amount {
-        let owner = get_caller();
-        self._balance_amount_of(&owner)
+        self.adjust_allowance_by(&owner, spender, diff);
     }
 
     fn allowance(
@@ -315,78 +244,109 @@ Mint logs a transfer event from the zero address. Burn logs a transfer to the ze
         owner: &ContractAddress,
         spender: &ContractAddress,
     ) -> Amount {
-        self._allowance(owner, spender)
+        self.allowance_of(owner, spender)
+    }
+
+    fn get_balance_of(&self, owner: &ContractAddress) -> Amount {
+        self.balance_of(owner)
+    }
+
+    fn get_balance(&self) -> Amount {
+        self.balance_of(&get_caller())
+    }
+
+    fn mint(&mut self, receiver: &ContractAddress, amount: Amount) {
+        ensure(
+            get_caller() == self.administrator(),
+            ERC20Error::MustBeContractOwner,
+        );
+
+        let diff = amount_to_diff(amount);
+        self.adjust_balance(receiver, diff);
+        self.adjust_total_supply(diff);
+        log_transfer_event(CONTRACT_ADDR_ZERO, receiver, amount);
+    }
+
+    fn burn(&mut self, owner: &ContractAddress, amount: Amount) {
+        ensure(
+            get_caller() == self.administrator(),
+            ERC20Error::MustBeContractOwner,
+        );
+
+        let diff = amount_to_diff(amount);
+        self.adjust_balance(owner, -diff);
+        self.adjust_total_supply(-diff);
+        log_transfer_event(owner, CONTRACT_ADDR_ZERO, amount);
     }
 
     fn total_supply(&self) -> Amount {
-        self._total_supply()
+        self.supply()
     }
 }
 ```
 
-Read methods take `&self` (not `&mut self`) and read from the current snapshot. They don't conflict with writes.
+Deployment does not call `initialize` automatically. Call it once afterward. The stored config enforces one-time initialization.
 
-## Step 5: Test It
+Mint and burn are restricted to the administrator. Transfers use the immediate caller as the owner. `transfer_from` uses the immediate caller as the spender and decreases both allowance and owner balance.
 
-The ERC-20 example uses a shared test suite so that the same tests run against both native and WASM execution. A basic test:
+## 6. Test the Contract
+
+Replace `tests/test.rs`:
 
 ```rust
 use erc20::{register_mock_contract, ERC20Client};
 use sdk::*;
 
-static NONCE: SHA256Hash = sdk::sha256_static!("ERC20_NONCE");
+static NONCE: SHA256Hash = sdk::sha256_static!("ERC20_TUTORIAL_NONCE");
 
 #[test]
-fn test_transfer() {
+fn transfer_updates_balances_and_supply() {
     let env = TestEnvironment::no_cost();
     let test_contract = register_mock_contract(&env);
     let contract_hash = test_contract.as_hash().clone();
 
+    let alice = ContractAddress::named("alice");
+    let bob = ContractAddress::named("bob");
+
     env.transact(|tx| {
-        tx.call(&ContractAddress::named("alice")).run(move || {
-            let addr = deploy_contract(&NONCE, &contract_hash);
-            let client = ERC20Client::new(&addr);
-            let owner = get_caller();
-            let receiver = ContractAddress::named("bob");
+        tx.call(&alice).run(move || {
+            let address = deploy_contract(&NONCE, &contract_hash);
+            let token = ERC20Client::new(&address);
+            let owner = get_current_address();
 
-            client.initialize(&owner);
-            client.mint(&owner, 1000);
-            client.transfer(&receiver, 100);
+            token.initialize(&owner);
+            token.mint(&owner, 1_000);
+            token.transfer(&bob, 100);
 
-            assert_eq!(client.get_balance_of(&owner), 900);
-            assert_eq!(client.get_balance_of(&receiver), 100);
+            assert_eq!(token.get_balance_of(&owner), 900);
+            assert_eq!(token.get_balance_of(&bob), 100);
+            assert_eq!(token.total_supply(), 1_000);
         })
     })
     .assert_success();
 }
 ```
 
-The transaction originates from `ContractAddress::named("alice")`, so `get_caller()` inside the closure returns alice's address. She becomes the token's owner. `TestEnvironment::no_cost()` creates a test environment with no storage cost enforcement. `register_mock_contract` registers the contract with the test environment (generated by `declare_mock_contract!()` in your `lib.rs`). The `dev` feature flag (enabled via `[dev-dependencies]`) exposes mocking utilities.
-
-Run tests with:
+Run the native test and build the deployable artifact:
 
 ```bash
 cargo test
+groundhog build
 ```
 
-Your `Cargo.toml` needs the `dev` feature for testing:
+The RV32 build produces `erc20.rv32a`, lowering metadata, and contract-spec sidecars under `target/groundhog/`.
 
-```toml
-[features]
-dev = ["sdk/dev", "groundhog-erc20-if/dev"]
+In the native test's root transaction, `get_current_address()` is Alice's root address. `get_caller()` is meaningful inside the nested token invocation.
 
-[dev-dependencies]
-erc20 = { path = ".", features = ["dev"] }
-```
+## Concurrency Semantics
 
-## Why This Matters
+Balance and allowance changes use `strict_inc`, which resolves an invocation-local base and records a compatible set-plus-add delta. Independent transfers can merge. Transfers from the same sender can also merge while their aggregate committed debits remain within the sender's balance. If aggregate debits exceed it, one or more transactions are excluded and returned to the mempool.
 
-Every balance mutation in this contract uses `strict_inc`, which records a delta rather than an absolute value. Deltas commute: two transfers that debit the same account produce the same result regardless of execution order, as long as neither causes underflow. This means the runtime can execute thousands of token transfers in parallel within a single block. This is how Groundhog achieves high throughput for real token workloads.
+This is different from storing a newly computed absolute balance, which would make concurrent writes disagree on a post-image.
 
 ## Next Steps
 
-- [Build a Swap](/tutorials/build-a-swap/) to see cross-contract calls in action
-- [Execution Model](/programming-model/execution/) for the full snapshot/delta/merge pipeline
-- [Storage Types](/programming-model/storage-types/) for `NNInt`, `Map`, `Vector`, `Value`, `Bytestring`, and `RCQ`
-- [NNInt In Depth](/programming-model/nnint/) for the `set_add` primitive and commutativity rules
-- [Error Handling](/reference/error-handling/) for the `ensure()` pattern
+- [Understand a Swap Contract](/tutorials/build-a-swap/) for a source walkthrough of cross-contract token calls
+- [Add Events to a Contract](/tutorials/add-events-to-a-contract/) for event testing and queries
+- [NNInt In Depth](/programming-model/nnint/) for set-plus-add merge rules
+- [Error Handling](/reference/error-handling/) for domain and library exception behavior
