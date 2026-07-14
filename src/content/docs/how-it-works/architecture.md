@@ -24,7 +24,7 @@ This is not an optimization bolted onto a sequential design. It is the design. E
 
 The SDK provides convenience layers (`NNInt`, `Map`, `#[storage]` macros) that make common patterns easy, but these are optional. You can work directly with the raw syscall interface and build your own storage abstractions. The SDK is middleware, not a framework. See [Getting Started](/start/getting-started/#the-sdk-is-layered) for the full layering.
 
-For the contract-writing rules (snapshots, deltas, merge rules), see the [Programming Model](/programming-model/execution/) section. For the engine internals, see [Execution Model](/how-it-works/execution-model/). For the full type API, see [Storage Types Reference](/reference/storage-types/).
+For the contract-writing rules, see [Merged Deltas](/programming-model/execution/#merged-deltas). For the engine internals, see [Execution Model](/how-it-works/execution-model/). For the full type API, see [Storage Types Reference](/reference/storage-types/).
 
 ## What Other Chains Do Instead
 
@@ -61,7 +61,7 @@ Every transaction in the block runs steps 2-4 simultaneously. Step 5-6 is where 
 
 ## Related Documentation
 
-- [Programming Model](/programming-model/execution/): Contract-writing rules for snapshots, deltas, storage types, and commutativity
+- [Merged Deltas](/programming-model/execution/#merged-deltas): Contract-writing rules for concurrent state changes
 - [Execution Model](/how-it-works/execution-model/): How the engine implements the programming model
 - [Transaction Lifecycle](/how-it-works/transaction-lifecycle/): The six stages from submission to commit
 - [Storage Types Reference](/reference/storage-types/): Full API for NNInt, Map, Vector, Value, Bytestring, and RetrocausalQueue

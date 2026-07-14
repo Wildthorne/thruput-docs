@@ -9,7 +9,7 @@ Every transaction reads from a consistent snapshot and writes deltas (changes), 
 
 You learn one new concept: commutativity (which operations can run in parallel and which conflict). In return, you stop thinking about gas fees, storage expiration, transaction size limits, and sequence numbers. Those problems do not exist here.
 
-For contract-writing rules (which operations commute, how to choose storage types, what `strict_inc` does under the hood), see the [Programming Model](/programming-model/execution/) section. This page covers how the engine implements those rules.
+For the contract-writing model, start with [Merged Deltas](/programming-model/execution/#merged-deltas) and [Storage Types](/programming-model/storage-types/). This page covers how the engine implements those rules.
 
 ## Snapshot Isolation
 
@@ -169,7 +169,7 @@ For Soroban developers, the main shift is not contract expressiveness; it is whe
 
 ## Related Documentation
 
-- [Programming Model](/programming-model/execution/): Contract-writing rules for snapshots, deltas, storage types, and commutativity
+- [Merged Deltas](/programming-model/execution/#merged-deltas): Contract-writing model for concurrent state changes
 - [Architecture](/how-it-works/architecture/): The big-picture design
 - [Transaction Lifecycle](/how-it-works/transaction-lifecycle/): How a transaction moves from submission to commit
 - [Contracts](/how-it-works/contracts/): Contract types, deployment, and address derivation

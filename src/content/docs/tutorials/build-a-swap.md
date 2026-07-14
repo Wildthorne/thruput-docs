@@ -441,7 +441,7 @@ Cross-contract calls contribute all nested events to the transaction result. Ass
 
 - Different pairs use separate storage. Two pairs (ETH/USDC, BTC/USDC) can execute swaps in the same block without conflicting.
 - Swaps on the same pair generally conflict. Each swap replaces the entire `reserves` value with newly calculated state. If two swaps calculate different states, one gets returned to the mempool.
-- LP transfers between users on the same pair can execute concurrently. The LP contract uses [`NNInt`](/programming-model/nnint/) balances, so concurrent credits and debits can combine when the available balance is sufficient.
+- LP transfers between users on the same pair can execute concurrently. The LP contract uses [`NNInt`](/programming-model/storage-types/#nnint) balances, so its [balance deltas can merge](/programming-model/execution/#merged-deltas) when the available balance is sufficient.
 
 ## Closing Notes
 

@@ -3,7 +3,7 @@ title: Build a Token
 description: Build an ERC-20-compatible token with the Groundhog SDK and standard interface crate.
 ---
 
-This tutorial builds an ERC-20-compatible token with transfers, allowances, minting, burning, and standard events. Balances and allowances use [`NNInt`](/programming-model/nnint/), which records changes such as `+100` and `-100` so the runtime can combine changes from concurrent transfers.
+This tutorial builds an ERC-20-compatible token with transfers, allowances, minting, burning, and standard events. Balances and allowances use [`NNInt`](/programming-model/storage-types/#nnint), which records deltas such as `+100` and `-100`. Those [deltas can merge](/programming-model/execution/#merged-deltas) across concurrent transfers.
 
 **Prerequisites:** Complete [Build a Counter](/tutorials/build-a-counter/) first.
 
@@ -342,7 +342,7 @@ In the native test's root transaction, `get_current_address()` is Alice's root a
 
 Balance and allowance updates use `strict_inc` to record a change, such as `+100` or `-100`, rather than replacing the stored value with a newly calculated result.
 
-This lets the runtime combine changes from concurrent transfers when they can all be applied safely. Changes to different balances or allowances do not conflict. Credits to the same balance can combine, and debits from the same balance or allowance can combine as long as their total does not exceed the available value. If the total is too large, the runtime excludes one or more transactions and returns them to the mempool.
+This is the [merged-delta model](/programming-model/execution/#merged-deltas): the runtime combines changes from concurrent transfers when they can all be applied safely. Changes to different balances or allowances do not conflict. Credits to the same balance can combine, and debits from the same balance or allowance can combine as long as their total does not exceed the available value. If the total is too large, the runtime excludes one or more transactions and returns them to the mempool.
 
 ## Next Steps
 
