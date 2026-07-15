@@ -5,24 +5,65 @@ description: "How to test Groundhog contracts: native logic tests, RV32 integrat
 
 ## Test Modes
 
-Groundhog contracts have four useful test paths:
+Groundhog contracts have three useful test paths:
 
 :::note[Version checked]
-This page was last checked against Groundhog CLI `0.5.17` and SDK `0.17.1` on July 13, 2026.
+This page was last checked against Groundhog CLI source at package version `0.5.18` and SDK `0.17.1` on July 15, 2026.
 :::
 
 | Command | What it covers | Use for |
 |---------|----------------|---------|
 | `cargo test` | Native SDK execution in process | Fast logic tests, error-path assertions, debugging |
 | `groundhog test` | Executor-backed RV32 artifact test | Contract artifact behavior without an RPC node |
-| `groundhog test --target wasm` | WASM compatibility test | Legacy WASM checks |
-| `groundhog test --integration` | Ephemeral `hog-devnode`, deployed artifact, RPC client path | End-to-end deploy/call tests. Defaults to RV32 (32-bit RISC-V). |
+| `groundhog test --integration` | Ephemeral `hog-devnode`, deployed RV32 artifact, RPC client path | End-to-end deploy/call tests |
 
 Start with `cargo test`, then run `groundhog test` against the RV32 artifact. Add `groundhog test --integration` when you need to test the same path a partner or app will use: build artifact, local node, deployment, signing profile, RPC URL, and generated client behavior.
 
-`groundhog test --integration` deploys RV32 by default. Use `--target wasm` only for legacy comparison, or `--differential` when you intentionally want to run the same integration test against both RV32 and WASM local nodes.
+`groundhog test --integration` builds and deploys RV32, the normal user-contract runtime.
 
-The CLI scaffold does not create `tests/integration.rs`. Add that Cargo integration-test target before running `groundhog test --integration`. Integration mode also requires a compatible `hog-devnode` supplied separately through `GROUNDHOG_DEVNODE_BINARY`, a sibling executable beside `groundhog`, or `PATH`.
+Fresh `groundhog new` projects include the integration target and its host-only dependencies. Integration mode also requires a compatible `hog-devnode` supplied separately through `GROUNDHOG_DEVNODE_BINARY`, a sibling executable beside `groundhog`, or `PATH`.
+
+## What the Scaffold Gives You
+
+The `counter` and `stub` templates include:
+
+```text
+build.rs
+tests/
+  integration.rs
+```
+
+`tests/integration.rs` starts with one ignored RPC smoke test. It checks that the CLI provided a deployed contract, connects to the ephemeral node with `groundhog-json-rpc-client`, and calls `chainTip`. Replace or extend the final placeholder with assertions for your contract.
+
+The starter remains ignored under ordinary `cargo test`, even if you explicitly enable its feature. `groundhog test --integration` enables the feature and sets `GROUNDHOG_INTEGRATION_TEST=1`, which lets the scaffold's `build.rs` activate the live test. You can rename the module and test functions without changing how activation works.
+
+The generated Cargo entries keep RPC and Tokio dependencies out of WASM and RV32 guest builds:
+
+```toml
+[features]
+groundhog-integration-test = ["dep:groundhog-json-rpc-client", "dep:tokio"]
+
+[target.'cfg(not(any(target_arch = "wasm32", target_arch = "riscv32")))'.dependencies]
+groundhog-json-rpc-client = { version = "0.5", registry = "groundhog", optional = true }
+tokio = { version = "1", features = ["macros", "rt-multi-thread"], optional = true }
+```
+
+The generated `build.rs` contains:
+
+```rust
+fn main() {
+    println!("cargo:rerun-if-env-changed=GROUNDHOG_INTEGRATION_TEST");
+    println!("cargo:rustc-check-cfg=cfg(groundhog_integration_runner)");
+
+    if std::env::var("GROUNDHOG_INTEGRATION_TEST").as_deref() == Ok("1") {
+        println!("cargo:rustc-cfg=groundhog_integration_runner");
+    }
+}
+```
+
+:::tip[Projects created with an older scaffold]
+Add `tests/integration.rs`, the feature and host-only dependencies above, and the integration activation logic from `build.rs`. If your project already has a build script, merge the activation lines into its existing `main` function. The CLI exits with `integration_test_not_found` when the test target is absent.
+:::
 
 ## Test Setup
 
@@ -118,13 +159,24 @@ The `try_decrement` method (generated alongside `decrement` by the `#[contract]`
 
 | Variable | Value |
 |----------|-------|
+| `GROUNDHOG_INTEGRATION_TEST` | `1`; activates the scaffolded live test |
 | `GROUNDHOG_RPC_URL` | RPC URL for the ephemeral node |
 | `GROUNDHOG_CONTRACT_ADDRESS` | Deployed contract address |
 | `GROUNDHOG_PROFILE` | `integration` |
 | `GROUNDHOG_DEFAULT_KEY` | `dev-0` |
 | `GROUNDHOG_RUNTIME_MANIFEST` | Runtime manifest path, when available |
 
-The default artifact target is RV32. Use `groundhog test --integration --target wasm` only for legacy WASM coverage.
+The full run is:
+
+1. Build the RV32 artifact.
+2. Start an isolated local node.
+3. Deploy it with `dev-0`.
+4. Enable `groundhog-integration-test` and run only the `integration` Cargo test target with the environment above.
+5. Shut down the node after the test run, including after test failures.
+
+Normal test-harness controls such as `--match-test`, `--skip`, `--show-output`, `--no-capture`, and `--test-threads` apply to integration tests. `--watch` and `--rerun` cannot be combined with `--integration` yet.
+
+Integration tests use the same RV32 artifact path as normal builds and deployments.
 
 ## Named Addresses
 
