@@ -6,7 +6,7 @@ description: How Groundhog CLI commands fit into RV32 builds, local nodes, tests
 Run normal Rust loops with `cargo`. Run Groundhog-specific work with `groundhog`: scaffolds, RV32 artifacts, local nodes, deployments, RPC calls, state inspection, keys, wallets, and generated bindings. RV32 is Groundhog's 32-bit RISC-V contract target.
 
 :::note[Version checked]
-This page was last checked against Groundhog CLI `0.5.17` and SDK `0.17.1` on July 13, 2026.
+This page was last checked against Groundhog CLI source at package version `0.5.18` and SDK `0.17.1` on July 15, 2026.
 :::
 
 ## Foundry Mental Model
@@ -119,10 +119,11 @@ Test modes:
 | `cargo test` | Native Rust tests on your host. Best for fast contract logic feedback. |
 | `groundhog test` | Executor-backed RV32 tests using `tests/test_rv32.rs`. |
 | `groundhog test --target wasm` | WASM compatibility tests using `tests/test_wasm.rs`. |
-| `groundhog test --integration` | Ephemeral local node, deploy, then `tests/integration.rs`. Defaults to RV32. |
-| `groundhog test --integration --differential` | Runs the same integration target against isolated RV32 and WASM nodes. |
+| `groundhog test --integration` | Ephemeral local node, RV32 deploy, then `tests/integration.rs`. |
 
-`groundhog new` does not currently create `tests/integration.rs`. Add that Cargo integration-test target before running `groundhog test --integration`; otherwise the command exits with `integration_test_not_found`.
+Fresh projects created by `groundhog new` include `tests/integration.rs`, a small `build.rs`, and optional host-only RPC dependencies. The starter test verifies that the CLI provided a deployed contract and a live RPC node, then leaves a placeholder for contract-specific assertions. It stays ignored under ordinary `cargo test`; the integration command activates it without coupling activation to a particular test name.
+
+Projects created with an older scaffold must add the integration target and activation wiring before running the command. Otherwise, it exits with `integration_test_not_found`. See [Testing](/programming-model/testing/#what-the-scaffold-gives-you) for the generated Cargo entries and build-script hook.
 
 Integration mode accepts `--hogd-protocol hogp/<hash>` when a local devnode is slightly ahead of the published protocol token. `GROUNDHOG_HOGD_PROTOCOL` is its environment fallback. Shape mismatches still fail.
 
@@ -130,6 +131,7 @@ Integration tests receive:
 
 | Variable | Value |
 |----------|-------|
+| `GROUNDHOG_INTEGRATION_TEST` | `1`; activates the scaffolded live test |
 | `GROUNDHOG_RPC_URL` | RPC URL for the ephemeral local node |
 | `GROUNDHOG_CONTRACT_ADDRESS` | Deployed contract address |
 | `GROUNDHOG_PROFILE` | `integration` |

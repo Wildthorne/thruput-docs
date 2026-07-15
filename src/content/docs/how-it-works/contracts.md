@@ -46,7 +46,7 @@ The node executes the lowered artifact through the RV32 runtime. Contract state 
 
 ### Legacy WASM Contracts
 
-The protocol still has a `Contract::kWasmi` variant for the WASM compatibility path. Use it only when you intentionally build with `groundhog build --target wasm`, run `groundhog test --target wasm`, or compare RV32 against WASM with differential tests.
+The protocol still has a `Contract::kWasmi` variant for legacy WASM compatibility. New contracts should use RV32.
 
 Legacy WASM contracts identify methods by exporting a function whose name is the uppercase hex encoding of the 8-byte entrypoint ID, such as:
 

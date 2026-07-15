@@ -67,7 +67,6 @@ Generated projects work with both `cargo` and `groundhog`. Use `cargo` for nativ
 | `groundhog deploy` | Signs and submits the selected built artifact | Deploy to the selected profile |
 | `groundhog test` | Runs executor-backed RV32 artifact tests | Contract artifact tests |
 | `groundhog test --integration` | Starts an ephemeral `hog-devnode`, deploys the contract, and runs `tests/integration.rs` | End-to-end RPC tests |
-| `groundhog test --target wasm` | Runs the WASM compatibility tests | Legacy WASM checks |
 
 For a command-by-command map, including the Foundry/Anvil mental model for local development, see [Groundhog CLI](/tools/groundhog-cli/).
 
@@ -98,25 +97,25 @@ WASM is still available with `groundhog build --target wasm`, but RV32 is the de
 
 ### Integration Tests
 
-`groundhog test --integration` is the production-shaped test path. It starts an ephemeral `hog-devnode`, builds and deploys the selected artifact (`rv32` by default), and runs `tests/integration.rs` with these environment variables:
-
-The scaffold does not create `tests/integration.rs`. Add that Cargo integration-test target before using this command.
+`groundhog test --integration` is the production-shaped test path. It starts an ephemeral `hog-devnode`, builds and deploys the RV32 artifact, and runs the scaffolded `tests/integration.rs` with these environment variables:
 
 | Variable | Value |
 |----------|-------|
+| `GROUNDHOG_INTEGRATION_TEST` | `1`; activates the scaffolded live test |
 | `GROUNDHOG_RPC_URL` | RPC URL for the ephemeral node |
 | `GROUNDHOG_CONTRACT_ADDRESS` | Address of the deployed contract |
 | `GROUNDHOG_PROFILE` | `integration` |
 | `GROUNDHOG_DEFAULT_KEY` | `dev-0` |
 | `GROUNDHOG_RUNTIME_MANIFEST` | Runtime manifest path, when available |
 
-Use `--target wasm` only when you need to compare against the legacy WASM artifact. Use `--differential` to run the same integration test against isolated RV32 and WASM local nodes.
+The starter test confirms that the node is live and the contract was deployed. Add contract-specific RPC assertions in that file. See [Testing](/programming-model/testing/#what-the-scaffold-gives-you) for the generated feature and build-script wiring.
 
 ## What the CLI Generated
 
 ```
 my-counter/
   Cargo.toml              # SDK dependency, RV32 bin wrapper, dev feature toggle
+  build.rs                # Activates the RPC test during integration runs
   groundhog.toml          # local/devnet profile selection and contract aliases
   rust-toolchain.toml     # Rust toolchain and targets
   .gitignore              # ignores /target/ and /.groundhog/
@@ -129,6 +128,7 @@ my-counter/
     main.rs               # RV32 entrypoint wrapper
   tests/
     test.rs               # Native SDK tests through the generated client
+    integration.rs        # RPC test, run by `groundhog test --integration`
     test_rv32.rs          # RV32 artifact test, run by `groundhog test`
     test_wasm.rs          # WASM test, run by `groundhog test --target wasm`
 ```

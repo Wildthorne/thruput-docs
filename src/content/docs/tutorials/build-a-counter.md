@@ -274,13 +274,13 @@ Then build the deployable RV32 artifact:
 groundhog build
 ```
 
-When you add `tests/integration.rs`, run it against an ephemeral local node:
+The scaffold includes `tests/integration.rs`. Run it against an ephemeral local node:
 
 ```bash
 groundhog test --integration
 ```
 
-That command deploys RV32 by default and sets `GROUNDHOG_RPC_URL`, `GROUNDHOG_CONTRACT_ADDRESS`, `GROUNDHOG_PROFILE`, `GROUNDHOG_DEFAULT_KEY`, and `GROUNDHOG_RUNTIME_MANIFEST` for the integration test process. Plain `groundhog test` runs the generated executor-backed RV32 test. Use `groundhog test --target wasm` for the WASM compatibility test.
+That command deploys RV32 and sets `GROUNDHOG_INTEGRATION_TEST=1` to activate the scaffolded test. It also provides `GROUNDHOG_RPC_URL`, `GROUNDHOG_CONTRACT_ADDRESS`, `GROUNDHOG_PROFILE`, `GROUNDHOG_DEFAULT_KEY`, and `GROUNDHOG_RUNTIME_MANIFEST` to the integration test process. Plain `groundhog test` runs the generated executor-backed RV32 test.
 
 ## Why This Matters
 
