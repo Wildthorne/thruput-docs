@@ -36,7 +36,7 @@ drive_liveness()  →  Detect stuck consensus
 
 On a single validator (e.g. during development):
 
-1. Baton calls `nominate` on the mempool. The mempool assembles a block from queued transactions.
+1. Baton calls `propose_block` on the mempool. The mempool assembles a block from queued transactions.
 2. SCP externalizes immediately (single-node quorum).
 3. Baton calls `commit` on the mempool. The mempool executes transactions, resolves conflicts, and writes state.
 4. Next drive cycle begins.
@@ -45,7 +45,7 @@ On a single validator (e.g. during development):
 
 With multiple validators:
 
-1. **Nominate.** A validator asks its mempool for a block nomination. The nomination contains the transactions and metadata.
+1. **Propose.** A validator asks its mempool for a block proposal. The proposal contains the transactions and metadata.
 2. **Disseminate.** The full consensus value (nomination + metadata) is broadcast to peers via Dogwood (see below). A compact hash reference (the "cue") is sent through SCP.
 3. **Validate.** Receiving validators ask their own mempool: "is this nomination valid against my state?" Validation runs asynchronously and results are cached.
 4. **Converge.** SCP envelope exchange continues until validators agree. The protocol guarantees that all honest validators converge on the same block, even under Byzantine faults (up to the quorum threshold).
@@ -55,9 +55,9 @@ With multiple validators:
 
 The proposer and validators execute transactions differently.
 
-**The proposer runs concurrent execution.** Transactions are fanned across multiple executors and coroutines in parallel. NNInt capacity locks resolve conflicts via atomic compare-and-swap (see [Execution Model: How Conflicts Are Resolved](/how-it-works/execution-model/#how-conflicts-are-resolved)). Which transaction wins a contested lock depends on thread scheduling. This is non-deterministic: two runs of the same transaction set on the same machine can produce different winners.
+**The proposer runs concurrent execution.** Transactions are fanned across multiple executors and coroutines in parallel. After a root call completes, NNInt capacity locks reserve its delta batch via atomic compare-and-swap (see [Execution Model: How Conflicts Are Resolved](/how-it-works/execution-model/#how-conflicts-are-resolved)). Which transaction wins a contested lock depends on thread scheduling. This is non-deterministic: two runs of the same transaction set on the same machine can produce different winners.
 
-**The proposer captures nondeterministic outcomes.** Each transaction's execution produces a `NondeterministicProposalData` payload: a bitstring of decisions made during execution (capacity reservation outcomes, retrocausal queue observations). This payload is packaged alongside the transaction hashes in the consensus nomination.
+**The proposer captures nondeterministic outcomes.** Each transaction produces a `NondeterministicProposalData` payload covering proposal-dependent decisions such as capacity reservation outcomes and retrocausal queue observations. This payload is packaged alongside the transaction hashes in the consensus proposal.
 
 **Validators replay deterministically.** Validators receive the proposer's nominated transaction list and the nondeterministic data. They reconstruct each transaction from their local mempool, pair it with the proposer's captured decisions, and replay execution using those decisions as input. Validators do not re-run the concurrent race. They verify that the transactions produce the claimed state transitions, recompute the block hash, and confirm it matches.
 

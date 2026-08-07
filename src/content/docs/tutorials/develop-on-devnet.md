@@ -8,7 +8,7 @@ This tutorial moves the local development loop onto Devnet. You will create a pe
 Complete [Develop Locally with the CLI](/tutorials/develop-locally/) first if you have not yet built, deployed, and called a contract against `hog-devnode`.
 
 :::note[Version checked]
-This tutorial was last checked against Groundhog CLI `0.5.17` on July 13, 2026.
+This tutorial was source-checked against Groundhog CLI `0.6.3` on August 5, 2026.
 :::
 
 ## Before You Start
@@ -68,7 +68,7 @@ Authenticate Cargo and install the current CLI if needed:
 ```bash
 cargo login --registry groundhog
 cargo install groundhog-cli \
-  --version "=0.5.17" \
+  --version "=0.6.3" \
   --registry groundhog \
   --locked
 
@@ -99,23 +99,29 @@ The private key is stored under the Groundhog configuration directory, normally 
 
 ## 4. Configure the Devnet Profile
 
-Open the global configuration created by `groundhog init`:
+Update the global `devnet` profile created by `groundhog init`:
 
 ```bash
-"${EDITOR:-vi}" "${XDG_CONFIG_HOME:-$HOME/.config}/groundhog/config.toml"
+groundhog config set --profile devnet network devnet --global
+groundhog config set --profile devnet rpc-url "$DEVNET_RPC_URL" --global
+groundhog config set --profile devnet faucet-url "$DEVNET_FAUCET_URL" --global
+groundhog config set --profile devnet default-key alice --global
+groundhog config use devnet --global
 ```
 
-Find the existing `[profile.devnet]` section. Add the endpoint values and select the key:
+If the profile does not exist, create it atomically instead:
 
-```toml
-[profile.devnet]
-network = "devnet"
-rpc_url = "<DEVNET_RPC_URL>"
-faucet_url = "<DEVNET_FAUCET_URL>"
-default_key = "alice"
+```bash
+groundhog config new devnet \
+  --network devnet \
+  --rpc-url "$DEVNET_RPC_URL" \
+  --faucet-url "$DEVNET_FAUCET_URL" \
+  --default-key alice \
+  --use \
+  --global
 ```
 
-Replace the placeholders with literal URLs. Preserve the existing HOG alias:
+Preserve the existing HOG contract alias in the global config if onboarding supplied one:
 
 ```toml
 [profile.devnet.contracts]
@@ -125,6 +131,7 @@ HOG = "0x0000000000000000000000000000000000000000000000000000000000000001"
 Inspect the resolved profile:
 
 ```bash
+groundhog config get devnet --sources
 groundhog status --profile devnet
 ```
 

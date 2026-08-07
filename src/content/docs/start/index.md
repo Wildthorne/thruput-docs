@@ -3,9 +3,9 @@ title: Start Here
 description: Pick the right Groundhog guide based on what you already know.
 ---
 
-Groundhog is a blockchain where most operations execute in parallel, safely, deterministically, without you managing the parallelism. No double spends, no negative balances, no dirty reads. No gas costs, no MEV, no reentrancy. All without requiring sequential execution.
+Groundhog is a blockchain where most operations execute in parallel, safely and deterministically, without you managing the parallelism. No double spends, no negative balances, no dirty reads. No gas fees or contract reentrancy. All without requiring sequential execution.
 
-The core concept to learn is [`NNInt`](/programming-model/storage-types/#nnint), Groundhog's integer storage type for balances and counters. Instead of overwriting a balance with a newly calculated value, an `NNInt` records a delta such as `+5` or `-3`. [Merged deltas](/programming-model/execution/#merged-deltas) from concurrent transactions can combine when they are safe to apply, while the runtime still prevents total debits from exceeding the available balance. The guides below explain the same model from different starting points.
+The core concept to learn is mergeable storage. Instead of overwriting a balance with a newly calculated value, [`Balance`](/programming-model/storage-types/#balance) records increases and decreases. [Merged deltas](/programming-model/execution/#merged-deltas) from concurrent transactions can combine when they are safe to apply, while the runtime still prevents total debits from exceeding the available balance. Lower-level [`NNInt`](/programming-model/storage-types/#nnint) storage exposes the same signed-delta model for counters and other integer state. The guides below explain this model from different starting points.
 
 ---
 
@@ -13,8 +13,8 @@ The core concept to learn is [`NNInt`](/programming-model/storage-types/#nnint),
 
 | Your background | Groundhog feels like... | Start here |
 |---|---|---|
-| **Smart contracts** (EVM, SVM, Move) | Everything you know minus gas, MEV, and ordering. No reentrancy, no access lists, no move semantics. Fewer footguns, stronger guarantees, and simplicity that yields performance. | [Guide for Blockchain Developers](/start/for-blockchain-developers/) |
-| **SQL databases** | `UPDATE balance = balance + 5` maps to an NNInt delta. Concurrent updates can combine while balance constraints still hold. | [Guide for Backend Developers](/start/for-backend-developers/) |
+| **Smart contracts** (EVM, SVM, Move) | Familiar contracts without gas fees, sequential nonces, reentrancy guards, or declared access lists. Commutative paths do not depend on transaction order. | [Guide for Blockchain Developers](/start/for-blockchain-developers/) |
+| **SQL databases** | `UPDATE balance = balance + 5` maps to a `Balance` increase. Concurrent updates can combine while balance constraints still hold. | [Guide for Backend Developers](/start/for-backend-developers/) |
 | **Distributed systems** | Your intuition transfers, but don't worry Groundhog is **not** CRDTs on a blockchain. | [Guide for Distributed Systems Developers](/start/for-distributed-systems-developers/) |
 
 ---

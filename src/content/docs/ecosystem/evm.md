@@ -43,7 +43,7 @@ impl MyContract {
 }
 ```
 
-Where Solidity uses `constructor()`, Groundhog uses a conventional `initialize` method that runs once during the deployment transaction. Where Solidity uses `uint256` state variables, Groundhog uses typed storage fields (`NNInt`, `Map<K, V>`, `Bytestring`). The type you choose determines how concurrent writes merge. This is the core difference: storage types enforce parallelism rules, not the developer.
+Where Solidity uses `constructor()`, Groundhog contracts commonly expose an ordinary `initialize` method. Deployment does not call it automatically or enforce that it runs once, so the contract must guard one-time initialization when that matters. Where Solidity uses `uint256` state variables, Groundhog uses typed storage fields (`Balance`, `NNInt`, `Map<K, V>`, `Bytestring`). The type you choose determines how concurrent writes merge. This is the core difference: storage types enforce parallelism rules, not the developer.
 
 ### Compiling
 
@@ -64,7 +64,7 @@ On Ethereum, you send a transaction containing bytecode, the EVM executes the co
 
 This is closer to Ethereum's `CREATE2` than `CREATE`. The address is predictable before deployment.
 
-The `initialize` method runs during instance creation. This means the same contract artifact can be instantiated multiple times with different initialization parameters, each at a different address.
+The same contract artifact can be instantiated multiple times at different addresses. Initialization is a separate contract call unless an application-specific deployer combines deployment and initialization in one parent invocation.
 
 ### Calling
 
@@ -82,7 +82,7 @@ The generated client handles serialization. You don't construct raw calldata.
 
 ### Reading State
 
-On Ethereum, you call `view` functions or read storage slots directly via `eth_getStorageAt`. On Groundhog, you call `&self` methods (read-only methods that take an immutable reference). There is no equivalent of reading arbitrary storage slots from outside the contract.
+On Ethereum, you call `view` functions or read storage slots directly via `eth_getStorageAt`. On Groundhog, typed reads normally use `&self` methods through `groundhog_view`. The gateway also exposes `groundhog_getStorageAt` for low-level reads of a specific 32-byte contract-data key.
 
 The key difference: every read within a block sees the same snapshot. Two transactions in the same block that call `get()` will see the same value, regardless of what other transactions are doing. This is snapshot isolation, and it's what makes parallel execution safe.
 
@@ -90,14 +90,14 @@ The key difference: every read within a block sees the same snapshot. Two transa
 
 | Solidity / EVM | Groundhog | Why |
 |----------------|-----------|-----|
-| `balance = newValue` | `balance.strict_inc(delta)` | Deltas merge in parallel. Absolute writes conflict. |
-| `mapping(address => uint256)` | `Map<Address, NNInt>` | Same concept. The value type enforces guarantees (e.g. non-negativity) and enables parallel execution. |
+| `balance = newValue` | `balance.increase(amount)` or `decrease(amount)` | Deltas merge in parallel. Absolute writes conflict. |
+| `mapping(address => uint256)` | `Map<Address, Balance>` | Same concept. The value type enforces non-negativity and enables parallel execution. |
 | Gas per operation | Gas exists for metering but costs zero. HOG deposit for storage capacity. | Gas limits bound computation, but no tokens are burned. |
 | Sequential execution | Parallel by default | Every transaction in a block runs simultaneously against the same snapshot. |
 | `require(condition, "message")` | `ensure(condition, Error::Variant)` | Typed errors instead of string messages. |
 | `revert()` / `require()` | `throw(error)` | Aborts the transaction. Cannot be caught within the same contract. |
-| Solidity + EVM bytecode | Rust + RV32 artifact | Full-featured computation without the EIP-170 24KB contract size cap. |
-| `constructor()` | `fn initialize()` | Called during the deployment transaction, not bytecode upload. |
+| Solidity + EVM bytecode | Rust + RV32 artifact | Different VM and artifact format. Attached Groundhog contract blobs are capped at 256 KiB. |
+| `constructor()` | Ordinary initialization method | Deployment does not invoke it automatically; guard one-time initialization in storage. |
 | `msg.sender` | `get_caller()` | Same concept. |
 | `view` / `pure` | `&self` / no self | Read-only methods don't produce state changes. |
 | `public` / `external` / `internal` / `private` | `pub` / not pub | Rust visibility. Public methods become contract entrypoints. |
@@ -117,11 +117,11 @@ Beyond the ban, the snapshot/delta model means there is no partial state to obse
 
 You don't need reentrancy guards, checks-effects-interactions ordering, or `nonReentrant` modifiers.
 
-### Front-Running and MEV
+### Ordering and MEV
 
 On Ethereum, pending transactions are visible in the mempool. Searchers can insert transactions before yours (front-running), after yours (back-running), or around yours (sandwich attacks). This is because transaction order within a block affects outcomes.
 
-On Groundhog, commutative operations produce the same result regardless of execution order. Two transfers to the same account produce the same final balance no matter which runs first. There is nothing to extract from reordering, because reordering doesn't change results. For operations that do conflict (bytestring writes), one is excluded and returned to the mempool. There is no profitable ordering to exploit.
+On Groundhog, commutative operations produce the same merged result regardless of execution order. Two compatible credits to the same account therefore produce the same final balance whichever executes first. Operations that conflict do not both land: one is excluded and returned to the mempool. The proposer still controls transaction selection and which contender wins a conflict, so Groundhog does not make a blanket claim that every application is MEV-free.
 
 ### Gas Estimation and Out-of-Gas Failures
 
@@ -133,7 +133,7 @@ Every Ethereum transaction requires a sequential nonce per account. Sending tran
 
 ### Integer Overflow/Underflow
 
-Solidity 0.8+ added checked arithmetic by default, but earlier versions required SafeMath. Groundhog's `NNInt` type enforces non-negativity at the storage layer. `strict_inc` aborts automatically if the result would underflow. You don't write overflow checks because the type handles it.
+Solidity 0.8+ added checked arithmetic by default, but earlier versions required SafeMath. Groundhog's `Balance` type enforces non-negativity at the storage layer. Checked `increase` and `decrease` abort automatically if the result would overflow or underflow. You don't write separate arithmetic checks because the type handles them.
 
 ### The `approve()` Race Condition
 
@@ -162,18 +162,17 @@ function transfer(address to, uint256 amount) external {
 ```rust
 #[sdk::storage]
 pub struct Token {
-    balances: Map<ContractAddress, NNInt>,
+    balances: Map<ContractAddress, Balance>,
 }
 
 fn transfer(&mut self, receiver: &ContractAddress, amount: Amount) {
     let caller = get_caller();
-    let diff = amount_to_diff(amount);
-    self.balances.at_mut(&caller).strict_inc(-diff);
-    self.balances.at_mut(receiver).strict_inc(diff);
+    self.balances.at_mut(&caller).decrease(amount);
+    self.balances.at_mut(receiver).lazy_increase(amount);
 }
 ```
 
-**What changes:** No explicit balance check. `strict_inc` with a negative delta aborts automatically if the sender's balance would go below zero. The two operations are deltas, not reads followed by writes. Two transfers from the same account in the same block both execute against the snapshot and both produce deltas. If the account has enough balance for both, both succeed. If not, one is excluded.
+**What changes:** No explicit balance check. `decrease` loads the sender and aborts during contract execution if its snapshot balance is insufficient. `lazy_increase` skips the receiver load and defers its bound check until delta reservation. Both operations produce mergeable deltas. Two transfers from the same account in the same block execute against the snapshot and produce deltas. If the account has enough balance for both, both succeed. If not, one is excluded.
 
 ### Access Control
 
@@ -204,8 +203,8 @@ pub struct Token {
 
 fn mint(&mut self, receiver: &ContractAddress, amount: Amount) {
     ensure(get_caller() == self.contract_owner.get(), Error::NotOwner);
-    let diff = amount_to_diff(amount);
-    self.balances.at_mut(receiver).strict_inc(diff);
+    self.total_supply.increase(amount);
+    self.balances.at_mut(receiver).lazy_increase(amount);
 }
 ```
 
@@ -236,14 +235,14 @@ impl Token {
     pub fn initialize(&mut self, initial_supply: Amount) {
         let caller = get_caller();
         self.contract_owner.set(&caller);
-        let diff = amount_to_diff(initial_supply);
-        self.balances.at_mut(&caller).strict_inc(diff);
+        self.total_supply.increase(initial_supply);
+        self.balances.at_mut(&caller).lazy_increase(initial_supply);
         log_transfer_event(CONTRACT_ADDR_ZERO, &caller, initial_supply);
     }
 }
 ```
 
-**What changes:** Groundhog has no special constructor syntax. The deployer calls `initialize` as part of the deployment transaction. It runs once when the contract instance is created, not when the artifact is uploaded. State initialization uses the same delta operations as everything else.
+**What changes:** Groundhog has no special constructor syntax. Call `initialize` after deployment, or have an application-specific deployer invoke it in the same parent transaction. The runtime does not provide once-only constructor semantics, so store and check an initialized flag when repeated calls must fail. State initialization uses the same storage operations as everything else.
 
 ### Events
 
@@ -314,33 +313,37 @@ contract ERC20 {
 #[sdk::storage]
 pub struct TokenContract {
     contract_owner: Value<ContractAddress>,
-    balances: Map<ContractAddress, NNInt>,
-    allowances: Map<ContractAddress, Map<ContractAddress, NNInt>>,
-    total_supply: NNInt,
+    balances: Map<ContractAddress, Balance>,
+    allowances: Map<ContractAddress, Map<ContractAddress, Balance>>,
+    total_supply: Balance,
 }
 
-#[contract(version = "0.1.0")]
+#[contract(version = "0.1.5")]
 impl ERC20 for TokenContract {
     fn transfer(&mut self, receiver: &ContractAddress, amount: Amount) {
         let owner = get_caller();
-        let diff = amount_to_diff(amount);
-        self.balances.at_mut(&owner).strict_inc(-diff);
-        self.balances.at_mut(receiver).strict_inc(diff);
+        self.balances.at_mut(&owner).decrease(amount);
+        self.balances.at_mut(receiver).lazy_increase(amount);
         log_transfer_event(&owner, receiver, amount);
     }
 
     fn adjust_allowance(&mut self, spender: &ContractAddress, diff: Difference) {
         let owner = get_caller();
-        self.allowances.at_mut(&owner).at_mut(spender).strict_inc(diff);
+        let mut allowances = self.allowances.at_mut(&owner);
+        let mut allowance = allowances.at_mut(spender);
+        if diff >= 0 {
+            allowance.increase(diff as u128);
+        } else {
+            allowance.decrease(diff.unsigned_abs());
+        }
         log_approval_event(&owner, spender, diff);
     }
 
     fn transfer_from(&mut self, owner: &ContractAddress, receiver: &ContractAddress, amount: Amount) {
         let spender = get_caller();
-        let diff = amount_to_diff(amount);
-        self.allowances.at_mut(owner).at_mut(&spender).strict_inc(-diff);
-        self.balances.at_mut(owner).strict_inc(-diff);
-        self.balances.at_mut(receiver).strict_inc(diff);
+        self.allowances.at_mut(owner).at_mut(&spender).decrease(amount);
+        self.balances.at_mut(owner).decrease(amount);
+        self.balances.at_mut(receiver).lazy_increase(amount);
         log_transfer_event(owner, receiver, amount);
     }
 }
@@ -348,10 +351,10 @@ impl ERC20 for TokenContract {
 
 **Key differences:**
 
-- **No explicit balance checks.** `strict_inc` with a negative delta aborts if the result would be negative. The check is built into the type.
+- **No explicit balance checks.** `Balance::decrease` aborts if the result would be negative. The check is built into the type.
 - **`adjust_allowance` instead of `approve`.** Deltas instead of absolute writes. No race condition. Concurrent approvals merge correctly.
-- **No return values.** Methods either succeed or abort. There is no `returns (bool)` pattern because there is no partial failure.
-- **No `require` guards.** NNInt enforces non-negativity. You only need `ensure()` for business logic checks (authorization, etc.), not arithmetic safety.
+- **No success boolean.** These ERC-20 methods return unit on success and abort on failure, instead of returning `bool`. Other Groundhog methods can return typed values.
+- **No `require` guards.** `Balance` enforces non-negativity. You only need `ensure()` for business logic checks (authorization, etc.), not arithmetic safety.
 - **Parallel execution.** Two transfers debiting the same account both run against the snapshot. If the account has enough balance for both, both succeed and their deltas merge. If not, one is excluded and returned to the mempool.
 
 For the full implementation with initialization, minting, burning, and tests, see [Build a Token](/tutorials/build-a-token/).
@@ -366,10 +369,10 @@ These EVM features have no Groundhog equivalent. Set your expectations:
 | `delegatecall` / proxy patterns | Does not exist | Contracts are immutable. Deploy new versions at new addresses. |
 | `selfdestruct` | Does not exist | Contracts are permanent |
 | `receive()` / `fallback()` | Does not exist | All methods must be explicitly defined |
-| `block.timestamp` / `block.number` | Available via syscalls | Different API, same concept |
-| `gasleft()` | Does not exist | Gas metering exists but costs zero. No need to check remaining gas. |
+| `block.timestamp` / `block.number` | Block height is exposed; block timestamp is not currently an SDK contract API | Use `get_block_height()` when height-based logic is appropriate |
+| `gasleft()` | `stats::gas_remaining()` | Available for execution control, but gas costs zero tokens |
 | Contract inheritance | Does not exist | Use Rust traits and composition |
-| 24KB contract size limit | Does not exist | RV32 artifacts do not have EVM's contract size cap |
+| 24KB EVM runtime-code limit | Different limit | Attached Groundhog contract blobs are capped at 256 KiB |
 | Storage slot packing | Does not exist | Each storage field is independent |
 
 ## Next Steps
@@ -378,4 +381,4 @@ These EVM features have no Groundhog equivalent. Set your expectations:
 - [Build a Counter](/tutorials/build-a-counter/) for a step-by-step first contract
 - [Build a Token](/tutorials/build-a-token/) for the full ERC-20 implementation
 - [Merged Deltas](/programming-model/execution/#merged-deltas) for the contract-level merge model
-- [Storage Types](/reference/storage-types/) for the full NNInt, Map, and Bytestring API
+- [Storage Types](/reference/storage-types/) for the full `Balance`, `NNInt`, `Map`, and `Bytestring` API

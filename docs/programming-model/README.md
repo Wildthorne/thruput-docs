@@ -4,15 +4,15 @@ Compact reference notes for reasoning about Groundhog contract behavior, conflic
 
 ## Reading Order
 
-**Start with NNInt.** It is the core unlock. The two-component (set, add) model and its commutativity rules are what make Groundhog's parallel execution possible. Everything else builds on this.
+**Start with balances and NNInt.** `Balance` is the ordinary contract API for nonnegative amounts. Its implementation uses NNInt's two-component (set, add) model, whose commutativity rules enable parallel execution.
 
-1. **[nnint.md](./nnint.md)** -- The set_add primitive, commutativity rules, public API mapping. Read this first.
-2. **[storage-types.md](./storage-types.md)** -- SDK storage types (`NNInt`, `Map`, `Vector`, `Value`, `Bytestring`, `RCQ`, `Node`) and their conflict semantics. How to choose between them.
+1. **[storage-types.md](./storage-types.md)** -- SDK storage types (`Balance`, `NNInt`, `CapacityConstraint`, `Map`, `Vector`, `Value`, `Bytestring`, `RCQ`, `Node`) and their conflict semantics.
+2. **[nnint.md](./nnint.md)** -- The lower-level set_add primitive, commutativity rules, and public API mapping.
 3. **[execution.md](./execution.md)** -- Snapshot isolation, deltas, exclusion model, gas as metering, and Balance-Proportional Scheduling.
 
 ## Developer Mental Model
 
-Every transaction reads from the same frozen snapshot (previous block's committed state). Each transaction produces deltas, not final state. At block close, deltas are checked for compatibility using each storage type's merge rules. Compatible deltas merge. Incompatible transactions are excluded and returned to the mempool.
+Every transaction reads from the same frozen snapshot (previous block's committed state). Each transaction produces deltas, not final state. After its root contract call returns, the transaction's delta batch is reserved against the in-progress proposal using each storage type's merge rules. Compatible deltas accumulate concurrently. Incompatible transactions are excluded and returned to the mempool.
 
 ## The Core Design Principle
 

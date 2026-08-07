@@ -3,12 +3,12 @@ title: Error Handling
 description: How errors work in Groundhog contracts.
 ---
 
-Groundhog contracts do not use `Result`. Methods return values directly. If something goes wrong, the contract throws an exception: the frame aborts, all state changes in that frame are discarded, and control returns to the caller.
+Exported Groundhog contract methods return their declared values and signal failure by throwing an exception. The frame aborts, all state changes in that frame are discarded, and control returns to the caller. Private helpers may use `Result` when they translate failures into a contract or library exception.
 
 You cannot catch an exception within the same contract. To handle errors from another contract, use `try_*` client methods (see [Cross-Contract Calls](/reference/cross-contract-calls/)).
 
 :::note[Version checked]
-This page was last checked against SDK `0.15.4`, `thiserror` `2.x`, and `anyhow` `1.x` on June 26, 2026.
+This page was source-checked against SDK `0.17.9` on August 5, 2026.
 :::
 
 For exact SDK item docs, see [`#[contract_exception]`](https://groundhog.dev/docs/sdk/latest/sdk/attr.contract_exception.html), [`throw`](https://groundhog.dev/docs/sdk/latest/sdk/fn.throw.html), [`ensure`](https://groundhog.dev/docs/sdk/latest/sdk/fn.ensure.html), [`OrThrow`](https://groundhog.dev/docs/sdk/latest/sdk/trait.OrThrow.html), and [Rust API Docs](/tools/rust-api-docs/).
@@ -123,7 +123,7 @@ Extension method on `Result`. Returns the `Ok` value, or throws `exn` on `Err`. 
 use sdk::*;
 
 pub fn amount_to_diff(n: u128) -> i128 {
-    n.try_into().unwrap_or_else(|_| throw(ERC20Error::TooLarge))
+    n.try_into().or_throw(ERC20Error::TooLarge)
 }
 ```
 
@@ -135,14 +135,19 @@ The SDK throws `LibraryExn` errors automatically when internal preconditions fai
 |-----------|------------|
 | `strict_inc(delta)` | Result would be negative (`NonNegativeIntUnderflow`) |
 | `strict_inc(delta)` | Result would overflow (`NonNegativeIntOverflow`) |
+| `Balance::decrease(amount)` | Balance is insufficient (`NonNegativeIntUnderflow`) |
+| `Balance::increase(amount)` | Balance would overflow (`NonNegativeIntOverflow`) |
+| `CapacityConstraint::set_capacity(value)` | Another non-idempotent write already occurred this transaction (`CapacityConstraintAlreadyWritten`) |
 | `bytestring_get_sized` | Stored length does not match expected (`BytestringWrongSize`) |
 | Storage read | Key does not exist (syscall error) |
 
 ```rust
 // Aborts automatically if balance would go below zero.
 // No error handling code needed.
-balance.strict_inc(-diff);
+balance.decrease(amount);
 ```
+
+Every public SDK function whose name starts with `try_` reports its own failures through `Option` or `Result` instead of aborting. Storage `try_` getters return `Result<T, LibraryExn>`. Use `error.is_storage_missing()` to identify absence, or `.none_if_missing()` to convert only absence into `None` while re-throwing other failures.
 
 ## LibraryExn
 
@@ -155,10 +160,14 @@ balance.strict_inc(-diff);
 | `Calling(CallingError)` | 2 | Error while making an outgoing contract call (encoding args, decoding result) |
 | `Called(FaultString)` | 3 | The called contract reverted |
 | `AuthToken(AuthTokenError)` | 4 | Error encoding or consuming an authorization token |
-| `BytestringWrongSize { expected, found }` | 5 | `bytestring_get_sized` found a different length than expected |
-| `NonNegativeIntUnderflow` | 6 | `strict_inc` would make an NNInt negative |
-| `NonNegativeIntOverflow` | 7 | `strict_inc` would overflow an NNInt |
-| `Storage(StorageError)` | 8 | Error in the storage convenience layer (serialization, index out of bounds) |
+| `BytestringWrongSize { expected, found }` | 5 | A fixed-size bytestring read found a different length |
+| `NonNegativeIntUnderflow` | 6 | An integer or balance operation would violate its lower bound |
+| `NonNegativeIntOverflow` | 7 | An integer or balance operation would overflow |
+| `StorageSerialization` | 8 | A typed storage value could not be serialized or deserialized |
+| `StorageIndexOutOfBounds { len, access }` | 9 | A vector index was outside its logical extent |
+| `StorageKeypathOverflow` | 10 | A no-allocation storage keypath exceeded its fixed budget |
+| `RetrocausalQueueEntryWrongSize { expected, found }` | 11 | A fixed-size queue read found a different entry length |
+| `CapacityConstraintAlreadyWritten` | 12 | `set_capacity` followed an incompatible write in the same transaction |
 
 `LibraryExn` is `#[non_exhaustive]`: when matching, always include a wildcard arm.
 

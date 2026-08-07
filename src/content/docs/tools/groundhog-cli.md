@@ -6,7 +6,7 @@ description: How Groundhog CLI commands fit into RV32 builds, local nodes, tests
 Run normal Rust loops with `cargo`. Run Groundhog-specific work with `groundhog`: scaffolds, RV32 artifacts, local nodes, deployments, RPC calls, state inspection, keys, wallets, and generated bindings. RV32 is Groundhog's 32-bit RISC-V contract target.
 
 :::note[Version checked]
-This page was last checked against Groundhog CLI source at package version `0.5.18` and SDK `0.17.1` on July 15, 2026.
+This page was source-checked against Groundhog CLI `0.6.3` and SDK `0.17.9` on August 5, 2026.
 :::
 
 ## Foundry Mental Model
@@ -64,9 +64,14 @@ For complete command sequences, follow [Develop Locally with the CLI](/tutorials
 | Keep a local chain running | `groundhog node` |
 | Deploy to the selected profile | `groundhog deploy` |
 | Send a state-changing contract call | `groundhog call <contract> <method> [args...]` |
+| Transfer native HOG | `groundhog transfer <recipient> <amount>` |
 | Run a read-only contract simulation | `groundhog view <contract> <method> [args...]` |
 | Read raw committed storage | `groundhog storage <contract> 0x<key>` |
+| Inspect a transaction or address history | `groundhog tx show <hash>` / `groundhog tx list <address>` |
+| Inspect contract events | `groundhog events list <contract>` |
+| Inspect ERC-20 transfers | `groundhog token transfers <token>` |
 | Run disposable local-node integration tests | `groundhog test --integration` |
+| Compare WASM and RV32 integration behavior | `groundhog test --integration --differential` |
 | Generate TypeScript contract bindings | `groundhog codegen ts <spec.xdr> -o <file.ts>` |
 
 :::caution[RV32 default]
@@ -79,7 +84,18 @@ Early-access Cargo registry credentials are handled by Cargo, not the CLI. Confi
 
 `groundhog node` and `groundhog test --integration` also require a compatible `hog-devnode` executable, which is distributed separately. `groundhog node` accepts `--hog-devnode-binary`; both commands support `GROUNDHOG_DEVNODE_BINARY`, a sibling executable beside `groundhog`, or `PATH`. Integration mode does not accept the command-line flag.
 
-`groundhog new <name>` creates a project from the `counter` or `stub` template. `groundhog init` runs guided local setup. `groundhog status` checks toolchain, key, and project config state. `groundhog completion <shell>` prints shell completions.
+`groundhog new <name>` creates a project from the `counter` or `stub` template. `groundhog init` runs guided local setup. `groundhog status` checks toolchain, devnode, key, executor-auth, and project-config state. `groundhog completion <shell>` prints shell completions.
+
+Use `groundhog config` to inspect or change persisted profiles without editing TOML by hand:
+
+```bash
+groundhog config profiles
+groundhog config get devnet --sources
+groundhog config set --profile devnet rpc-url https://rpc.example --global
+groundhog config use devnet --global
+```
+
+`config new`, `rm`, `set`, `unset`, and `use` modify one physical layer. Inside a project, choose `--global` or `--project`; inspection commands show the merged configuration.
 
 Global flags work across commands:
 
@@ -120,6 +136,7 @@ Test modes:
 | `groundhog test` | Executor-backed RV32 tests using `tests/test_rv32.rs`. |
 | `groundhog test --target wasm` | WASM compatibility tests using `tests/test_wasm.rs`. |
 | `groundhog test --integration` | Ephemeral local node, RV32 deploy, then `tests/integration.rs`. |
+| `groundhog test --integration --differential` | The same integration target against isolated WASM and RV32 nodes. |
 
 Fresh projects created by `groundhog new` include `tests/integration.rs`, a small `build.rs`, and optional host-only RPC dependencies. The starter test verifies that the CLI provided a deployed contract and a live RPC node, then leaves a placeholder for contract-specific assertions. It stays ignored under ordinary `cargo test`; the integration command activates it without coupling activation to a particular test name.
 
@@ -142,12 +159,13 @@ For testing guidance, see [Testing](/programming-model/testing/).
 
 ## Local Node
 
-`groundhog node` starts one supervised, ephemeral `hog-devnode`. Deploys and calls share state for the lifetime of that process, but chain state is not preserved across node restarts.
+`groundhog node` starts one supervised `hog-devnode`. Without `--data-dir`, deploys and calls share ephemeral state for the lifetime of that process. Pass `--data-dir <dir>` to preserve node state across restarts.
 
 ```bash
 groundhog node
 groundhog node --port 9546
 groundhog node --verbose
+groundhog node --data-dir ./local-chain
 groundhog node --block-driver interval
 groundhog node --block-driver interval --block-interval-ms 1000
 ```
@@ -159,10 +177,12 @@ Useful flags and environment variables:
 | `--port` | Change the public JSON-RPC port. Default: `9545`. |
 | `--dev-account-count` | Change how many deterministic dev accounts the node bootstraps. |
 | `--hog-devnode-binary` | Point at a specific `hog-devnode` binary. |
+| `--data-dir <dir>` | Preserve hog-devnode state in a specific directory. Omit for an ephemeral node. |
 | `--block-driver interval` | Pace block production on a timer instead of waking immediately after successful submits. |
 | `--block-driver instant` | Use submit-wake block production. This is the default. |
 | `--block-interval-ms <ms>` | Override the interval driver timer. Default: `500`. Requires `--block-driver interval`. |
 | `--rpc-max-connections <count>` | Set the public RPC connection cap. Default: `2000`. |
+| `--ramdb-bytes <size>` | Set the devnode RAM database capacity, using decimal, hex, or K/M/G suffixes. |
 | `--hogd-protocol hogp/<hash>` | Override the local x23 protocol token when protocol shapes remain compatible. |
 | `GROUNDHOG_DEVNODE_BINARY` | Default binary path when `--hog-devnode-binary` is omitted. |
 | `GROUNDHOG_RUNTIME_MANIFEST` | Point commands at a specific runtime manifest for `dev-N` accounts. |
@@ -176,7 +196,20 @@ Use `groundhog test --integration` when you want disposable state per test run.
 
 Build before deploying. `groundhog deploy` auto-detects the selected artifact (`.rv32a` by default), signs a deploy transaction with the active key, submits it to the selected profile, and saves a contract alias in `groundhog.toml` when deploy succeeds. If source files are newer than the artifact, it warns so you can rebuild before submitting stale code.
 
-Use `groundhog call` for signed state changes and `groundhog view` for read-only simulation. Add `--from dev-0` to simulate a caller. `groundhog storage` reads one raw committed storage item; prefer contract methods and `groundhog view` when you want typed behavior. `groundhog balance` and `groundhog airdrop` cover local HOG account work.
+Use `groundhog call` for signed state changes and `groundhog view` for read-only simulation. Add `--from dev-0` to simulate a caller. `groundhog storage` reads one raw committed storage item; prefer contract methods and `groundhog view` when you want typed behavior. `groundhog balance`, `groundhog transfer`, and `groundhog airdrop` cover native HOG account work.
+
+## Transactions, Events, and Tokens
+
+The inspection commands return one page at a time. Cursors are opaque and must be reused with the same target and filters.
+
+```bash
+groundhog tx show 0x<32-byte-hash>
+groundhog tx list my-counter --limit 50
+groundhog events list my-counter --topic0 0x<topic>
+groundhog token transfers HOG --account dev-0
+```
+
+`tx show` returns public status and receipt fields, not raw transaction bodies or deep traces. `tx list` filters by root invocation target. `events list` scans one contract newest first and supports repeated topic options for OR within a topic position. `token transfers` returns canonical ERC-20 transfer records and leaves amounts as base-unit decimal strings.
 
 ## Keys and Wallets
 
@@ -194,6 +227,7 @@ Contract wallets are profile entries that bind a signing key to its deployed wal
 ```bash
 groundhog wallet create --key alice --profile devnet
 groundhog wallet ls --profile devnet
+groundhog wallet use alice --profile devnet
 groundhog wallet rm alice --profile devnet
 ```
 

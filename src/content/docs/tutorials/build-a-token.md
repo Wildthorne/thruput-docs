@@ -3,12 +3,12 @@ title: Build a Token
 description: Build an ERC-20-compatible token with the Groundhog SDK and standard interface crate.
 ---
 
-This tutorial builds an ERC-20-compatible token with transfers, allowances, minting, burning, and standard events. Balances and allowances use [`NNInt`](/programming-model/storage-types/#nnint), which records deltas such as `+100` and `-100`. Those [deltas can merge](/programming-model/execution/#merged-deltas) across concurrent transfers.
+This tutorial builds an ERC-20-compatible token with transfers, allowances, minting, burning, and standard events. Balances, allowances, and total supply use `Balance`, the SDK's nonnegative, zero-defaulting interface over Groundhog's mergeable integer storage. Its [deltas can merge](/programming-model/execution/#merged-deltas) across concurrent transfers.
 
 **Prerequisites:** Complete [Build a Counter](/tutorials/build-a-counter/) first.
 
 :::note[Version checked]
-This tutorial was compiled and tested against Groundhog CLI `0.5.17` and the SDK `0.17.1` source checkout on July 13, 2026.
+This tutorial was source-checked against Groundhog CLI `0.6.3`, SDK `0.17.9`, and `groundhog-erc20-if` `0.1.7` on August 5, 2026.
 :::
 
 ## 1. Create the Project
@@ -43,10 +43,6 @@ groundhog-erc20-if = { path = "/path/to/sdk_rs/standard-interfaces/groundhog-erc
 erc20 = { path = ".", features = ["dev"] }
 ```
 
-:::caution[Published interface compatibility]
-The published `groundhog-erc20-if@0.1.4` still depends on SDK `0.15.5` and cannot share a native test graph with SDK `0.17.1`. Use the two path dependencies above until a standard-interface package aligned with SDK `0.17.1` is published.
-:::
-
 The interface crate is the source of truth for:
 
 - `ERC20`, `ERC20Client`, and generated client errors
@@ -80,11 +76,10 @@ Replace `src/implementation.rs` with these imports and storage types:
 
 ```rust
 use groundhog_erc20_if::*;
-use sdk::storage::{Map, NNInt, Value};
+use sdk::storage::{Balance, Map, Value};
 use sdk::*;
 
-type Balance = NNInt;
-type Allowance = NNInt;
+type Allowance = Balance;
 
 #[contract_type]
 #[cfg_attr(feature = "dev", derive(Debug))]
@@ -98,7 +93,7 @@ pub struct TokenContract {
     config: Value<Config>,
     balances: Map<ContractAddress, Balance>,
     allowances: Map<ContractAddress, Map<ContractAddress, Allowance>>,
-    total_supply: NNInt,
+    total_supply: Balance,
 }
 ```
 
@@ -107,11 +102,11 @@ The fields have distinct jobs:
 | Field | Purpose |
 |-------|---------|
 | `config` | Stores the administrator that can mint and burn. |
-| `balances` | Maps each account to an `NNInt` token balance. |
-| `allowances` | Maps owner and spender pairs to `NNInt` allowances. |
-| `total_supply` | Tracks all outstanding tokens. |
+| `balances` | Maps each account to a zero-defaulting `Balance`. |
+| `allowances` | Maps owner and spender pairs to `Balance` values. |
+| `total_supply` | Tracks all outstanding tokens in a `Balance`. |
 
-[`Value<Config>` and `Map`](/programming-model/storage-types/) provide typed storage and key-derived paths. `NNInt` stores integer changes in a form that concurrent transactions can combine while preventing ordinary balances and allowances from falling below zero.
+[`Value<Config>` and `Map`](/programming-model/storage-types/) provide typed storage and key-derived paths. `Balance` accepts nonnegative `u128` amounts and exposes increase and decrease operations instead of signed arithmetic or an absolute `set`.
 
 ## 4. Add Storage Helpers
 
@@ -134,17 +129,24 @@ impl TokenContract {
     }
 
     fn balance_of(&self, owner: &ContractAddress) -> Amount {
-        self.balances
-            .at(owner)
-            .try_get()
-            .none_if_missing()
-            .unwrap_or(0) as Amount
+        self.balances.at(owner).get()
     }
 
-    fn adjust_balance(&mut self, owner: &ContractAddress, diff: Difference) {
+    fn lazy_increase_balance(
+        &mut self,
+        owner: &ContractAddress,
+        amount: Amount,
+    ) {
         self.balances
             .at_mut(owner)
-            .try_strict_inc(diff)
+            .try_lazy_increase(amount)
+            .unwrap_or_else(|_| throw(ERC20Error::TooLarge));
+    }
+
+    fn decrease_balance(&mut self, owner: &ContractAddress, amount: Amount) {
+        self.balances
+            .at_mut(owner)
+            .try_decrease(amount)
             .unwrap_or_else(|_| throw(ERC20Error::TooLarge));
     }
 
@@ -153,12 +155,7 @@ impl TokenContract {
         owner: &ContractAddress,
         spender: &ContractAddress,
     ) -> Amount {
-        self.allowances
-            .at(owner)
-            .at(spender)
-            .try_get()
-            .none_if_missing()
-            .unwrap_or(0) as Amount
+        self.allowances.at(owner).at(spender).get()
     }
 
     fn adjust_allowance_by(
@@ -167,40 +164,56 @@ impl TokenContract {
         spender: &ContractAddress,
         diff: Difference,
     ) {
-        self.allowances
-            .at_mut(owner)
-            .at_mut(spender)
-            .try_strict_inc(diff)
-            .unwrap_or_else(|_| throw(ERC20Error::TooLarge));
+        let mut owner_allowances = self.allowances.at_mut(owner);
+        let mut allowance = owner_allowances.at_mut(spender);
+        let result = if diff >= 0 {
+            allowance.try_increase(diff as u128)
+        } else {
+            allowance.try_decrease(diff.unsigned_abs())
+        };
+        result.unwrap_or_else(|_| throw(ERC20Error::TooLarge));
 
         log_approval_event(owner, spender, diff);
     }
 
-    fn adjust_total_supply(&mut self, diff: Difference) {
-        self.total_supply.strict_inc(diff);
+    fn increase_total_supply(&mut self, amount: Amount) {
+        self.total_supply
+            .try_increase(amount)
+            .unwrap_or_else(|_| throw(ERC20Error::TooLarge));
+    }
+
+    fn decrease_total_supply(&mut self, amount: Amount) {
+        self.total_supply
+            .try_decrease(amount)
+            .unwrap_or_else(|_| throw(ERC20Error::TooLarge));
     }
 
     fn supply(&self) -> Amount {
-        self.total_supply
-            .try_get()
-            .none_if_missing()
-            .unwrap_or(0) as Amount
+        self.total_supply.get()
     }
 }
 ```
 
 Three details matter:
 
-1. `try_get()` returns `Result<_, LibraryExn>`, not `Option`. `none_if_missing()` converts only missing storage into `None`; it preserves type, serialization, and host errors.
-2. The standard interface requires overdrafts to surface as `ERC20Error::TooLarge`. `try_strict_inc(...).unwrap_or_else(...)` translates the SDK library failure into that domain error.
-3. `amount_to_diff` from the interface crate rejects `u128` values that do not fit in the signed `i128` type used for balance changes.
+1. A missing `Balance` reads as zero, so balance, allowance, and supply getters do not need missing-storage handling.
+2. The standard interface requires overdrafts and overflows to surface as `ERC20Error::TooLarge`. The `try_` methods let the helpers translate SDK library failures into that domain error.
+3. Both checked and lazy operations record mergeable deltas. Checked `decrease` loads the sender so insufficient funds fail during contract execution. `lazy_increase` skips the receiver load and leaves its bound check to delta reservation after the contract returns.
+
+:::note[Checked and lazy failures happen at different points]
+Suppose a sender's snapshot balance is 10. `try_decrease(11)` returns `Err` while the contract is running, so `decrease_balance` can translate it into `ERC20Error::TooLarge`.
+
+Now suppose a receiver's snapshot balance is `Balance::MAX`, with no offsetting debit in the proposed block. `try_lazy_increase(1)` returns `Ok(())` inside the contract because it does not load that snapshot balance. After the contract returns, the completed delta batch cannot satisfy the balance bound, so the transaction is excluded and returned to the mempool.
+
+The distinction is when the snapshot-bound result becomes known. Both checked and lazy calls still produce deltas that can merge with compatible transactions. A lazy call can still reject an amount that cannot be represented or accumulated within the transaction.
+:::
 
 ## 5. Implement the Interface
 
 Add the implementation below the helpers:
 
 ```rust
-#[contract(version = "0.1.2")]
+#[contract(version = "0.1.5")]
 impl ERC20 for TokenContract {
     fn initialize(&mut self, administrator: &ContractAddress) {
         self.init(administrator);
@@ -208,10 +221,9 @@ impl ERC20 for TokenContract {
 
     fn transfer(&mut self, receiver: &ContractAddress, amount: Amount) {
         let owner = get_caller();
-        let diff = amount_to_diff(amount);
 
-        self.adjust_balance(&owner, -diff);
-        self.adjust_balance(receiver, diff);
+        self.decrease_balance(&owner, amount);
+        self.lazy_increase_balance(receiver, amount);
         log_transfer_event(&owner, receiver, amount);
     }
 
@@ -225,8 +237,8 @@ impl ERC20 for TokenContract {
         let diff = amount_to_diff(amount);
 
         self.adjust_allowance_by(owner, &spender, -diff);
-        self.adjust_balance(owner, -diff);
-        self.adjust_balance(receiver, diff);
+        self.decrease_balance(owner, amount);
+        self.lazy_increase_balance(receiver, amount);
         log_transfer_event(owner, receiver, amount);
     }
 
@@ -261,9 +273,10 @@ impl ERC20 for TokenContract {
             ERC20Error::MustBeContractOwner,
         );
 
-        let diff = amount_to_diff(amount);
-        self.adjust_balance(receiver, diff);
-        self.adjust_total_supply(diff);
+        // Establish the checked supply bound first. Once it holds, the lazy
+        // receiver increase cannot overflow an individual balance.
+        self.increase_total_supply(amount);
+        self.lazy_increase_balance(receiver, amount);
         log_transfer_event(CONTRACT_ADDR_ZERO, receiver, amount);
     }
 
@@ -273,9 +286,8 @@ impl ERC20 for TokenContract {
             ERC20Error::MustBeContractOwner,
         );
 
-        let diff = amount_to_diff(amount);
-        self.adjust_balance(owner, -diff);
-        self.adjust_total_supply(-diff);
+        self.decrease_balance(owner, amount);
+        self.decrease_total_supply(amount);
         log_transfer_event(owner, CONTRACT_ADDR_ZERO, amount);
     }
 
@@ -340,7 +352,7 @@ In the native test's root transaction, `get_current_address()` is Alice's root a
 
 ## Concurrency Semantics
 
-Balance and allowance updates use `strict_inc` to record a change, such as `+100` or `-100`, rather than replacing the stored value with a newly calculated result.
+`Balance` records increases and decreases as changes rather than replacing the stored value with a newly calculated result. The transfer path checks the sender with `decrease` and credits the receiver with `lazy_increase`. Allowance adjustments use checked operations in both directions so the interface can report failures immediately.
 
 This is the [merged-delta model](/programming-model/execution/#merged-deltas): the runtime combines changes from concurrent transfers when they can all be applied safely. Changes to different balances or allowances do not conflict. Credits to the same balance can combine, and debits from the same balance or allowance can combine as long as their total does not exceed the available value. If the total is too large, the runtime excludes one or more transactions and returns them to the mempool.
 
@@ -348,5 +360,8 @@ This is the [merged-delta model](/programming-model/execution/#merged-deltas): t
 
 - [Understand a Swap Contract](/tutorials/build-a-swap/) for a source walkthrough of cross-contract token calls
 - [Add Events to a Contract](/tutorials/add-events-to-a-contract/) for event testing and queries
-- [NNInt In Depth](/programming-model/nnint/) for how NNInt combines concurrent changes
+- [Merged Deltas](/programming-model/execution/#merged-deltas) for the snapshot, execution, and exclusion model behind this contract
+- [Storage Types](/programming-model/storage-types/) for checked and lazy `Balance` operations and other state choices
+- [NNInt In Depth](/programming-model/nnint/) for the lower-level `set_add` representation behind `Balance`
+- [How Conflicts Are Resolved](/how-it-works/execution-model/#how-conflicts-are-resolved) for the engine's concurrent reservation machinery
 - [Error Handling](/reference/error-handling/) for domain and library exception behavior

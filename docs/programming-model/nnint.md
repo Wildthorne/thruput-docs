@@ -23,7 +23,7 @@ Despite the protocol name `NonnegativeInt`, current source allows an explicit ne
 value >= min(set, 0)
 ```
 
-So `set(-5)` may commit a value of `-5`, and `set_add(-5, 10)` may commit `5`. But the engine rejects subtracting from an already-negative explicit base, such as `set_add(-5, -1)`. For ordinary balances and counters, use nonnegative bases and `strict_inc`.
+So `set(-5)` may commit a value of `-5`, and `set_add(-5, 10)` may commit `5`. But the engine rejects subtracting from an already-negative explicit base, such as `set_add(-5, -1)`. For ordinary balances, use `Balance`. For NNInt counters and other integer state, use nonnegative bases unless the data model intentionally needs a negative explicit floor.
 
 ## The One Conflict Rule
 
@@ -87,12 +87,12 @@ Calls `set_add(value, 0)`. Replaces the base and clears the delta.
 - `set(100)` vs `set(200)` -- conflict.
 - `set(100)` vs `strict_inc(5)` -- conflict if snapshot != 100; commutes if snapshot == 100.
 
-Use `strict_inc()` by default for balances and counters. Use `inc()` only when you intentionally want to skip the read. Reserve `set()` for initialization or admin operations.
+Use `Balance` for ordinary balances. For NNInt state, use `strict_inc()` when early underflow detection matters and `inc()` when you intentionally want to skip the read. Reserve `set()` for initialization or admin operations.
 
 ## Summary
 
 | Method | Calls | Reads? | Commutative? | Use for |
 |--------|-------|--------|--------------|---------|
-| `strict_inc(delta)` | `set_add(Some(base), accumulated + delta)` | Yes | Yes, when all callers resolve to the same snapshot base | Default for balances and counters |
+| `strict_inc(delta)` | `set_add(Some(base), accumulated + delta)` | Yes | Yes, when all callers resolve to the same snapshot base | NNInt counters and signed-delta state |
 | `inc(delta)` | `set_add(existing_set_or_None, accumulated + delta)` | No | Yes, when all callers resolve to the same snapshot base | Skip the read when late underflow detection is acceptable |
 | `set(value)` | `set_add(Some(value), 0)` | No | Only if values match | Init, admin, config |

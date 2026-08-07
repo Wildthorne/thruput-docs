@@ -8,7 +8,7 @@ We're extending the counter from [Build a Counter](/tutorials/build-a-counter/) 
 **Prerequisites:** A working counter contract from [Build a Counter](/tutorials/build-a-counter/).
 
 :::note[Version checked]
-This tutorial was last checked against Groundhog CLI `0.5.17` and SDK `0.17.1` on July 13, 2026.
+This tutorial was source-checked against Groundhog CLI `0.6.3` and SDK `0.17.9` on August 5, 2026.
 :::
 
 ## How Events Work on Groundhog

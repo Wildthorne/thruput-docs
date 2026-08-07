@@ -4,7 +4,7 @@ description: "Reference for #[contract], #[contract_exception], #[contract_type]
 ---
 
 :::note[Version checked]
-This reference was last checked against SDK `0.15.4` on June 26, 2026.
+This reference was source-checked against SDK `0.17.9` on August 5, 2026.
 :::
 
 Rustdoc shortcuts: [`#[contract]`](https://groundhog.dev/docs/sdk/latest/sdk/attr.contract.html), [`#[contract_exception]`](https://groundhog.dev/docs/sdk/latest/sdk/attr.contract_exception.html), [`#[storage]`](https://groundhog.dev/docs/sdk/latest/sdk/attr.storage.html), [`#[contract_type]`](https://groundhog.dev/docs/sdk/latest/sdk/attr.contract_type.html), [`#[derive(Event)]`](https://groundhog.dev/docs/sdk/latest/sdk/derive.Event.html), [`#[derive(Deletable)]`](https://groundhog.dev/docs/sdk/latest/sdk/derive.Deletable.html), [`#[derive(ContractTypeSpec)]`](https://groundhog.dev/docs/sdk/latest/sdk/derive.ContractTypeSpec.html), and [`declare_mock_contract!`](https://groundhog.dev/docs/sdk/latest/sdk/macro.declare_mock_contract.html). See [Rust API Docs](/tools/rust-api-docs/) for common SDK links.
@@ -31,7 +31,6 @@ Generates contract entrypoints, a client struct for cross-contract calls, and a 
 | `client` | Identifier | `{Interface}Client` | Name of the generated client struct. On traits, defaults to trait name + `Client`. On inherent impls, defaults to self type + `Client`. |
 | `interface` | String | Trait name or self type name | Overrides the interface name used in entrypoint identifiers. |
 | `version` | String | `CARGO_PKG_VERSION` | Version used for entrypoint identifier computation. |
-| `storage` | Bool | `true` | When `true`, contract state is loaded from storage before method calls. Set to `false` for stateless contracts. |
 | `exports` | String | Auto-generated | Overrides the internal exports module name. Rarely needed. |
 
 ### `throws` rules
@@ -56,10 +55,12 @@ The generated client struct provides:
 |--------|-------------|
 | `ClientName::new(&ContractAddress)` | Constructor. |
 | `client.with_gas_limit(u64)` | Returns a new client with the specified gas limit. |
+| `client.with_commit_locking()` | Returns a client whose calls use the runtime's try-invoke commit-locking flag. |
+| `client.with_read_only()` | Returns a client whose calls are rejected if the callee writes storage. |
 | `client.method(args...)` | Calls the contract method. Re-throws on exception. |
 | `client.try_method(args...)` | Calls the contract method. Returns `Result<T, ClientError>` so exceptions can be inspected. |
 
-The names `new`, `with_gas_limit`, and any name starting with `try_` are reserved. Contract methods using these names are rejected at compile time.
+The names `new`, `with_gas_limit`, `with_commit_locking`, `with_read_only`, and any name starting with `try_` are reserved. Contract methods using these names are rejected at compile time.
 
 ### Generated error enum
 
@@ -112,7 +113,7 @@ impl Counter {
     }
 
     pub fn get(&self) -> u64 {
-        self.value.try_get().unwrap_or(0) as u64
+        self.value.try_get().none_if_missing().unwrap_or(0) as u64
     }
 }
 ```
@@ -149,6 +150,7 @@ Enums and structs.
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `version` | String | `CARGO_PKG_VERSION` | Overrides the version used for selector computation. |
+| `name` | String | Rust type name | Overrides the type name used for `ContractTypeName` and selector computation. |
 
 ### What it generates
 
@@ -162,7 +164,7 @@ pub enum Error {
 }
 
 // Generates equivalent of:
-#[derive(Debug, Clone, PartialEq, ReadXDR, WriteXDR)]
+#[derive(Debug, Clone, PartialEq, ReadXDR, WriteXDR, ContractTypeSpec)]
 #[repr(i32)]
 pub enum Error {
     NotAuthorized = 1,
@@ -170,6 +172,10 @@ pub enum Error {
 
 impl Exn for Error {
     const SELECTOR: u64 = /* computed from crate name, version, type name */;
+}
+
+impl ContractTypeName for Error {
+    const NAME: &'static str = "Error";
 }
 ```
 
@@ -181,11 +187,15 @@ For a struct:
 pub struct MyExn;
 
 // Generates equivalent of:
-#[derive(Debug, Clone, PartialEq, ReadXDR, WriteXDR)]
+#[derive(Debug, Clone, PartialEq, ReadXDR, WriteXDR, ContractTypeSpec)]
 pub struct MyExn;
 
 impl Exn for MyExn {
     const SELECTOR: u64 = /* computed */;
+}
+
+impl ContractTypeName for MyExn {
+    const NAME: &'static str = "MyExn";
 }
 ```
 
@@ -266,7 +276,9 @@ All fields must be SDK storage types. Plain data must be wrapped in `Value<T>`.
 | Type | Description |
 |------|-------------|
 | `Value<T>` | Single XDR-serializable value |
+| `Balance` | Nonnegative, zero-defaulting balance with checked and lazy adjustments |
 | `NNInt` | Integer storage for signed changes that can [merge across concurrent transactions](/programming-model/execution/#merged-deltas) |
+| `CapacityConstraint` | Commit-time capacity shared across concurrent transactions |
 | `Bytestring` | Variable-length byte blob |
 | `Map<K, V>` | Key-addressed collection (entries not enumerable) |
 | `Vector<T>` | Indexed collection backed by `Map<u32, T>` plus a length counter |
@@ -276,15 +288,15 @@ All fields must be SDK storage types. Plain data must be wrapped in `Value<T>`.
 ### Example
 
 ```rust
-use sdk::storage::{Map, NNInt, Value};
+use sdk::storage::{Balance, Map, Value};
 
 #[derive(Debug)]
 #[sdk::storage]
 pub struct TokenContract {
     contract_owner: Value<ContractAddress>,
-    balances: Map<ContractAddress, NNInt>,
-    allowances: Map<ContractAddress, Map<ContractAddress, NNInt>>,
-    total_supply: NNInt,
+    balances: Map<ContractAddress, Balance>,
+    allowances: Map<ContractAddress, Map<ContractAddress, Balance>>,
+    total_supply: Balance,
 }
 ```
 
