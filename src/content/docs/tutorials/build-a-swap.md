@@ -8,7 +8,7 @@ This source walkthrough studies the SDK's UniswapV2-style pair contract: two res
 **Prerequisites:** Complete [Build a Token](/tutorials/build-a-token/) first. The pair deploys an ERC-20-compatible contract whose code hash is supplied to `initialize`.
 
 :::note[Source status]
-This page currently follows `sdk_rs/example-contracts/swap` because that copy is aligned with SDK `0.17.1`. The product-facing example under `groundhog-examples/contracts/swap` contains newer example-level work but is still pinned to SDK `0.15.5`. Once the two copies are upgraded and reconciled, this walkthrough should follow `groundhog-examples` as the canonical source.
+This page was source-checked against `sdk_rs/example-contracts/swap` and SDK `0.17.9` on August 5, 2026. The product-facing `groundhog-examples` repository now contains a larger split-contract design (`swap-pair`, `swap-factory`, `swap-router`, `swap-handler`, and `swap-driver`) on SDK `0.17.5`. This walkthrough stays with the smaller SDK pair contract because its purpose is to explain the pair mechanics in isolation.
 
 The excerpts below are not a complete standalone crate. Use the SDK copy for the current big-number module, events, Cargo configuration, companion token contract, and full test harness.
 :::
@@ -441,7 +441,7 @@ Cross-contract calls contribute all nested events to the transaction result. Ass
 
 - Different pairs use separate storage. Two pairs (ETH/USDC, BTC/USDC) can execute swaps in the same block without conflicting.
 - Swaps on the same pair generally conflict. Each swap replaces the entire `reserves` value with newly calculated state. If two swaps calculate different states, one gets returned to the mempool.
-- LP transfers between users on the same pair can execute concurrently. The LP contract uses [`NNInt`](/programming-model/storage-types/#nnint) balances, so its [balance deltas can merge](/programming-model/execution/#merged-deltas) when the available balance is sufficient.
+- LP transfers between users on the same pair can execute concurrently. The LP contract uses [`Balance`](/programming-model/storage-types/#balance), so its [balance deltas can merge](/programming-model/execution/#merged-deltas) when the available balance is sufficient.
 
 ## Closing Notes
 

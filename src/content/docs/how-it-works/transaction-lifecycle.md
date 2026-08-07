@@ -5,6 +5,10 @@ description: How a transaction moves from submission to committed state.
 
 This page describes how a transaction moves through the system, from client submission to committed ledger state.
 
+:::note[Version checked]
+This page was source-checked against the current `hogd` executor and coordinator protocol on August 5, 2026.
+:::
+
 ## Overview
 
 A transaction passes through six stages:
@@ -12,8 +16,8 @@ A transaction passes through six stages:
 1. **Submission**: Client submits a signed transaction
 2. **Authorization**: Signatures are verified before the transaction enters the mempool
 3. **Scheduling**: The transaction is queued and selected for a block
-4. **Execution**: Contract code runs against a snapshot, producing deltas with incremental conflict checking
-5. **Block Assembly**: The proposer packages results into a nomination for consensus
+4. **Execution and reservation**: Contract code runs against a snapshot, then its completed delta batch is reserved against the proposal
+5. **Block Assembly**: The proposer packages results into a block proposal for consensus
 6. **Commit**: Finalized state is written to storage
 
 ## Stage 1: Submission
@@ -31,7 +35,7 @@ See [Authorization](/how-it-works/authorization/) for details on the authorizati
 
 ## Stage 3: Scheduling
 
-Verified transactions are queued by account with balance-proportional scheduling. When the coordinator asks for a block nomination, the mempool selects transactions from accounts whose HOGs have waited longest. See [Storage & Scheduling Economics](/how-it-works/storage-economics/) for how scheduling priority works.
+Verified transactions are queued by account with balance-proportional scheduling. When the coordinator asks for a block proposal, the mempool selects transactions from accounts whose HOGs have waited longest. See [Storage & Scheduling Economics](/how-it-works/storage-economics/) for how scheduling priority works.
 
 ## Stage 4: Execution
 
@@ -43,9 +47,9 @@ When contract code executes:
 - It produces deltas describing how to modify state
 - It runs until termination (return, abort, or fault)
 
-**Conflict checking is incremental.** As each delta is produced during execution, it is checked against capacity locks derived from the snapshot. For NNInt operations, this means subtraction capacity is reserved atomically via compare-and-swap. If a reservation fails (another transaction already consumed the capacity), the transaction is excluded immediately. See [Execution Model: How Conflicts Are Resolved](/how-it-works/execution-model/#how-conflicts-are-resolved) for the full mechanism.
+**Conflict checking follows root execution.** Contract code first runs against the snapshot and accumulates a delta batch. Checked `Balance::decrease` and `NNInt::strict_inc` operations load the snapshot base so underflow can fail inside the contract. Lazy balance operations skip that load. If the root call succeeds, the executor submits the complete batch for reservation against the proposal's per-key capacity locks. An incompatible aggregate result excludes the transaction. See [Execution Model: How Conflicts Are Resolved](/how-it-works/execution-model/#how-conflicts-are-resolved) for the full mechanism.
 
-Because all transactions read from the same snapshot and conflicts are resolved per-key during execution, transactions run in parallel across all available CPU cores.
+Contract calls run in parallel against the same snapshot, and completed delta batches can be reserved concurrently across executor workers.
 
 See [Invocation Frames](/how-it-works/invocation-frames/) for detailed execution semantics (frame lifecycle, child calls, merge/discard rules).
 
@@ -56,17 +60,17 @@ When the root frame completes, the runtime checks its status:
 - **Return (success)**: the transaction's deltas are included in the block.
 - **Abort or Fault**: the transaction is **still included in the block**, but with no state changes. The failure is deterministic, so every validator reaches the same result, and the transaction does not need to be re-evaluated. It is not returned to the mempool.
 
-This is distinct from **conflict exclusion** during execution (Stage 4): if a delta cannot be reserved against capacity locks, the transaction never reaches root-frame completion and is returned to the mempool for a future block. Deterministic abort and non-deterministic conflict-exclusion are two different failure modes with different on-chain semantics.
+This is distinct from **conflict exclusion** during reservation (Stage 4): the root frame may return successfully, but its completed delta batch can still fail reservation and be returned to the mempool for a future block. Deterministic abort and non-deterministic conflict exclusion are two different failure modes with different on-chain semantics.
 
 ## Stage 5: Block Assembly
 
-The proposer packages all successfully executed transactions into a consensus nomination: transaction hashes, nondeterministic execution data, and the computed block hash. This nomination is sent to validators via SCP. See [Consensus](/how-it-works/consensus/) for how the proposer/validator split works.
+The proposer packages the included transaction results into a consensus proposal: transaction hashes, nondeterministic execution data, and the computed block hash. The proposal is sent to validators via SCP. See [Consensus](/how-it-works/consensus/) for how the proposer/validator split works.
 
 ## Stage 6: Commit
 
 Once consensus confirms the block, each validator commits the finalized state to its DB shards. All deltas for each key are combined according to type-specific merge rules to produce the new ledger state, which becomes the snapshot for the next block.
 
-Transactions excluded by conflict checking during execution (Stage 4) are returned to the mempool and may be re-evaluated in future blocks. Transactions that aborted or faulted deterministically remain in the block with no state effect.
+Transactions excluded during delta reservation (Stage 4) are returned to the mempool and may be re-evaluated in future blocks. Transactions that aborted or faulted deterministically remain in the block with no state effect.
 
 ## Related Documentation
 

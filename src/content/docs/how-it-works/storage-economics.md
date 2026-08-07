@@ -60,11 +60,11 @@ Groundhog's deposit model creates a direct incentive to clean up unused state. I
 
 Every contract has a HOG balance that represents its unlocked (free) tokens. When a transaction commits, the runtime computes the storage delta for each piece of modified data and adjusts the contract's balance accordingly.
 
-- **Writing new data** deducts HOG from the contract's free balance. The cost depends on the storage type: NNInt has a fixed per-key cost, bytestrings cost per byte, and other types have their own cost formulas.
+- **Writing new data** deducts HOG from the contract's free balance. The cost depends on the storage type: NNInt has a fixed per-key cost, bytestrings include a per-byte cost, and other types have their own formulas.
 - **Modifying existing data** adjusts the deposit up or down based on the size difference.
 - **Deleting data** returns the locked HOG to the contract's free balance.
 
-If a contract does not have enough free HOG to cover a storage write, the transaction aborts. There is no deficit spending. You must have sufficient balance before the write commits.
+If a contract does not have enough free HOG to cover a storage write, reservation fails with a bounds conflict. The transaction is excluded from that proposal and returned to the mempool. This is different from a deterministic contract abort, which remains in the block with no state changes.
 
 Your contract does not calculate storage costs or manage deposits manually. The runtime handles it as part of the normal transaction commit process.
 
@@ -74,7 +74,7 @@ Your contract does not calculate storage costs or manage deposits manually. The 
 Dynamic pricing is under active development. The current implementation uses static cost constants. The mechanism described below is the target design.
 :::
 
-The deposit amount per unit of storage is not fixed. It will adjust based on how much state the network is carrying.
+The target design makes the deposit amount per unit of storage adjust based on how much state the network is carrying.
 
 The network defines a target state size. When total on-chain storage is below the target, deposit costs stay low. As state grows toward the target, deposits get more expensive, making it progressively costlier to add new data. If state growth slows or contracts delete data, prices come back down.
 

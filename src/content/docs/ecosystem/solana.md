@@ -11,7 +11,7 @@ For the foundational concepts (delta operations, commutativity, storage types), 
 
 This is the biggest mental model shift. On Solana, state lives in accounts. Each account is a separate object with its own address, lamport balance, owner program, and serialized data. Your program receives an array of accounts, validates them, deserializes them, operates on them, and serializes them back. Anchor's `#[derive(Accounts)]` automates the validation, but the account array is always there.
 
-Groundhog has no account model. State lives inside the contract as typed storage fields. A token contract doesn't receive "the sender's balance account" and "the receiver's balance account" as separate objects. It has a `Map<Address, NNInt>` field called `balances`, and it reads and writes entries in that map.
+Groundhog does not use Solana's caller-supplied account-array model. State lives under contract addresses in typed storage fields. A token contract doesn't receive "the sender's balance account" and "the receiver's balance account" as separate objects. It has a `Map<ContractAddress, Balance>` field called `balances`, and it reads and writes entries in that map.
 
 **Solana (Anchor):**
 
@@ -31,14 +31,13 @@ pub struct Transfer<'info> {
 ```rust
 #[sdk::storage]
 pub struct Token {
-    balances: Map<ContractAddress, NNInt>,
+    balances: Map<ContractAddress, Balance>,
 }
 
 fn transfer(&mut self, receiver: &ContractAddress, amount: Amount) {
     let caller = get_caller();
-    let diff = amount_to_diff(amount);
-    self.balances.at_mut(&caller).strict_inc(-diff);
-    self.balances.at_mut(receiver).strict_inc(diff);
+    self.balances.at_mut(&caller).decrease(amount);
+    self.balances.at_mut(receiver).lazy_increase(amount);
 }
 ```
 
@@ -48,13 +47,13 @@ No account array. No account validation. No deserialization step. The `Map` is t
 
 On Solana, you declare every account a transaction will touch before the transaction runs. The runtime uses this manifest to schedule parallel execution: transactions that don't share writable accounts can run concurrently. This is why you build the account array. It's not just for validation. It's how Solana knows what can parallelize.
 
-On Groundhog, you declare nothing. The storage types themselves determine what parallelizes. `NNInt` operations (increments, decrements) commute by construction. `Map` operations on different keys never interact. The runtime doesn't need a manifest because the types carry the parallelism rules.
+On Groundhog, you declare nothing. The storage types themselves determine what parallelizes. `Balance` increases and decreases use mergeable deltas. `Map` operations on different keys never interact. The runtime doesn't need a manifest because the types carry the parallelism rules.
 
-This is a fundamental difference. On Solana, parallelism comes from the developer correctly declaring access patterns. Get it wrong and your transaction fails or, worse, corrupts state. On Groundhog, parallelism comes from the types. You pick `NNInt` for a balance, and concurrent transfers automatically parallelize. You don't think about it.
+This is a fundamental difference. On Solana, scheduling depends on the accounts and mutability declared by the transaction, and Anchor validates those accounts before instruction logic runs. On Groundhog, the runtime discovers storage access during execution and applies the merge rules of each storage type.
 
 ## The Contract Lifecycle
 
-Both Solana and Groundhog use a two-step deployment (upload code, then create instance), and both compile to a binary format: BPF on Solana, RV32 on Groundhog. RV32 is Groundhog's 32-bit RISC-V contract target. The details differ but the flow is analogous.
+Both platforms separate contract code from address-specific state, and both compile Rust to a deployable binary format: SBF on Solana and RV32 on Groundhog. A Groundhog transaction can attach code and invoke `DeployContract` in the same transaction.
 
 ### Writing
 
@@ -66,11 +65,11 @@ Solana programs are written in Rust with Anchor (or native). Groundhog contracts
 | `#[derive(Accounts)]` | *(not needed)* | Account validation. Groundhog has no account arrays. |
 | `#[account]` | `#[sdk::storage]` | Marks state structure |
 | `#[instruction]` | Method parameters | Instruction data. Groundhog methods take typed parameters directly. |
-| `init` constraint | `fn initialize()` | Conventional method called during the deployment transaction. |
+| `init` constraint | Ordinary initialization method | Groundhog deployment does not invoke it automatically. |
 
 ### Compiling
 
-Solana compiles to BPF bytecode (`cargo build-sbf`). Groundhog compiles to RV32, a 32-bit RISC-V target, by default:
+Solana compiles programs for SBF (`cargo build-sbf`). Groundhog compiles to RV32, a 32-bit RISC-V target, by default:
 
 ```bash
 groundhog build
@@ -95,15 +94,15 @@ client.transfer(&recipient, 100);
 
 | Solana / Anchor | Groundhog | Why |
 |-----------------|-----------|-----|
-| Accounts with serialized data | Typed storage fields (`Map`, `NNInt`) | State lives inside the contract. No external accounts. |
+| Accounts with serialized data | Typed storage fields (`Map`, `Balance`, `NNInt`) | State lives inside the contract. No external accounts. |
 | `#[derive(Accounts)]` validation | Nothing. Types handle it. | No access list to declare or validate. |
 | PDAs (seeds + bump) | Deterministic address (deployer + nonce + hash) | Simpler derivation. No seed discovery. |
-| Rent exemption (2 years of lamports) | HOG deposit (refundable) | Hold tokens for storage capacity. No rent clock. |
-| 200k compute units per TX | Gas limits exist but cost zero | Metering bounds computation. No tokens burned. Hold HOG for throughput capacity. |
+| Rent-exempt account funding | HOG deposit (refundable) | Hold tokens for storage capacity. No rent clock. |
+| Per-transaction compute budget | Gas limits exist but cost zero | Metering bounds computation. No tokens burned. Hold HOG for throughput capacity. |
 | CPI (cross-program invocation) | Cross-contract calls | Same concept, simpler API, snapshot isolation. |
 | `Signer<'info>` propagation | `get_caller()` | Caller identity. No signer array to thread through CPIs. |
-| `balance -= amount; balance += amount` | `strict_inc(-diff); strict_inc(diff)` | Deltas merge in parallel. Assignments conflict. |
-| Account-level write locks | Type-level guarantees | The type (NNInt, Map, Bytestring) enforces correctness; concurrency follows from that. |
+| `balance -= amount; balance += amount` | `decrease(amount); lazy_increase(amount)` | Deltas merge in parallel. Assignments conflict. |
+| Account-level write locks | Type-level guarantees | The type (`Balance`, `Map`, `Bytestring`) enforces correctness; concurrency follows from that. |
 
 ## What Disappears
 
@@ -121,13 +120,13 @@ Groundhog uses a capital deposit model for storage. You hold HOG tokens as a dep
 
 ### Compute Unit Budgets
 
-Solana transactions have a compute budget that can be raised per transaction via `SetComputeUnitLimit` (with a hard ceiling well below modern Ethereum gas limits). Complex operations require careful optimization. CPI calls are expensive. Developers routinely hit compute limits and restructure logic to stay under budget.
+Solana transactions have a compute budget that can be adjusted per transaction through compute-budget instructions. Programs must fit within that resource budget, including the work performed by CPIs.
 
 Groundhog has gas limits that meter computation, but gas costs zero tokens. Specify a gas limit to bound execution, but don't optimize for gas cost. There are no priority fees and no fee-related failures.
 
 ### PDA Seed Management
 
-PDAs on Solana require choosing seeds, deriving addresses, finding bumps, and storing the bump for future lookups. Seed collisions, missing bumps, and PDA discovery are common sources of bugs.
+PDAs on Solana require choosing seeds and deriving an off-curve address with a bump. Anchor's `seeds` and `bump` constraints validate that derivation.
 
 Groundhog contract addresses are derived from deployer + nonce + contract hash. One derivation, deterministic, no bumps. If your Solana program uses PDAs as state accounts (one per user, one per pool), the Groundhog equivalent is a `Map<Key, Value>` field in your contract storage. The map entries replace the PDAs.
 
@@ -165,11 +164,16 @@ pub struct CreateUserAccount<'info> {
 ```rust
 #[sdk::storage]
 pub struct MyContract {
-    user_states: Map<ContractAddress, UserState>,
+    user_states: Map<ContractAddress, Value<UserState>>,
 }
 
 fn get_user_state(&self, user: &ContractAddress) -> UserState {
-    self.user_states.at(user).try_get().unwrap_or_default()
+    self.user_states
+        .at(user)
+        .try_get()
+        .none_if_missing()
+        .unwrap()
+        .unwrap_or_default()
 }
 ```
 
@@ -194,13 +198,12 @@ token::transfer(cpi_ctx, amount)?;
 ```rust
 fn transfer(&mut self, receiver: &ContractAddress, amount: Amount) {
     let caller = get_caller();
-    let diff = amount_to_diff(amount);
-    self.balances.at_mut(&caller).strict_inc(-diff);
-    self.balances.at_mut(receiver).strict_inc(diff);
+    self.balances.at_mut(&caller).decrease(amount);
+    self.balances.at_mut(receiver).lazy_increase(amount);
 }
 ```
 
-No CPI context, no account info conversion, no external token program. The balance is a map field in your contract, and `strict_inc` handles the delta.
+No CPI context, no account info conversion, no external token program. The balance is a map field in your contract. Both calls produce mergeable deltas. `decrease` loads and checks the sender during execution, while `lazy_increase` skips the receiver load and defers its bound check.
 
 ### Cross-Program Invocation → Cross-Contract Call
 
@@ -260,7 +263,7 @@ pub enum Error {
 ensure(get_caller() == self.contract_owner.get(), Error::NotAuthorized);
 ```
 
-Similar pattern: define error variants, check conditions. Anchor uses `require!` macro, Groundhog uses `ensure()`. Both abort the transaction on failure. The difference: Groundhog errors are XDR-serialized (for cross-contract error inspection), and `NNInt` underflow aborts automatically without needing an explicit check.
+Similar pattern: define error variants, check conditions. Anchor uses `require!` macro, Groundhog uses `ensure()`. Both abort the transaction on failure. The difference: Groundhog errors are XDR-serialized (for cross-contract error inspection), and `Balance::decrease` aborts automatically on underflow without a separate balance check.
 
 ## What Doesn't Exist
 
@@ -268,12 +271,12 @@ Similar pattern: define error variants, check conditions. Anchor uses `require!`
 |----------------|---------------------|-------------|
 | Account model | Does not exist | State lives in contract storage fields |
 | `#[derive(Accounts)]` | Does not exist | No account validation needed |
-| PDAs and bump seeds | Does not exist | Deterministic address from deployer + nonce |
+| PDAs and bump seeds | Does not exist | Deterministic address from deployer + nonce + contract hash |
 | Rent / rent exemption | Does not exist | Refundable HOG deposit for storage |
 | Compute unit budget | Gas limits (cost zero) | Metering exists for bounding computation. No per-operation fees. |
 | Priority fees | Does not exist | Throughput via HOG token holding |
 | `Signer<'info>` propagation | Does not exist | `get_caller()` for identity |
-| Associated Token Accounts | Does not exist | `Map<Address, NNInt>` in contract storage |
+| Associated Token Accounts | Does not exist | `Map<Address, Balance>` in contract storage |
 | Account `space` / `realloc` | Does not exist | Storage grows as needed |
 | `system_program`, `token_program`, `rent` as accounts | Does not exist | No system accounts passed to instructions |
 | Versioned transactions | Does not exist | One transaction format |
@@ -285,4 +288,4 @@ Similar pattern: define error variants, check conditions. Anchor uses `require!`
 - [Build a Counter](/tutorials/build-a-counter/) for a step-by-step first contract
 - [Build a Token](/tutorials/build-a-token/) for a full ERC-20 implementation
 - [Merged Deltas](/programming-model/execution/#merged-deltas) for the contract-level merge model
-- [Storage Types](/reference/storage-types/) for the full NNInt, Map, and Bytestring API
+- [Storage Types](/reference/storage-types/) for the full `Balance`, `NNInt`, `Map`, and `Bytestring` API

@@ -77,8 +77,8 @@ The coordinator (chuckd) is the consensus participant. It connects to the mempoo
 
 | Call | Purpose |
 |------|---------|
-| `schedulercoord_nominate` | "Give me a block to propose" |
-| `schedulercoord_validate` | "Is this peer's proposed block valid?" |
+| `schedulercoord_propose_block` | "Build a proposal for this block" |
+| `schedulercoord_validate_block` | "Is this peer's proposed block valid?" |
 | `schedulercoord_commit_block` | "Finalize this block" |
 | `schedulercoord_submit_unvetted` | Forward client transactions to the mempool |
 | `schedulercoord_submit_vetted` | Forward peer-gossiped transactions to the mempool |
@@ -101,7 +101,7 @@ A transaction moves through the system like this:
 2. The gateway (or coordinator) forwards the transaction to the mempool (`submit_unvetted`)
 3. Mempool sends the transaction to the auth server for signature verification
 4. Verified transactions are queued by account with balance-proportional scheduling
-5. Coordinator asks mempool for a nomination (`nominate`)
+5. Coordinator asks the mempool to build a proposal (`propose_block`)
 6. Mempool selects transactions, dispatches them to executors for parallel execution, collects deltas, and resolves conflicts. The result is a block nomination.
 7. Coordinator runs consensus with peers (see [Consensus](/how-it-works/consensus/))
 8. On consensus, coordinator tells mempool to commit (`commit_block`)

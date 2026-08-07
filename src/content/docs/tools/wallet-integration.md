@@ -5,6 +5,8 @@ description: Current signer APIs and the support boundary for browser-wallet int
 
 No official browser-wallet provider or adapter is published yet. The current supported user flow is the Groundhog CLI: it creates a key-owned contract wallet, resolves network-specific wallet entrypoints, wraps application calls in the wallet's `do_action` invocation, signs, and submits them.
 
+This page was source-checked against published `@groundhogchain/client` `0.1.6` and Groundhog CLI `0.6.3` on August 5, 2026.
+
 See [Develop on Devnet with the CLI](/tutorials/develop-on-devnet/) for that end-to-end flow.
 
 ## Current TypeScript Extension Point
@@ -36,7 +38,7 @@ Groundhog authorization is rooted at the transaction's invoked address. For norm
 The current CLI resolves wallet entrypoints from the active local runtime manifest or hosted `/v1/network` descriptor. Wallet integrations should do the same rather than hard-coding entrypoint IDs.
 
 :::caution[TypeScript support boundary]
-Current `client-ts` source provides low-level transaction and signer primitives, but it does not provide the descriptor-driven wallet transaction builder used by the CLI. The published `0.1.4` package is older still. Do not submit a generated target-contract invocation as the root transaction and assume the wallet will authorize it.
+Published client `0.1.6` provides low-level transaction, submission, and signer primitives, but it does not provide the descriptor-driven wallet transaction builder used by the CLI. Do not submit a generated target-contract invocation as the root transaction and assume the wallet will authorize it.
 :::
 
 Until the wallet builder and browser adapter are published, use the CLI for state-changing calls and the [TypeScript SDK](/tools/typescript-sdk/) for supported reads and views.

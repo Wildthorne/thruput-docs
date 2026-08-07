@@ -8,7 +8,7 @@ This tutorial walks through the complete local CLI loop. You will build and test
 Local development is the fastest way to exercise deployment and RPC behavior. It does not require a faucet, a hosted endpoint, or a persistent signing key.
 
 :::note[Version checked]
-This tutorial was last checked against Groundhog CLI `0.5.17` and SDK `0.17.1` on July 13, 2026.
+This tutorial was source-checked against Groundhog CLI `0.6.3` and SDK `0.17.9` on August 5, 2026.
 :::
 
 ## Prerequisites
@@ -18,7 +18,7 @@ You need:
 - Rust and Cargo through [rustup](https://rustup.rs/)
 - `jq` for structured-output checks
 - Access to the private Groundhog Cargo registry
-- Groundhog CLI `0.5.17`
+- Groundhog CLI `0.6.3`
 - A compatible `hog-devnode` executable supplied during onboarding
 
 Authenticate Cargo and install the published CLI:
@@ -26,7 +26,7 @@ Authenticate Cargo and install the published CLI:
 ```bash
 cargo login --registry groundhog
 cargo install groundhog-cli \
-  --version "=0.5.17" \
+  --version "=0.6.3" \
   --registry groundhog \
   --locked
 ```

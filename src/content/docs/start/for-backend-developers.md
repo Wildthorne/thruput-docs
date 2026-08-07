@@ -27,19 +27,19 @@ If you understand `REPEATABLE READ`, you understand Groundhog's execution model.
 
 ## Deltas, Not Assignments
 
-The core shift from a database: instead of `UPDATE accounts SET balance = 50`, you write `strict_inc(5)`, meaning "adjust this value by +5." This is `UPDATE accounts SET balance = balance + 5`. You express **how the value should change**, not what it should become.
+The core shift from a database: instead of `UPDATE accounts SET balance = 50`, you call `increase(5)`, meaning "adjust this value by +5." This is `UPDATE accounts SET balance = balance + 5`. You express **how the value should change**, not what it should become.
 
 ```rust
 fn transfer(&mut self, receiver: &ContractAddress, amount: Amount) {
-    let diff = amount_to_diff(amount);                       // u128 -> i128
-    self.balances.at_mut(&get_caller()).strict_inc(-diff);   // delta: subtract
-    self.balances.at_mut(receiver).strict_inc(diff);         // delta: add
+    let sender = get_caller();
+    self.balances.at_mut(&sender).decrease(amount);          // checked debit
+    self.balances.at_mut(receiver).lazy_increase(amount);    // deferred bound check
 }
 ```
 
-[`NNInt`](/programming-model/storage-types/#nnint) is the storage type behind this pattern. `strict_inc()` records a signed change to the current value. If two transactions read a balance of 100 and record `-20` and `-30`, both can land and the next balance is 50. Applying the changes in either order gives the same result, so the operations **commute**.
+[`Balance`](/programming-model/storage-types/#balance) is the SDK type for this pattern. Both calls record deltas that can merge with concurrent transactions. `decrease()` loads the sender's balance so an insufficient debit fails during execution. `lazy_increase()` skips the receiver load and defers its bound check until the delta batch is reserved. If two transactions debit 20 and 30 from a balance of 100, both can land and the next balance is 50. Applying the changes in either order gives the same result, so the operations **commute**.
 
-That is enough of the model for most contract code. [Merged Deltas](/programming-model/execution/#merged-deltas) explains how storage types decide which concurrent changes can land together. [NNInt In Depth](/programming-model/nnint/) covers the underlying `set_add` representation, base matching, and the difference between `strict_inc`, `inc`, and `set`.
+That is enough of the model for most contract code. [Merged Deltas](/programming-model/execution/#merged-deltas) explains how storage types decide which concurrent changes can land together. [NNInt In Depth](/programming-model/nnint/) covers the lower-level `set_add` representation behind `Balance`, including base matching and the difference between `strict_inc`, `inc`, and `set`.
 
 **If you'd write it as `SET col = col + ?` in SQL, it parallelizes on Groundhog. If you'd write it as `SET col = ?`, it might conflict.**
 
@@ -65,6 +65,6 @@ The balance constraint works the same way. If two concurrent withdrawals togethe
 
 ## Next Steps
 
-For storage type details (NNInt, Map, Vector, Value, Bytestring, RetrocausalQueue) and their conflict semantics, see [Programming Model: Storage Types](/programming-model/storage-types/). For the contract-level execution model, see [Merged Deltas](/programming-model/execution/#merged-deltas).
+For storage type details (`Balance`, `NNInt`, `Map`, `Vector`, `Value`, `Bytestring`, `CapacityConstraint`, and `RetrocausalQueue`) and their conflict semantics, see [Programming Model: Storage Types](/programming-model/storage-types/). For the contract-level execution model, see [Merged Deltas](/programming-model/execution/#merged-deltas).
 
 Ready to write code? [Getting Started](/start/getting-started/) walks you through the SDK setup and your first contract.

@@ -24,7 +24,7 @@ This documentation is shared under NDA with early access partners. Do not distri
   <a href="/start/" class="path-card path-build">
     <span class="path-label">Builder</span>
     <span class="path-title">Build something</span>
-    <span class="path-desc">Pick your background, set up the SDK, write a contract. You'll deploy a working counter in 15 minutes.</span>
+    <span class="path-desc">Pick your background, set up the SDK, write a contract, and deploy a working counter.</span>
     <span class="path-steps">
       <span class="path-step">
         <span class="step-num">1</span>
@@ -78,7 +78,7 @@ This documentation is shared under NDA with early access partners. Do not distri
       <svg class="why-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="13 17 18 12 13 7"/><polyline points="6 17 11 12 6 7"/></svg>
       <span class="why-title">Parallel Execution</span>
     </span>
-    <span class="why-desc">Typed storage primitives let transactions run in parallel by default. Throughput scales with hardware, not protocol changes.</span>
+    <span class="why-desc">Typed storage primitives let independent and commutative transactions execute across available cores.</span>
   </div>
   <div class="why-item">
     <span class="why-header">
@@ -90,8 +90,8 @@ This documentation is shared under NDA with early access partners. Do not distri
   <div class="why-item">
     <span class="why-header">
       <svg class="why-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-      <span class="why-title">No MEV</span>
+      <span class="why-title">Less Ordering Dependence</span>
     </span>
-    <span class="why-desc">Transaction order doesn't affect outcomes. Nothing to extract because ordering doesn't matter.</span>
+    <span class="why-desc">Commutative deltas produce the same merged state in any order. Conflicting transactions are excluded instead of being serialized inside the block.</span>
   </div>
 </div>

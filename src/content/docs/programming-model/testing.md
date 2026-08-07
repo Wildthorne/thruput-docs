@@ -8,7 +8,7 @@ description: "How to test Groundhog contracts: native logic tests, RV32 integrat
 Groundhog contracts have three useful test paths:
 
 :::note[Version checked]
-This page was last checked against Groundhog CLI source at package version `0.5.18` and SDK `0.17.1` on July 15, 2026.
+This page was source-checked against Groundhog CLI `0.6.3` and SDK `0.17.9` on August 5, 2026.
 :::
 
 | Command | What it covers | Use for |
@@ -44,7 +44,7 @@ The generated Cargo entries keep RPC and Tokio dependencies out of WASM and RV32
 groundhog-integration-test = ["dep:groundhog-json-rpc-client", "dep:tokio"]
 
 [target.'cfg(not(any(target_arch = "wasm32", target_arch = "riscv32")))'.dependencies]
-groundhog-json-rpc-client = { version = "0.5", registry = "groundhog", optional = true }
+groundhog-json-rpc-client = { version = "0.6.2", registry = "groundhog", optional = true }
 tokio = { version = "1", features = ["macros", "rt-multi-thread"], optional = true }
 ```
 
@@ -130,6 +130,19 @@ Use [`TestEnvironment::default()`](https://groundhog.dev/docs/sdk/latest/sdk/str
 Use `TestEnvironment::new(Some(&model))` when the test is specifically about a custom `StorageCostModel`. Use `setup_grant_storage_tokens` to fund accounts in cost-sensitive tests.
 
 For the full generated API, see the [`TestEnvironment` Rustdoc](https://groundhog.dev/docs/sdk/latest/sdk/struct.TestEnvironment.html) or [Rust API Docs](/tools/rust-api-docs/).
+
+When a native test needs a custom transaction context, start with `env.transaction()`. The builder currently supports replacing the default authorization claim:
+
+```rust
+let result = env
+    .transaction()
+    .with_auth_claim(auth_claim)
+    .transact(|tx| tx.call(&caller).run(|| {
+        // contract calls
+    }));
+```
+
+Finish the builder with `transact` for auto-commit, `transact_manual` for explicit commit or abort control, or `build` to obtain a `MockTransactionHandler` directly. Plain `env.transact(...)` remains the shorthand for the default transaction configuration.
 
 Use `groundhog test --integration` when the thing under test is not just contract logic: local node startup, RV32 artifact deployment, profile resolution, signing, RPC environment variables, or generated off-chain client behavior.
 

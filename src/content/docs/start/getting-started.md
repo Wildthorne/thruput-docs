@@ -15,7 +15,7 @@ That said, the CLI is a convenience, not a requirement. You can also:
 The CLI is just a consumer of the SDK. It generates the same Rust crate you'd write by hand: a standard Cargo project that depends on the SDK and uses its storage types and macros. Normal `cargo build` and `cargo test` target the host. `groundhog build` and `groundhog test` target RV32 by default.
 
 :::note[Version checked]
-This workflow was last checked against Groundhog CLI `0.5.17` and SDK `0.17.1` on July 13, 2026.
+This workflow was source-checked against Groundhog CLI `0.6.3` and SDK `0.17.9` on August 5, 2026.
 :::
 
 ## Configure Cargo and Install
@@ -28,7 +28,7 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
 # Install the published CLI from the private registry
 cargo install groundhog-cli \
-  --version "=0.5.17" \
+  --version "=0.6.3" \
   --registry groundhog \
   --locked
 ```
@@ -123,7 +123,7 @@ my-counter/
     config.toml           # Cargo target configuration
     contract.toml         # WASM compatibility build overlay
   src/
-    lib.rs                # Module wiring, no_std for contract builds, test setup export
+    lib.rs                # Module wiring, no_std contract builds, mock registration
     implementation.rs     # Your contract: error type, storage struct, methods
     main.rs               # RV32 entrypoint wrapper
   tests/
@@ -146,10 +146,10 @@ The SDK exposes three complementary surfaces. They can be mixed: a contract can 
 | Layer | What it provides | When to use |
 |-------|-----------------|-------------|
 | **Macros** | `#[storage]`, `#[contract]`, `#[contract_exception]`. Generates storage wiring, contract entrypoints, and client stubs. | Default. Start here. |
-| **Typed storage handles** | `NNInt`, `Map<K, V>`, `Value<T>`, `Bytestring`, `RCQ<T>`, `Vector<T>`. `Value`, map keys, and typed RCQ entries use XDR; `NNInt` and `Bytestring` expose specialized storage operations. | Default storage access without writing raw syscalls. |
+| **Typed storage handles** | `Balance`, `NNInt`, `CapacityConstraint`, `Map<K, V>`, `Value<T>`, `Bytestring`, `RCQ<T>`, `Vector<T>`. `Value`, map keys, and typed RCQ entries use XDR; integer and bytestring types expose specialized storage operations. | Default storage access without writing raw syscalls. |
 | **Raw syscalls** | Direct `bytestring_set()`, `non_negative_int_strict_inc()` calls. | When you need full control or are building your own abstractions. |
 
-The SDK's `erc20_low_level/` example implements ERC-20 storage through raw bytestring and NNInt syscall wrappers instead of typed storage handles. It still uses `#[contract]`, generated clients, events, and SDK error helpers. Compare it with `erc20/`, which implements the same interface with `Value`, `Map`, and `NNInt`.
+The SDK's `erc20_low_level/` example implements ERC-20 storage through raw bytestring and NNInt syscall wrappers instead of typed storage handles. It still uses `#[contract]`, generated clients, events, and SDK error helpers. Compare it with `erc20/`, which implements the same interface with `Value`, `Map`, and `Balance`.
 
 If the provided storage types don't fit your use case, drop down a layer. The syscall interface is documented in the [Syscalls Reference](/reference/syscalls/). Generated Rustdoc for exact SDK signatures lives at [groundhog.dev/docs/](https://groundhog.dev/docs/); see [Rust API Docs](/tools/rust-api-docs/) for common links.
 

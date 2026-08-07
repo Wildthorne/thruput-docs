@@ -137,7 +137,7 @@ An auth token carries:
 - **Expiry height**: the token is valid through this block height.
 - **Child nodes**: nested auth tokens that materialize when the parent is consumed.
 
-`Signed<T>` is a handle to this runtime token. The handle travels out-of-band alongside calldata; it does not serialize the payload into the method argument bytes.
+`Signed<T>` is a handle to this runtime token. The handle travels out-of-band alongside calldata; it does not serialize the payload into the method argument bytes. Contract specifications represent it as a `SignedToken` node containing the payload type.
 
 To make a payload type usable in a token, mark it as a contract type:
 
@@ -200,6 +200,8 @@ Frame ownership works like this:
 - Consuming a token removes it. Any child tokens become fresh handles owned by the consuming frame.
 
 This makes method signatures part of the authorization surface: a function that does not take a `Signed<T>` argument cannot consume that token.
+
+Generated clients assign returned token handles to `Signed<T>` fields in the return value. Lower-level callers that receive a `Vec<Signed<Opaque>>` can use `AssumeTokens::try_assume_tokens` to convert an exact number of opaque handles into a typed tuple. A count mismatch returns `CallingError::DecodingSuccess`; `AssumeTokens::assume_tokens` is the throwing convenience form.
 
 ## Nested Auth Tokens
 

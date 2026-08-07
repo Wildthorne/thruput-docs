@@ -7,6 +7,10 @@ description: How Groundhog's JSON-RPC is shaped and the methods it exposes.
 This API is under active development. Method signatures and response formats may change.
 :::
 
+:::note[Version checked]
+This page was source-checked against `groundhog-rpc` `0.6.3` and JSON-RPC wire format `3.0.0` on August 5, 2026.
+:::
+
 The Groundhog JSON-RPC gateway (`groundhog-rpc`) is a separate service that exposes a JSON-RPC 2.0 API over HTTP. It connects to the validator stack (hogd) via internal RPC and provides external access for clients, wallets, and tooling.
 
 For how the gateway fits into the node architecture, see [Networking](/how-it-works/networking/). The first half of this page covers the *shape* of the API and the design choices behind it; the second half is the per-method reference. If you're picking up the API for the first time, read the design section first. If you're looking up a specific method, jump to [Methods](#methods).
@@ -26,7 +30,7 @@ The gateway listens on a configurable HTTP port. All methods use the standard JS
 
 ## Design
 
-The API presents a typed JSON envelope. Responses are objects with named, JSON-native fields. Wallets, explorers, and dapps interpret them directly. Clients only reach for an XDR codec when they need to inspect or construct the bytes inside a specific field — never to decode a whole response.
+The API presents a typed JSON envelope. Responses are objects with named, JSON-native fields. Wallets, explorers, and dapps interpret them directly. Clients only reach for an XDR codec when they need to inspect or construct the bytes inside a specific field, never to decode a whole response.
 
 ### Typed JSON, Not XDR Blobs
 
@@ -38,7 +42,7 @@ Three points on the design space:
 | **XDR-typed everywhere** | Soroban `ScVal` wraps every value in a tagged XDR enum | An XDR codec for nearly every read |
 | **Typed JSON envelope** | Groundhog `getStorageAt` returns `{ kind: "nonnegativeInt", value: "1000000000" }` | Nothing for the common cases; an XDR codec only for byte-typed fields |
 
-The third style — Horizon-shaped envelope, Groundhog-typed values — is what every method on the public `groundhog_*` namespace uses. It works because Groundhog's storage model is genuinely typed at the protocol level: nonnegative integers, bytestrings, auth data, and retrocausal queues are distinct kinds, not packed words. Returning that type information directly is cheaper for clients than reconstructing it from raw bytes.
+The third style, a Horizon-shaped envelope with Groundhog-typed values, is what every method on the public `groundhog_*` namespace uses. It works because Groundhog's storage model is genuinely typed at the protocol level: nonnegative integers, bytestrings, auth data, and retrocausal queues are distinct kinds, not packed words. Returning that type information directly is cheaper for clients than reconstructing it from raw bytes.
 
 ### The Shape of a Response
 
@@ -80,7 +84,7 @@ Events look familiar to anyone who has worked with `eth_getLogs`: structured rec
 }
 ```
 
-Two things to notice. First, the response always carries `blockHeight` — even when the key is empty (`item: null`) — so clients can compare against `chainTip` to gauge freshness. Second, `item` is a tagged union. Clients switch on `kind` and read the variant's named fields directly:
+Two things to notice. First, the response always carries `blockHeight`, even when the key is empty (`item: null`), so clients can compare against `chainTip` to gauge freshness. Second, `item` is a tagged union. Clients switch on `kind` and read the variant's named fields directly:
 
 ```json
 { "kind": "nonnegativeInt", "value": "1000000000" }
@@ -92,7 +96,7 @@ Two things to notice. First, the response always carries `blockHeight` — even 
 { "kind": "unknown", "typeId": 99 }
 ```
 
-`authData`, `retrocausalQueue`, and `replayCacheEntry` are presence-only. Their on-chain shapes are richer than a single value can express — auth data is a structured policy record, retrocausal queues are multi-entry containers — so the API reports presence and points clients toward a contract invocation when they need the contents. Same principle as Horizon: headline stats from the read API; deep detail from a typed operation.
+`authData`, `retrocausalQueue`, and `replayCacheEntry` are presence-only. Their on-chain shapes are richer than a single value can express. Auth data is a structured policy record, and retrocausal queues are multi-entry containers. The API reports presence and points clients toward a contract invocation when they need the contents. Same principle as Horizon: headline stats from the read API; deep detail from a typed operation.
 
 `unknown` is a forward-compatibility variant. If a future protocol release adds a new storage kind, clients built against an older spec see `{ "kind": "unknown", "typeId": 99 }` rather than a parse failure.
 
@@ -127,7 +131,7 @@ The places Groundhog goes further than EVM: typed status (no binary 0/1 guessing
 
 ### Where It Differs from Soroban
 
-Soroban exposed `ScVal` — an XDR-tagged universal value type — as the wire shape for nearly every read and write. The result was that wallets, explorers, and indexer-front-ends all needed a working XDR codec to make sense of basic responses. Familiar JSON gives way to "decode this XDR blob to find out what type it is, then decode again to read the value."
+Soroban exposed `ScVal`, an XDR-tagged universal value type, as the wire shape for nearly every read and write. The result was that wallets, explorers, and indexer front ends all needed a working XDR codec to make sense of basic responses. Familiar JSON gives way to "decode this XDR blob to find out what type it is, then decode again to read the value."
 
 Groundhog avoids that by exposing typed JSON variants instead. A `nonnegativeInt` arrives as `{ "kind": "nonnegativeInt", "value": "1000000000" }`, not as an XDR-encoded `ScVal::U128(...)`. Clients still need an XDR codec to construct signed transactions and decode XDR-typed payload bytes inside specific fields, but the envelope is JSON-native end to end.
 
@@ -187,9 +191,11 @@ Check whether a transaction is pending, committed, or unknown.
 | `Pending` | Transaction is in the mempool, not yet committed |
 | `Committed` | Transaction has been included in a block (includes `height`) |
 | `Invalid` | Transaction was rejected |
+| `RecentFailure` | A recent proposal attempt hit a two-phase-commit conflict; includes attempt height and a best-effort conflict diagnostic |
 | `Unknown` | Transaction not found in mempool or committed history |
+| `Other` | Status tag came from a newer server version |
 
-The gateway checks the mempool (scheduler) first, then the indexer. If the scheduler is unavailable, it returns best-effort results from the indexer only.
+The gateway checks the mempool (scheduler) first, then the indexer. `RecentFailure` is advisory: reports may be dropped, and a later retry of the same transaction may commit. If the scheduler is unavailable and the indexer has no record, the gateway returns `BACKEND_UNAVAILABLE` rather than incorrectly reporting `Unknown` while the transaction may still be pending.
 
 ---
 
@@ -213,7 +219,7 @@ Return gateway implementation and JSON-RPC wire-format version information.
 
 ```json
 {
-  "wireFormat": "2.1.0",
+  "wireFormat": "3.0.0",
   "implementation": "groundhog-rpc",
   "commitHash": "abc123"
 }
@@ -369,7 +375,7 @@ Standard JSON-RPC 2.0 error codes apply. The gateway also defines application-sp
 
 **TypeScript/JavaScript.** The `@groundhogchain/client`, `@groundhogchain/protocol`, and related packages provide TypeScript types, codecs, and helpers for building gateway calls. See [TypeScript SDK](/tools/typescript-sdk/) for details.
 
-**Rust.** The `groundhog-rpc` crate includes a typed JSON-RPC client generated from the same trait that defines the gateway. Import `groundhog_rpc_client` for a ready-made client.
+**Rust.** The `groundhog-json-rpc-client` crate provides a typed client generated from the same trait that defines the gateway. Import `groundhog_json_rpc_client` and its `GroundhogApiClient` trait.
 
 ## Future Phases
 

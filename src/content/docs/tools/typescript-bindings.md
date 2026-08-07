@@ -9,8 +9,8 @@ Use this page when you have a `.spec.xdr` sidecar or a legacy `.wasm` artifact a
 
 For the general JSON-RPC client, transports, signing, and package map, see [TypeScript SDK](/tools/typescript-sdk/).
 
-:::caution[Source checkout required]
-Current CLI-generated bindings target the unreleased `client-ts` source and protocol package `0.4.x` shapes. Published `@groundhogchain/client@0.1.4` has no `./contracts` export and uses an older contract-spec type without events. Follow the source installation in [TypeScript SDK](/tools/typescript-sdk/#install) until a compatible client is published.
+:::note[Version checked]
+This page was source-checked against Groundhog CLI `0.6.3`, published `@groundhogchain/client` `0.1.6`, and protocol packages `0.5.0` on August 5, 2026.
 :::
 
 ## What Bindings Provide
@@ -128,14 +128,14 @@ The codegen maps Rust contract types to TypeScript as follows:
 
 `u8` is intentionally rejected as a bare type. It must appear inside `Vec`, `Bytes`, or an array so the generated TypeScript can use `Uint8Array`.
 
-`Signer<T>` and its `SignedToken` contract-spec representation are not supported by the current TypeScript generator. Codegen exits with an unsupported-type error when either appears in the spec.
+`Signed<T>` and its `SignedToken` contract-spec representation are not supported by the current TypeScript generator. Codegen exits with an unsupported-type error when a signed token appears in the spec.
 
 ## Standard Contract Bindings
 
 `@groundhogchain/client` also ships generated bindings for standard interfaces under the `./contracts` subpath. These are useful when your app talks to well-known contracts without generating local bindings first.
 
 :::caution[Bundled ERC-20 version]
-The current unreleased client source bundles ERC-20 spec metadata from interface `0.1.3`; the current Rust standard interface source is `0.1.4`. Published client `0.1.4` does not export the `./contracts` subpath at all. The shown helper signatures target the source checkout, but generated metadata is not the current interface source of truth.
+Published client `0.1.6` exports `./contracts` and bundles ERC-20 spec metadata from interface `0.1.3`; the current Rust standard interface source is `0.1.7`. The shown methods remain SemVer-compatible, but the Rust interface is the current source of truth for metadata.
 :::
 
 The ERC-20 binding includes helpers such as:

@@ -8,7 +8,7 @@ Groundhog's guide docs live on this site. Generated Rustdoc for the Rust crates 
 During early access, Rustdoc may require the credentials from your onboarding instructions. Use the [`sdk` crate root](https://groundhog.dev/docs/sdk/latest/sdk/) first for SDK overview sections on storage, macros, calling and errors, events, and testing. Use item pages when you need exact signatures, trait bounds, re-exports, source links, or crate-level API details. Use this site for workflows, tutorials, and programming model guidance.
 
 :::note[Version checked]
-This page was last checked against the published SDK `0.17.1` Rustdoc on July 13, 2026.
+This page's API inventory was source-checked against SDK `0.17.9` on August 5, 2026. The links use the `latest` Rustdoc route.
 :::
 
 ## Common Links
@@ -19,7 +19,9 @@ This page was last checked against the published SDK `0.17.1` Rustdoc on July 13
 | Common contract types | [`ContractAddress`](https://groundhog.dev/docs/sdk/latest/sdk/types/struct.ContractAddress.html), [`SHA256Hash`](https://groundhog.dev/docs/sdk/latest/sdk/types/struct.SHA256Hash.html) |
 | Native test environment | [`TestEnvironment`](https://groundhog.dev/docs/sdk/latest/sdk/struct.TestEnvironment.html) |
 | Storage wrappers | [`sdk::storage`](https://groundhog.dev/docs/sdk/latest/sdk/storage/index.html) |
+| Ordinary balances | [`Balance`](https://groundhog.dev/docs/sdk/latest/sdk/storage/balance/struct.Balance.html) |
 | Commutative integers | [`NNInt`](https://groundhog.dev/docs/sdk/latest/sdk/storage/nnint/struct.NNInt.html) |
+| Shared capacity limits | [`CapacityConstraint`](https://groundhog.dev/docs/sdk/latest/sdk/storage/capacity_constraint/struct.CapacityConstraint.html) |
 | Keyed storage | [`Map`](https://groundhog.dev/docs/sdk/latest/sdk/storage/map/struct.Map.html) |
 | Typed value storage | [`Value`](https://groundhog.dev/docs/sdk/latest/sdk/storage/value/struct.Value.html) |
 | Byte storage | [`Bytestring`](https://groundhog.dev/docs/sdk/latest/sdk/storage/bytestring/struct.Bytestring.html) |

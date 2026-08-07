@@ -3,9 +3,9 @@ title: Syscalls
 description: Authoritative reference for the host functions exposed to Groundhog contracts, generated from the protocol's syscalls.yaml.
 ---
 
-These are the host functions available to WASM contracts. Most developers use the SDK rather than calling syscalls directly. See [Programming Model: Storage Types](/programming-model/storage-types/) for the high-level API.
+These are the host functions available to Groundhog guest contracts. Most developers use the SDK rather than calling syscalls directly. See [Programming Model: Storage Types](/programming-model/storage-types/) for the high-level API.
 
-All syscalls share a single imported function. The first argument is the syscall number. The remaining slots carry typed inputs and outputs as `u64` values: primitive integers are passed directly, larger value types are passed as pointers into WASM linear memory, and variable-length buffers are passed as `(offset, length)` pairs (spans). The protocol fixes the total argument count at 10 (one syscall number plus nine input/output slots). Syscalls that need fewer slots pad the unused ones with arbitrary values.
+The tables below describe the protocol's logical typed interface. The generated low-level bindings map it to each guest target's ABI. In the legacy wasm32 ABI, all syscalls share one imported function with eight 32-bit argument slots: one syscall number and seven input/output slots. Values that do not fit in a slot are passed indirectly, and variable-length buffers use spans.
 
 The return value is a `SyscallErrorCode`. Any syscall can return `Fault` (1) if a pointer argument is out of WASM memory bounds, or `NoSyscall` (2) if the syscall number is not supported. Per-syscall error codes are listed with each entry below, and the full enum is at the bottom of this page.
 
@@ -139,23 +139,18 @@ Emits an event with up to three 32-byte topics and a data payload. The serialize
 | Direction | Name | Type |
 |-----------|------|------|
 | in | `address` | `ContractAddress` |
-| in | `entrypoint_id` | `u64` (little-endian `ContractEntrypointID`, `[u8; 8]`) |
-| in | `gas_limit` | `GasAmount` |
 | in | `calldata` | `[u8]` (span) |
-| in | `flags` | `InvokeFlagSet` |
 | in | `owned_auth_token_ids_list` | `[u8]` (span, interpreted as `[u32]`) |
-| out | `return_buffer_len` | `RuntimeMemoryLength` |
-| out | `returned_auth_token_len` | `RuntimeMemoryLength` |
+| in | `inputs` | `CopyableInvokeInputs` (`entrypoint_id`, `gas_limit`, `flags`) |
+| out | `outputs` | `CopyableInvokeOutputs` (`return_buffer_len`, `returned_auth_token_len`, `frame_status`) |
 
 Errors:
-- `InvalidSyscallInput` if the target contract is not found, or if any auth-token id in `owned_auth_token_ids_list` is duplicated or not owned by the current frame.
-- `DeterministicWasm` if the callee terminates with an unspecified internal error (including running out of gas).
-- `FrameReverted` if the callee reverts itself.
+- `InvalidSyscallInput` if the call is rejected before a child frame runs: the target is missing, the flags are invalid, or an auth-token id is malformed, duplicated, or not owned by the current frame.
 - `Reentrance` if the invoked address is already on the call stack.
 
 Invokes the specified entrypoint of the contract at `address` with the supplied calldata and auth tokens, creating a new call frame. The new frame is capped at `min(gas_limit, remaining gas in current frame)`; unused child-frame gas returns to the caller's execution budget. This is not a token refund. The SDK defaults `gas_limit` to `u64::MAX` so the child inherits everything the parent has left.
 
-`entrypoint_id` is the little-endian interpretation of an 8-byte `ContractEntrypointID`, passed as a `u64` so a clever compiler can keep it on the WASM stack rather than spilling it to linear memory.
+`entrypoint_id` is the little-endian interpretation of an 8-byte `ContractEntrypointID`. `frame_status` is `Return`, `Abort`, or `Fault`; it reports the outcome after a child frame actually runs. A nonzero syscall error means the call was rejected before the child ran and the output struct is untouched.
 
 ### GetMsgSender
 
@@ -516,7 +511,7 @@ Consumes an authentication token owned by the current contract address. Returns 
 
 | Direction | Name | Type |
 |-----------|------|------|
-| in | `caller_address` | `Option<ContractAddress>` |
+| in | `caller_address` | `ContractAddress` |
 | in | `nonce` | `SHA256Hash` |
 | in | `contract_hash` | `SHA256Hash` |
 | out | `to_be_deployed` | `ContractAddress` |
@@ -607,5 +602,4 @@ The full `SyscallErrorCode` enum, from `protocol/syscall_error.x`:
 | 7 | `InvalidSyscallInput` | Invalid input to a syscall (type mismatch, value out of range, data too long, bad flags, etc.). |
 | 8 | `StorageKeyNotExist` | The storage key does not exist in the current view. |
 | 9 | `NoRetrocausalQueueEntry` | The retrocausal queue is empty. |
-| -1 | `DeterministicWasm` | Deterministic error inside called WASM (trap, out of gas, etc.). Signals that the called frame reverted. |
-| -2 | `FrameReverted` | The child call frame manually reverted. Signals that the called frame reverted. |
+| 10 | `RetrocausalQueueReadLimitReached` | The transaction reached its concurrent RCQ read limit. The contract may use this as a stop condition. |

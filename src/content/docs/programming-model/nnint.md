@@ -3,7 +3,9 @@ title: NNInt In Depth
 description: The set_add primitive underneath NNInt and why concurrent transactions merge.
 ---
 
-You've been using `strict_inc` to write to NNInt values. Here's what's happening underneath, and why concurrent transactions can merge safely.
+`NNInt` is the lower-level signed-integer storage API underneath [`Balance`](/programming-model/storage-types/#balance). This page explains its `set_add` representation and why concurrent transactions can merge safely.
+
+Most contracts should use `Balance` for balances, allowances, and supply. Read this page when you need signed changes, an explicit integer base, or the exact representation that makes checked and lazy balance deltas compatible.
 
 For exact SDK method signatures, see [`NNInt` Rustdoc](https://groundhog.dev/docs/sdk/latest/sdk/storage/nnint/struct.NNInt.html) or [Storage Types Reference](/reference/storage-types/#nnint).
 
@@ -22,7 +24,7 @@ Despite the protocol name `NonnegativeInt`, current source allows an explicit ne
 value >= min(set, 0)
 ```
 
-So `set(-5)` may commit `-5`, and `set_add(-5, 10)` may commit `5`. The engine still rejects subtracting from an already-negative explicit base, such as `set_add(-5, -1)`. For ordinary balances and counters, use nonnegative bases and `strict_inc`.
+So `set(-5)` may commit `-5`, and `set_add(-5, 10)` may commit `5`. The engine still rejects subtracting from an already-negative explicit base, such as `set_add(-5, -1)`. Use `Balance` for ordinary balances. Use `NNInt` when the state model needs signed changes or an explicit base.
 
 Your contract never calls `set_add` directly. The SDK methods (`strict_inc`, `inc`, `set`) map onto it. But this two-component model is what makes the commutativity rules simple and mechanical.
 
@@ -62,7 +64,7 @@ Since `None` resolves to the start-of-block value, commutativity depends on what
 | `inc(delta)` | `set_add(existing_set_or_None, accumulated + delta)` | No | Yes, when all callers resolve to the same snapshot base |
 | `set(value)` | `set_add(Some(value), 0)` | No | Only if all concurrent callers set the same value |
 
-**strict_inc(delta)**: loads the current base (pending explicit set, snapshot NNInt, or `0` for an empty key), checks that this invocation's total is nonnegative, then calls `set_add(Some(base), accumulated + delta)`. Aborts immediately if this invocation's result would be negative. This is the common case. Use this for balances, counters, and any hot path.
+**strict_inc(delta)**: loads the current base (pending explicit set, snapshot NNInt, or `0` for an empty key), checks that this invocation's total is nonnegative, then calls `set_add(Some(base), accumulated + delta)`. Aborts immediately if this invocation's result would be negative. Use this when lower-level integer state needs an early underflow check.
 
 **inc(delta)**: preserves the pending set value if one already exists in this invocation; otherwise calls `set_add(None, accumulated + delta)`. Skips the forced snapshot read. Underflow is caught later by runtime reservation/floor checks when no explicit base has been loaded, which can be harder to debug.
 
@@ -72,8 +74,8 @@ Since `None` resolves to the start-of-block value, commutativity depends on what
 
 ## Why This Matters
 
-Transaction ordering does not matter on Groundhog. When every concurrent write resolves to the same base, the deltas are addition. Addition commutes.
+For NNInt writes that resolve to the same base, transaction ordering does not affect the merged value. The deltas are addition, and addition commutes.
 
 This is what "compatible" means in [Merged Deltas](/programming-model/execution/#merged-deltas): at reservation, the system checks whether all deltas for a given storage location share the same resolved set value. If they do, the adds merge. If they don't, one transaction is excluded.
 
-Pick the right storage type, use `strict_inc` on hot paths, and the runtime handles concurrency for you.
+Pick the narrowest storage API that fits the state. Use `Balance` for balances and `NNInt` when you need signed changes or explicit bases. The runtime handles their concurrency rules.

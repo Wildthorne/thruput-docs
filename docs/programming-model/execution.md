@@ -37,7 +37,7 @@ Previous block committed state
 
 1. **Snapshot**: block boundary freezes state. All transactions read from this.
 2. **Execute**: transactions run against the snapshot and produce deltas.
-3. **Reserve**: deltas are checked for compatibility using each storage type's merge rules (see [storage-types.md](./storage-types.md)). The engine may resolve some conflicts eagerly during execution, but the developer-facing rule is the same.
+3. **Reserve**: after a root contract call returns, its delta batch is checked for compatibility using each storage type's merge rules (see [storage-types.md](./storage-types.md)). Multiple executor workers can reserve compatible batches concurrently.
 4. **Merge or exclude**: compatible deltas merge into new state. Incompatible transactions are excluded and returned to the mempool.
 
 ## Exclusion, Not Failure
@@ -85,7 +85,8 @@ Writing data to the ledger locks HOG proportional to bytes stored. Deleting data
 
 ## What This Means for Contract Design
 
-- **Default to NNInt deltas.** They commute. Concurrent transactions merge instead of conflicting.
+- **Use Balance for ordinary balances.** Checked and lazy increases and decreases map to mergeable NNInt deltas.
+- **Use NNInt for lower-level integer state.** It adds signed deltas and explicit base operations when the data model needs them.
 - **Use Map for independent entities.** Different keys never interact.
 - **Use Bytestring sparingly.** Concurrent writes conflict. Use it for config or ownership, not hot paths.
 - **Don't write retry logic.** The mempool handles excluded transactions.

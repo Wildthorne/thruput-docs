@@ -7,8 +7,8 @@ description: Use @groundhogchain/client and related TypeScript packages with Gro
 
 Use this page for current package setup and supported chain reads. For contract-specific invocation builders, see [TypeScript Bindings](/tools/typescript-bindings/).
 
-:::caution[No current published client]
-The published client `0.1.4` tag was generated against RPC `0.5.10` and lacks several APIs shown on this page. The current `client-ts` source has unreleased support for more of gateway `0.5.17`, but still lacks `getTransactionsByAddress` and the newer `recentFailure` transaction status. The examples below target the current source checkout, not published `0.1.4`. Use the CLI for production transaction submission until an aligned client release is published.
+:::note[Version checked]
+This page was source-checked against published `@groundhogchain/client` `0.1.6`, protocol packages `0.5.0`, and the `client-ts` main branch on August 5, 2026. The client implements the current method set, including transaction history and `recentFailure`. Its pinned OpenRPC file still reports wire `2.3.1`, while the current Rust gateway reports `3.0.0`.
 :::
 
 ## Install
@@ -20,24 +20,14 @@ Dependencies are hosted on GitHub Packages. Add the scope and a token with `read
 //npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}
 ```
 
-Clone and build the current client source:
-
-```bash
-gh auth refresh -h github.com -s read:packages
-git clone https://github.com/groundhogchain/client-ts.git
-cd client-ts
-NODE_AUTH_TOKEN="$(gh auth token)" npm install
-npm run build
-```
-
-Install that built checkout into your application, then add the direct dependencies used by generated bindings:
+The client requires Node.js `22.12.0` or newer. Install the published client and the direct dependencies used by generated bindings:
 
 ```bash
 NODE_AUTH_TOKEN="$(gh auth token)" npm install \
-  /path/to/client-ts \
-  @groundhogchain/protocol@0.4.2 \
-  @groundhogchain/contract-spec@0.4.2 \
-  @groundhogchain/xdr@0.4.2
+  @groundhogchain/client@0.1.6 \
+  @groundhogchain/protocol@0.5.0 \
+  @groundhogchain/contract-spec@0.5.0 \
+  @groundhogchain/xdr@0.5.0
 ```
 
 Generated bindings import `contract-spec` directly and import `xdr` when event decoders are present. Declare them in applications that compile generated files, especially with pnpm's strict dependency layout.
@@ -46,11 +36,11 @@ Generated bindings import `contract-spec` directly and import `xdr` when event d
 
 | Component | Version checked | Status |
 |-----------|-----------------|--------|
-| `@groundhogchain/client` | current `client-ts` source | Unreleased APIs used by this page; manifest still says `0.1.4` |
-| Published `@groundhogchain/client` | `0.1.4` | Legacy API generated from RPC `0.5.10` |
-| TypeScript protocol packages | `0.4.2` | Published binding dependencies |
-| Groundhog gateway | `0.5.17`, wire `2.3.1` | Current Devnet surface |
-| Rust SDK | `0.17.1` | Current contract template baseline |
+| `@groundhogchain/client` | `0.1.6` | Published client with transaction history and recent-failure status support |
+| TypeScript protocol packages | `0.5.0` | Published binding dependencies |
+| Groundhog gateway | `0.6.3`, wire `3.0.0` | Current Rust source |
+| Client's pinned OpenRPC | wire `2.3.1` | Has not yet been regenerated to the gateway's advertised wire version |
+| Rust SDK | `0.17.9` | Current contract template baseline |
 
 ## Minimal Client
 
@@ -91,16 +81,17 @@ JSON-RPC error responses throw `JsonRpcError`. HTTP failures, timeouts, and malf
 
 ## Supported Reads
 
-The published convenience client supports:
+The convenience client supports:
 
 - Chain tip and gateway version
 - Native HOG balances
 - Read-only contract views
 - Transaction status and committed receipts, subject to the status compatibility warning above
 - Event queries
+- Transaction history by root invocation address
 - Raw committed storage reads
 
-`getBlockByNumber` and `getPendingTransactionCount` exist on current `client-ts` main, but the gateway returns JSON-RPC error `-32052` for both. The gateway also exposes `groundhog_getTransactionsByAddress`, which current client source does not yet wrap.
+`getBlockByNumber` and `getPendingTransactionCount` exist in client `0.1.6`, but the current gateway returns JSON-RPC error `-32052` for both.
 
 Read a native HOG balance:
 
@@ -166,7 +157,7 @@ if (receipt?.execResult === ExecResult.ExecResultOK) {
 | Use case | Tool |
 |----------|------|
 | Connect to JSON-RPC | `@groundhogchain/client` |
-| Read tip, version, balances, storage, views, receipts, or events | `@groundhogchain/client` |
+| Read tip, version, balances, storage, views, receipts, transaction history, or events | `@groundhogchain/client` |
 | Build calldata for a contract method | generated TypeScript binding |
 | Decode a declared contract event | generated TypeScript binding |
 | Decode method return bytes | contract-specific CXS codec code |
@@ -185,7 +176,7 @@ if (receipt?.execResult === ExecResult.ExecResultOK) {
 
 ## Generate API Docs Locally
 
-The repositories contain TypeDoc configuration, but no public TypeDoc deployment was available when this page was checked. Generate the references locally:
+The source repositories contain TypeDoc configuration. Generate the client reference locally:
 
 ```bash
 cd /path/to/client-ts
@@ -193,14 +184,7 @@ NODE_AUTH_TOKEN="$(gh auth token)" npm install
 npm run docs
 ```
 
-```bash
-git clone https://github.com/groundhogchain/protocol-ts.git
-cd protocol-ts
-NODE_AUTH_TOKEN="$(gh auth token)" npm install
-npm run docs
-```
-
-Use `npm run docs:check` to validate TypeDoc without writing output.
+Use `npm run docs:check` to validate TypeDoc without writing output. The protocol packages are published from the separate `protocol-ts` repository.
 
 ## Related Documentation
 

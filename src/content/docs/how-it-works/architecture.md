@@ -13,16 +13,18 @@ Most parallel systems put the burden on the developer: declare your locks, speci
 
 Groundhog takes a different approach. Instead of asking developers to manage concurrency, it provides storage types that guarantee correctness under parallel execution:
 
-- **NNInt**: concurrent increments merge by addition. Two transfers to the same account produce two deltas that combine cleanly.
+- **Balance**: checked and lazy increases and decreases for non-negative balances. Compatible deltas from either form combine cleanly.
+- **NNInt**: lower-level signed changes merge by addition. Use it for counters and other integer state.
 - **Map**: operations on different keys never interact. Operations on the same key follow the value type's rules.
+- **CapacityConstraint**: reserves or releases capacity against a shared limit.
 - **RetrocausalQueue**: multiple producers, always mergeable.
 - **Bytestring**: concurrent writes of different values conflict. Use for data written rarely.
 
-If two transactions both increment a balance, the deltas merge. If two transactions write conflicting values to the same bytestring, one is excluded from the block and returned to the mempool. The contract developer doesn't choose a locking strategy or declare access patterns. The system guarantees correctness: balances never go negative, conflicting writes never silently overwrite each other.
+If two transactions both lazily increase a balance, the deltas merge. If two transactions write conflicting values to the same bytestring, one is excluded from the block and returned to the mempool. The contract developer doesn't choose a locking strategy or declare access patterns. The system guarantees correctness: balances never go negative, conflicting writes never silently overwrite each other.
 
 This is not an optimization bolted onto a sequential design. It is the design. Every layer of Groundhog, from the ledger format to the syscall interface to the SDK, is built around typed, mergeable storage.
 
-The SDK provides convenience layers (`NNInt`, `Map`, `#[storage]` macros) that make common patterns easy, but these are optional. You can work directly with the raw syscall interface and build your own storage abstractions. The SDK is middleware, not a framework. See [Getting Started](/start/getting-started/#the-sdk-is-layered) for the full layering.
+The SDK provides convenience layers (`Balance`, `NNInt`, `Map`, `#[storage]` macros) that make common patterns easy, but these are optional. You can work directly with the raw syscall interface and build your own storage abstractions. The SDK is middleware, not a framework. See [Getting Started](/start/getting-started/#the-sdk-is-layered) for the full layering.
 
 For the contract-writing rules, see [Merged Deltas](/programming-model/execution/#merged-deltas). For the engine internals, see [Execution Model](/how-it-works/execution-model/). For the full type API, see [Storage Types Reference](/reference/storage-types/).
 
@@ -64,5 +66,5 @@ Every transaction in the block runs steps 2-4 simultaneously. Step 5-6 is where 
 - [Merged Deltas](/programming-model/execution/#merged-deltas): Contract-writing rules for concurrent state changes
 - [Execution Model](/how-it-works/execution-model/): How the engine implements the programming model
 - [Transaction Lifecycle](/how-it-works/transaction-lifecycle/): The six stages from submission to commit
-- [Storage Types Reference](/reference/storage-types/): Full API for NNInt, Map, Vector, Value, Bytestring, and RetrocausalQueue
+- [Storage Types Reference](/reference/storage-types/): Full API for Balance, NNInt, Map, Vector, Value, Bytestring, CapacityConstraint, and RetrocausalQueue
 - [Storage & Scheduling Economics](/how-it-works/storage-economics/): The capital-based cost model

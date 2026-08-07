@@ -9,25 +9,62 @@ Rustdoc shortcuts:
 
 | Area | Links |
 |------|-------|
-| Storage types | [`NNInt`](https://groundhog.dev/docs/sdk/latest/sdk/storage/nnint/struct.NNInt.html), [`Map`](https://groundhog.dev/docs/sdk/latest/sdk/storage/map/struct.Map.html), [`Vector`](https://groundhog.dev/docs/sdk/latest/sdk/storage/vector/struct.Vector.html), [`Value`](https://groundhog.dev/docs/sdk/latest/sdk/storage/value/struct.Value.html), [`Bytestring`](https://groundhog.dev/docs/sdk/latest/sdk/storage/bytestring/struct.Bytestring.html), [`RCQ`](https://groundhog.dev/docs/sdk/latest/sdk/storage/rcq/struct.RCQ.html), [`Node`](https://groundhog.dev/docs/sdk/latest/sdk/storage/node/struct.Node.html) |
+| Storage types | [`Balance`](https://groundhog.dev/docs/sdk/latest/sdk/storage/balance/struct.Balance.html), [`NNInt`](https://groundhog.dev/docs/sdk/latest/sdk/storage/nnint/struct.NNInt.html), [`CapacityConstraint`](https://groundhog.dev/docs/sdk/latest/sdk/storage/capacity_constraint/struct.CapacityConstraint.html), [`Map`](https://groundhog.dev/docs/sdk/latest/sdk/storage/map/struct.Map.html), [`Vector`](https://groundhog.dev/docs/sdk/latest/sdk/storage/vector/struct.Vector.html), [`Value`](https://groundhog.dev/docs/sdk/latest/sdk/storage/value/struct.Value.html), [`Bytestring`](https://groundhog.dev/docs/sdk/latest/sdk/storage/bytestring/struct.Bytestring.html), [`RCQ`](https://groundhog.dev/docs/sdk/latest/sdk/storage/rcq/struct.RCQ.html), [`Node`](https://groundhog.dev/docs/sdk/latest/sdk/storage/node/struct.Node.html) |
 | Borrow guards | [`SlotRef`](https://groundhog.dev/docs/sdk/latest/sdk/storage/slot/struct.SlotRef.html), [`SlotMut`](https://groundhog.dev/docs/sdk/latest/sdk/storage/slot/struct.SlotMut.html), [`DisjointMut`](https://groundhog.dev/docs/sdk/latest/sdk/storage/map/struct.DisjointMut.html) |
 | Traits and paths | [`Deletable`](https://groundhog.dev/docs/sdk/latest/sdk/storage/deletable/trait.Deletable.html), [`StorageType`](https://groundhog.dev/docs/sdk/latest/sdk/storage/node/trait.StorageType.html), [`Keypath`](https://groundhog.dev/docs/sdk/latest/sdk/storage/keypath/struct.Keypath.html) |
 
 ## NNInt
 
-Integer storage for signed changes that concurrent transactions can combine. Used for balances, counters, and supply tracking.
+Integer storage with signed changes, an explicit `set`, and a commit-time floor. Concurrent changes can combine.
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
 | `get` | `fn get(&self) -> i128` | Read current value. Aborts if the location has never been set. |
-| `try_get` | `fn try_get(&self) -> Option<i128>` | Read current value. Returns `None` if never set. |
+| `try_get` | `fn try_get(&self) -> Result<i128, LibraryExn>` | Read current value without aborting. Missing storage is an `Err` identifiable with `is_storage_missing()`. |
 | `set` | `fn set(&mut self, set_value: i128)` | Set the value. Uses the keypath's locking mode. |
 | `inc` | `fn inc(&mut self, increment: i128)` | Add `increment` without forcing a snapshot read. Underflow is caught by later runtime checks, not immediately. |
 | `strict_inc` | `fn strict_inc(&mut self, increment: i128)` | Add `increment`, loading the current base for early underflow detection. Aborts immediately if the result would be negative. |
+| `try_strict_inc` | `fn try_strict_inc(&mut self, increment: i128) -> Result<(), LibraryExn>` | Checked increment that reports overflow, underflow, or storage failure instead of aborting. Leaves storage unmodified on `Err`. |
 
-Pass a negative value to `inc` or `strict_inc` to decrement. Use `strict_inc` by default. See [Merged Deltas](/programming-model/execution/#merged-deltas) for the contract-level model and [NNInt In Depth](/programming-model/nnint/) for the underlying rules.
+Pass a negative value to `inc` or `strict_inc` to decrement. Use `Balance` for ordinary balances and allowances. See [Merged Deltas](/programming-model/execution/#merged-deltas) for the contract-level model and [NNInt In Depth](/programming-model/nnint/) for the underlying rules.
 
 Exclusivity is controlled by the **keypath flag** set at storage-derivation time, not by a `set_exclusive` method. For ad-hoc exclusive writes, use the free function `non_negative_int_set_exclusive` from `sdk::sys_exn::nnint`.
+
+Implements `Deletable`.
+
+## Balance
+
+Nonnegative, zero-defaulting `u128` storage over the same mergeable representation as `NNInt`. Represents values from `0` through `i128::MAX`.
+
+| Method | Signature | Description |
+|--------|-----------|-------------|
+| `get` | `fn get(&self) -> u128` | Read the balance. A never-written location returns zero. |
+| `try_get` | `fn try_get(&self) -> Result<u128, LibraryExn>` | Read without aborting. A never-written location returns `Ok(0)`. |
+| `increase` | `fn increase(&mut self, amount: u128)` | Load and increase the balance. Aborts immediately on overflow. |
+| `try_increase` | `fn try_increase(&mut self, amount: u128) -> Result<(), LibraryExn>` | Checked increase that reports failure and leaves storage unmodified on `Err`. |
+| `decrease` | `fn decrease(&mut self, amount: u128)` | Load and decrease the balance. Aborts immediately if funds are insufficient. |
+| `try_decrease` | `fn try_decrease(&mut self, amount: u128) -> Result<(), LibraryExn>` | Checked decrease that reports failure and leaves storage unmodified on `Err`. |
+| `lazy_increase` | `fn lazy_increase(&mut self, amount: u128)` | Record an increase without loading the committed balance. Aggregate overflow is checked during delta reservation after contract execution. |
+| `try_lazy_increase` | `fn try_lazy_increase(&mut self, amount: u128) -> Result<(), LibraryExn>` | Lazy increase that reports immediate conversion or accumulated-delta overflow. |
+| `lazy_decrease` | `fn lazy_decrease(&mut self, amount: u128)` | Record a decrease without loading the committed balance. Aggregate sufficiency is checked during delta reservation after contract execution. |
+| `try_lazy_decrease` | `fn try_lazy_decrease(&mut self, amount: u128) -> Result<(), LibraryExn>` | Lazy decrease that reports immediate conversion or accumulated-delta underflow. |
+
+`Balance::MAX` is `i128::MAX as u128`. `Balance` exposes no absolute `set` or signed-adjustment method. Implements `Deletable`.
+
+## CapacityConstraint
+
+Commit-time capacity for a contract-defined linear constraint. Changes are staged on the handle and written when the handle is flushed or dropped.
+
+| Method | Signature | Description |
+|--------|-----------|-------------|
+| `get_remaining_capacity` | `fn get_remaining_capacity(&self) -> i128` | Return the committed capacity plus changes staged in this transaction and handle. A never-written location starts at zero. |
+| `try_get_remaining_capacity` | `fn try_get_remaining_capacity(&self) -> Result<i128, LibraryExn>` | Read remaining capacity without aborting. |
+| `consume_capacity` | `fn consume_capacity(&mut self, amount: i128)` | Stage consumption for commit-time enforcement. A negative amount releases capacity. |
+| `try_consume_capacity` | `fn try_consume_capacity(&mut self, amount: i128) -> Result<(), LibraryExn>` | Stage consumption and report arithmetic overflow instead of aborting. |
+| `set_capacity` | `fn set_capacity(&mut self, capacity: i128)` | Set the capacity. Must be the first write in the transaction, except for an idempotent repeat. |
+| `try_set_capacity` | `fn try_set_capacity(&mut self, capacity: i128) -> Result<(), LibraryExn>` | Set capacity and report invalid write ordering instead of aborting. |
+| `flush` | `fn flush(&mut self)` | Merge staged changes into pending storage immediately. |
+| `try_flush` | `fn try_flush(&mut self) -> Result<(), LibraryExn>` | Flush staged changes and report failure instead of aborting. |
 
 Implements `Deletable`.
 
@@ -44,7 +81,7 @@ Key-value map. `K` must implement `WriteXDR`. `V` must implement `StorageType`.
 | `at_disjoint_unchecked_mut` | `unsafe fn at_disjoint_unchecked_mut<const N: usize>(&mut self, keys: [&K; N]) -> DisjointMut<'_, Self, V, N>` | Mutably borrow N elements without duplicate checking. Caller must ensure all keys are disjoint. |
 | `keypath` | `fn keypath(&self) -> &Keypath` | Reference to the map's root keypath. |
 
-`K` additionally requires `PartialEq` for `at_disjoint_mut`.
+`at_disjoint_mut` compares derived storage keypaths, so `K` does not need `PartialEq`. It panics when two supplied keys address the same storage slot.
 
 Maps do not support enumeration. No `keys()` method, no iteration.
 
@@ -56,7 +93,7 @@ Borrow guard returned by `at_disjoint_mut`. Holds an exclusive borrow on the map
 
 ## Vector\<S\>
 
-Indexed, append-only collection. `S` must implement `StorageType`. Built on `Map<u32, S>` internally, with a separately stored length.
+Indexed collection. `S` must implement `StorageType`. Built on `Map<u32, S>` internally, with a separately stored length.
 
 Slots are sparse-capable: deleting element storage does not shrink `len`, so an in-bounds index does not guarantee the slot has backing data.
 
@@ -86,16 +123,23 @@ A typed storage slot for serialized values. All operations are immediate syscall
 | Method | Signature | Description |
 |--------|-----------|-------------|
 | `get` | `fn get(&self) -> T` | Deserialize and return the stored value. Aborts if the key does not exist. |
-| `try_get` | `fn try_get(&self) -> Option<T>` | Deserialize and return the stored value. Returns `None` if the key does not exist. |
+| `try_get` | `fn try_get(&self) -> Result<T, LibraryExn>` | Deserialize without aborting. Missing storage is an `Err` identifiable with `is_storage_missing()`. |
 | `set` | `fn set(&mut self, value: &T)` | Serialize and store the value. Uses the keypath's locking mode. |
+| `try_set` | `fn try_set(&mut self, value: &T) -> Result<(), LibraryExn>` | Serialize and store without aborting. Leaves storage unmodified on `Err`. |
 | `set_exclusive` | `fn set_exclusive(&mut self, value: &T)` | Serialize and store the value with an exclusive lock, regardless of keypath flag. |
+| `try_set_exclusive` | `fn try_set_exclusive(&mut self, value: &T) -> Result<(), LibraryExn>` | Exclusive store that reports failure instead of aborting. |
 | `load_mut` | `fn load_mut(&mut self) -> ValueMut<'_, T>` | Load the value and return a mutable guard. Flushes back to storage on drop. Requires `T: WriteXDR + ReadXDR`. |
 
 Implements `Deletable`.
 
 ### ValueMut\<T\>
 
-Mutable guard returned by `load_mut`. Implements `Deref<Target = T>` and `DerefMut`. Calls `set` on drop to flush changes back to storage.
+Mutable guard returned by `load_mut`. Implements `Deref<Target = T>` and `DerefMut`. A guard that receives mutable access writes back on drop. A read-only guard performs no write.
+
+| Method | Signature | Description |
+|--------|-----------|-------------|
+| `flush` | `fn flush(&mut self)` | Write a dirty value immediately. A clean guard is a no-op. |
+| `try_flush` | `fn try_flush(&mut self) -> Result<(), LibraryExn>` | Flush and report serialization or storage failure instead of aborting. |
 
 ## Bytestring
 
@@ -105,8 +149,9 @@ Arbitrary byte data. Raw bytes in, raw bytes out.
 |--------|-----------|-------------|
 | `len` | `fn len(&self) -> usize` | Length in bytes. |
 | `is_empty` | `fn is_empty(&self) -> bool` | True if length is zero. |
+| `exists` | `fn exists(&self) -> bool` | True if a bytestring exists. Returns false for a missing key. |
 | `get` | `fn get(&self) -> Box<[u8]>` | Read stored bytes as a heap-allocated slice. |
-| `try_get` | `fn try_get(&self) -> Option<Box<[u8]>>` | Read stored bytes. Returns `None` if the key does not exist. |
+| `try_get` | `fn try_get(&self) -> Result<Box<[u8]>, LibraryExn>` | Read without aborting. Missing storage is an `Err` identifiable with `is_storage_missing()`. |
 | `get_sized` | `fn get_sized<const N: usize>(&self) -> [u8; N]` | Read into a fixed-size array. Aborts if length does not match `N`. |
 | `set` | `fn set(&mut self, buf: &[u8])` | Write bytes. Uses the keypath's locking mode (exclusive if the keypath flag is set). |
 
@@ -125,17 +170,17 @@ The typed wrapper lives in `sdk::storage`. Lower-level free functions (operating
 | `insert` | `fn insert(&mut self, entry: &T)` where `T: WriteXDR` | XDR-encode and insert the entry. |
 | `insert_raw` | `fn insert_raw(&mut self, queue_entry: &[u8])` | Insert raw bytes; bypasses XDR encoding. |
 | `consume` | `fn consume(&mut self) -> T` where `T: ReadXDROwned` | Consume the next entry and decode it. Aborts if the queue is empty or the entry cannot be decoded. |
-| `try_consume` | `fn try_consume(&mut self) -> Option<T>` where `T: ReadXDROwned` | Consume the next entry if one exists. |
+| `try_consume` | `fn try_consume(&mut self) -> Result<T, LibraryExn>` where `T: ReadXDROwned` | Consume and decode without aborting. A decode failure leaves the entry in the queue. |
 | `consume_raw` | `fn consume_raw(&mut self) -> Box<[u8]>` | Consume the next entry as raw bytes. Aborts if the queue is empty. |
-| `try_consume_raw` | `fn try_consume_raw(&mut self) -> Option<Box<[u8]>>` | Consume the next entry as raw bytes if one exists. |
+| `try_consume_raw` | `fn try_consume_raw(&mut self) -> Result<Box<[u8]>, LibraryExn>` | Consume raw bytes without aborting. |
 | `consume_sized` | `fn consume_sized<const N: usize>(&mut self) -> [u8; N]` | Consume into a fixed-size array. Aborts on size mismatch. |
-| `try_consume_sized` | `fn try_consume_sized<const N: usize>(&mut self) -> Option<[u8; N]>` | Consume into a fixed-size array if an entry exists. Aborts on size mismatch. |
+| `try_consume_sized` | `fn try_consume_sized<const N: usize>(&mut self) -> Result<[u8; N], LibraryExn>` | Consume without aborting. A wrong-size entry is left in the queue. |
 | `peek` | `fn peek(&self) -> T` where `T: ReadXDROwned` | Read the next entry without consuming. Aborts if empty. |
-| `try_peek` | `fn try_peek(&self) -> Option<T>` where `T: ReadXDROwned` | Read the next entry without consuming if one exists. |
+| `try_peek` | `fn try_peek(&self) -> Result<T, LibraryExn>` where `T: ReadXDROwned` | Read and decode without aborting or consuming. |
 | `peek_raw` | `fn peek_raw(&self) -> Box<[u8]>` | Raw-bytes peek. Aborts if empty. |
-| `try_peek_raw` | `fn try_peek_raw(&self) -> Option<Box<[u8]>>` | Raw-bytes peek if an entry exists. |
+| `try_peek_raw` | `fn try_peek_raw(&self) -> Result<Box<[u8]>, LibraryExn>` | Raw-bytes peek without aborting. |
 | `peek_sized` | `fn peek_sized<const N: usize>(&self) -> [u8; N]` | Fixed-size peek. Aborts on size mismatch. |
-| `try_peek_sized` | `fn try_peek_sized<const N: usize>(&self) -> Option<[u8; N]>` | Fixed-size peek if an entry exists. Aborts on size mismatch. |
+| `try_peek_sized` | `fn try_peek_sized<const N: usize>(&self) -> Result<[u8; N], LibraryExn>` | Fixed-size peek without aborting. |
 | `keypath` | `fn keypath(&self) -> &Keypath` | Reference to the queue's root keypath. |
 | `key` | `fn key(&self) -> &StorageKey` | Reference to the queue's resolved storage key. |
 
@@ -147,8 +192,13 @@ Implements `StorageType` and `Deletable`.
 |----------|-----------|-------------|
 | `retrocausal_queue_insert` | `fn retrocausal_queue_insert(key: &StorageKey, queue_entry: &[u8])` | Insert raw bytes. |
 | `retrocausal_queue_consume_sized` | `fn retrocausal_queue_consume_sized<const N: usize>(key: &StorageKey) -> [u8; N]` | Consume a fixed-size entry. Aborts on size mismatch or empty queue. |
+| `retrocausal_queue_try_consume_sized` | `fn retrocausal_queue_try_consume_sized<const N: usize>(key: &StorageKey) -> Result<[u8; N], LibraryExn>` | Consume a fixed-size entry without aborting. |
 | `retrocausal_queue_peek_sized` | `fn retrocausal_queue_peek_sized<const N: usize>(key: &StorageKey) -> [u8; N]` | Peek a fixed-size entry. |
-| `retrocausal_queue_get` | `fn retrocausal_queue_get(key: &StorageKey, peek: bool) -> Box<[u8]>` | Read the next entry into a boxed slice. If `peek` is true, the entry is not consumed. |
+| `retrocausal_queue_try_peek_sized` | `fn retrocausal_queue_try_peek_sized<const N: usize>(key: &StorageKey) -> Result<[u8; N], LibraryExn>` | Peek a fixed-size entry without aborting. |
+| `retrocausal_queue_consume` | `fn retrocausal_queue_consume(key: &StorageKey) -> Box<[u8]>` | Consume a raw entry. |
+| `retrocausal_queue_try_consume` | `fn retrocausal_queue_try_consume(key: &StorageKey) -> Result<Box<[u8]>, LibraryExn>` | Consume a raw entry without aborting. |
+| `retrocausal_queue_peek` | `fn retrocausal_queue_peek(key: &StorageKey) -> Box<[u8]>` | Peek a raw entry. |
+| `retrocausal_queue_try_peek` | `fn retrocausal_queue_try_peek(key: &StorageKey) -> Result<Box<[u8]>, LibraryExn>` | Peek a raw entry without aborting. |
 
 ## Slot Types
 
@@ -173,7 +223,7 @@ Implements `StorageType`, so it can be used as a value type in `Map` and `Vector
 
 ## Deletable Trait
 
-Trait for storage types whose data can be fully deleted. Leaf types (NNInt, Value, Bytestring) delete their single storage key. Compound types (Node, Vector) implement this recursively when their elements are Deletable. Map does not implement Deletable because it cannot enumerate its entries.
+Trait for storage types whose data can be fully deleted. Leaf types (`Balance`, `NNInt`, `CapacityConstraint`, `Value`, and `Bytestring`) delete their single storage key. Compound types (`Node` and `Vector`) implement this recursively when their elements are `Deletable`. `Map` does not implement `Deletable` because it cannot enumerate its entries.
 
 | Method | Signature | Description |
 |--------|-----------|-------------|

@@ -65,6 +65,19 @@ The default gas limit is `u64::MAX` (no effective cap). Gas is metered but free.
 |--------|-----------|-------------|
 | `new(address)` | `fn new(&ContractAddress) -> Self` | Create a client for the given contract address. |
 | `with_gas_limit(gas_limit)` | `fn with_gas_limit(&self, u64) -> Self` | Return a new client with the specified gas limit. |
+| `with_commit_locking()` | `fn with_commit_locking(self) -> Self` | Ask the child frame to acquire its commit locks before returning, so a `try_` call can handle a conflict. |
+| `with_read_only()` | `fn with_read_only(self) -> Self` | Prevent the child frame from modifying state. |
+
+`with_commit_locking()` and `with_read_only()` consume the client and return the configured value. They can be combined:
+
+```rust
+let result = ERC20Client::new(&token_addr)
+    .with_commit_locking()
+    .with_read_only()
+    .try_get_balance_of(&account);
+```
+
+Commit locking performs early conflict detection at the child-frame boundary. If lock acquisition fails, the child reverts and a `try_` method can inspect the failure. Read-only calls may read storage but cannot write, deploy a contract, or perform another state-changing operation.
 
 ## Error Handling
 
@@ -126,7 +139,7 @@ pub enum MultiClientError {
 | Variant | When it appears |
 |---------|-----------------|
 | `{ErrorType}(ErrorType)` | The callee threw a declared error type. One variant per type in `throws`. |
-| `Library(LibraryExn)` | The SDK itself threw (e.g., NNInt underflow, encoding failure). |
+| `Library(LibraryExn)` | The SDK itself threw (for example, a `Balance` underflow or encoding failure). |
 | `Fault(FaultString)` | The callee panicked. Contains a debug message when the `debugging` feature is enabled. |
 | `Unknown(RawException)` | The callee threw an error type not listed in `throws`. |
 | `Invalid` | The call could not be made (e.g. invalid contract address before the call dispatched). |
@@ -147,7 +160,7 @@ match client.try_transfer(&recipient, 100) {
         // Caller is not the owner
     }
     Err(ERC20ClientError::Library(_)) => {
-        // SDK-level failure (e.g., NNInt underflow during transfer)
+        // SDK-level failure (for example, Balance underflow during transfer)
     }
     Err(ERC20ClientError::Fault(f)) => {
         // The callee panicked

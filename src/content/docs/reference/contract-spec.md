@@ -6,7 +6,7 @@ description: "Reference for the Groundhog contract spec: the machine-readable in
 Every Groundhog contract carries a **spec**: a machine-readable description of its interfaces, the types they use, the events they emit, and the errors they throw. The spec is Groundhog's equivalent of an EVM ABI. It is generated at compile time by the SDK macros and consumed by `groundhog codegen ts`, `groundhog call`, indexers, and any other tool that needs to encode calldata or decode results and events.
 
 :::note[Version checked]
-This page was last checked against Groundhog CLI `0.5.10` and SDK `0.15.4` on June 26, 2026.
+This page was source-checked against Groundhog CLI `0.6.3` and SDK `0.17.9` on August 5, 2026.
 :::
 
 ## Where the Spec Lives
@@ -123,13 +123,14 @@ Composite kinds:
 
 ```json
 { "kind": "option", "inner": { "kind": "u64" } }
-{ "kind": "vec", "inner": { "kind": "address" }, "max_len": 4294967295 }
+{ "kind": "vec", "element": { "kind": "address" }, "max_len": 4294967295 }
 { "kind": "array", "len": 32, "element": { "kind": "u8" } }
 { "kind": "tuple", "items": [{ "kind": "u32" }, { "kind": "bool" }] }
 { "kind": "named", "name": "Payload" }
+{ "kind": "signed_token", "preimage": { "kind": "named", "name": "Payload" } }
 ```
 
-These correspond to `Option<u64>`, `Vec<ContractAddress>`, `[u8; 32]`, `(u32, bool)`, and a user-defined type named `Payload`. A `named` reference points at an entry in `type_defs` by name. The nested-type key differs by kind: `inner` for `option` and `vec`, `element` for `array`, and `items` for `tuple`. `max_len` is the vector's declared bound (`4294967295`, i.e. `u32::MAX`, when unbounded).
+These correspond to `Option<u64>`, `Vec<ContractAddress>`, `[u8; 32]`, `(u32, bool)`, a user-defined type named `Payload`, and `Signed<Payload>`. A `named` reference points at an entry in `type_defs` by name. The nested-type key differs by kind: `inner` for `option`, `element` for `vec` and `array`, `items` for `tuple`, and `preimage` for `signed_token`. `preimage` is `null` for `Signed<Opaque>`. `max_len` is the vector's declared bound (`4294967295`, i.e. `u32::MAX`, when unbounded).
 
 ## Type Definitions
 
@@ -248,7 +249,7 @@ The signature is computed as:
 signature = sha256(MAJOR_VERSION ++ "::" ++ CRATE_NAME ++ "::" ++ TYPE_NAME)
 ```
 
-where `CRATE_NAME` is the crate that defines the event type and `MAJOR_VERSION` is its major version. For `TransferEvent` defined in `groundhog-erc20-if` version `0.1.2`: `sha256("0.1::groundhog-erc20-if::TransferEvent")` = `5ff62377…` above.
+where `CRATE_NAME` is the crate that defines the event type and `MAJOR_VERSION` is its major version. For `TransferEvent` defined in `groundhog-erc20-if` version `0.1.7`: `sha256("0.1::groundhog-erc20-if::TransferEvent")` = `5ff62377…` above.
 
 To find instances of an event on chain, query [`groundhog_getEvents`](/reference/json-rpc-api/#groundhog_getevents) with the contract's address and `topic0 = "0x" + signature` (filters always require a contract address).
 

@@ -35,10 +35,10 @@ struct InvocationFrame {
 
 struct ChildResultState {
     buffer: Vec<u8>,           // Return data from child (empty if **Fault**)
-    status: FrameTerminationStatus,      // **Return**, **Abort**, or **Fault**
+    status: InvocationFrameStatusCode, // **Return**, **Abort**, or **Fault**
 }
 
-enum FrameTerminationStatus {
+enum InvocationFrameStatusCode {
     Return = 0,   // Child returned successfully (preserves state)
     Fault  = 1,   // Child hit a **Fault** (discards state)
     Abort  = 2,   // Child **Aborted** (discards state, but returns data)
@@ -121,7 +121,7 @@ The contract explicitly aborts its execution, discarding state changes but retur
 
 When a frame **Aborts**: Return buffer passed to caller, state changes discarded, gas consumed
 
-[^termination-syscall]: Contracts normally control termination through the Return syscall, which takes an output buffer and a `revert_frame` flag (`false` for Return, `true` for Abort). SDK-generated RV32 entrypoint wrappers use this path. A missing RV32 entrypoint or a wrapper that falls through traps deterministically. The status codes used on this page (`Return = 0`, `Fault = 1`, `Abort = 2`) match `FrameTerminationStatus` in `protocol/transaction.x`.
+[^termination-syscall]: Contracts normally control termination through the Return syscall, which takes an output buffer and a `revert_frame` flag (`false` for Return, `true` for Abort). SDK-generated RV32 entrypoint wrappers use this path. A missing RV32 entrypoint or a wrapper that falls through traps deterministically. The status codes used on this page (`Return = 0`, `Fault = 1`, `Abort = 2`) match `InvocationFrameStatusCode` in `protocol/transaction.x`.
 
 ### 4. Merge into Parent (or Finalize for Root)
 
