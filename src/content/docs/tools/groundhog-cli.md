@@ -19,7 +19,7 @@ If you know Foundry, `groundhog node` is closest to `anvil`: it starts a standal
 | `forge script ... --broadcast --rpc-url http://localhost:8545` | `groundhog deploy` | Signs and submits a deploy transaction for an existing `.rv32a` artifact. |
 | `cast call` | `groundhog view` | Runs a read-only sandboxed simulation against committed state. |
 | `cast send` | `groundhog call` | Sends a signed state-changing transaction. |
-| Anvil's funded dev accounts | `dev-0`, `dev-1`, ... | Bootstrap accounts come from the active local runtime. `dev-0` is the fallback only when no profile or global default key is selected. |
+| Anvil's funded dev accounts | `dev-0`, `dev-1`, ... | Bootstrap accounts come from the active local runtime. A project can select `dev-0` explicitly for a stable local workflow. |
 
 Groundhog is not EVM-compatible. The analogy is about local workflow, not bytecode, ABI, accounts, or transaction format.
 
@@ -30,6 +30,7 @@ Start with native tests and the default RV32 build:
 ```bash
 groundhog new my-counter     # create the project
 cd my-counter
+groundhog config set default-key dev-0 --profile local --project
 cargo test                   # fast native tests
 groundhog build              # write the RV32 artifact and lowering metadata
 ```
@@ -70,6 +71,9 @@ For complete command sequences, follow [Develop Locally with the CLI](/tutorials
 | Inspect a transaction or address history | `groundhog tx show <hash>` / `groundhog tx list <address>` |
 | Inspect contract events | `groundhog events list <contract>` |
 | Inspect ERC-20 transfers | `groundhog token transfers <token>` |
+| Inspect merged profile configuration | `groundhog config get [profile] [--sources]` |
+| Create or select a profile | `groundhog config new`, `groundhog config use` |
+| Create a contract wallet | `groundhog wallet create` |
 | Run disposable local-node integration tests | `groundhog test --integration` |
 | Compare WASM and RV32 integration behavior | `groundhog test --integration --differential` |
 | Generate TypeScript contract bindings | `groundhog codegen ts <spec.xdr> -o <file.ts>` |
@@ -78,24 +82,74 @@ For complete command sequences, follow [Develop Locally with the CLI](/tutorials
 `groundhog build`, `groundhog test`, and `groundhog test --integration` default to RV32. Use `cargo test` for fast native logic tests, `groundhog test` for executor-backed artifact tests, and `groundhog test --integration` for local-node RPC tests.
 :::
 
-## Setup and Flags
+## First-Run Setup
 
 Early-access Cargo registry credentials are handled by Cargo, not the CLI. Configure Cargo from your onboarding instructions before creating or building SDK projects.
 
 `groundhog node` and `groundhog test --integration` also require a compatible `hog-devnode` executable, which is distributed separately. `groundhog node` accepts `--hog-devnode-binary`; both commands support `GROUNDHOG_DEVNODE_BINARY`, a sibling executable beside `groundhog`, or `PATH`. Integration mode does not accept the command-line flag.
 
-`groundhog new <name>` creates a project from the `counter` or `stub` template. `groundhog init` runs guided local setup. `groundhog status` checks toolchain, devnode, key, executor-auth, and project-config state. `groundhog completion <shell>` prints shell completions.
+Run interactive setup before creating your first project:
 
-Use `groundhog config` to inspect or change persisted profiles without editing TOML by hand:
+```bash
+groundhog init
+```
+
+Init creates global `local` and `devnet` profiles. The Devnet profile includes its RPC and faucet settings. On a fresh configuration with no stored keys or configured global default, init offers to create and select the key named `default`. Existing profile values, keys, and key selections are preserved; use `groundhog keys use <name>` to repair or change the global selection.
+
+`groundhog new <name>` creates a project from the `counter` or `stub` template. `groundhog status` checks toolchain, devnode, key, executor-auth, and project-config state. `groundhog completion <shell>` prints shell completions.
+
+## Configuration
+
+Groundhog keeps reusable settings in global config and allows projects to override them:
+
+| Layer | Default location | Use |
+|---|---|---|
+| Global | `~/.config/groundhog/config.toml` | Reusable profiles, defaults, endpoints, selected keys, and wallet bindings |
+| Project | Nearest ancestor `groundhog.toml` | Project defaults, profile overrides, contract aliases, and project wallet bindings |
+
+Profiles with the same name merge field by field. Project values override matching global values. Contract and wallet maps merge by entry, so projects can add aliases and wallet bindings without copying the complete global profile.
+
+Profile selection checks, in order:
+
+1. Command-line `--profile`
+2. `GROUNDHOG_PROFILE`
+3. Project `default_profile`
+4. Global `default_profile`
+
+If none selects a profile, commands that require one fail. The name `default` has no special fallback behavior.
+
+Inspect profiles before changing them:
 
 ```bash
 groundhog config profiles
 groundhog config get devnet --sources
-groundhog config set --profile devnet rpc-url https://rpc.example --global
-groundhog config use devnet --global
 ```
 
-`config new`, `rm`, `set`, `unset`, and `use` modify one physical layer. Inside a project, choose `--global` or `--project`; inspection commands show the merged configuration.
+Create an additional global profile:
+
+```bash
+groundhog config new staging \
+  --network devnet \
+  --rpc-url https://rpc.example \
+  --global \
+  --use
+```
+
+Override one value for the current project:
+
+```bash
+groundhog config set rpc-url http://127.0.0.1:9546 \
+  --profile local \
+  --project
+```
+
+The editable fields are `network`, `rpc-url`, `faucet-url`, and `default-key`. Use `config unset` to remove a value from one layer and reveal an inherited value. Use `config rm` to remove a complete profile from one layer.
+
+Mutations outside a project default to global config. Inside a project, pass `--global` or `--project`. Contract aliases are managed by deployment commands, and wallet bindings are managed by wallet commands.
+
+`config get` shows the merged persisted profile. It does not apply active local-node state, global key fallback, runtime-manifest environment variables, or command-line endpoint overrides. Use `groundhog status --profile <name>` for broader environment diagnostics.
+
+## Shared Flags
 
 Global flags work across commands:
 
@@ -104,8 +158,6 @@ groundhog --json status
 groundhog --quiet build
 groundhog --show-cargo-commands build
 ```
-
-Most network-facing commands accept `--profile`. Profile selection checks the command-line flag, `GROUNDHOG_PROFILE`, project `default_profile`, global `default_profile`, then the built-in `default` profile.
 
 Global config and keys live under `${XDG_CONFIG_HOME:-$HOME/.config}/groundhog/`. Cache and retry records live under `${XDG_CACHE_HOME:-$HOME/.cache}/groundhog/`.
 
@@ -222,16 +274,24 @@ groundhog keys use alice
 groundhog keys rm alice
 ```
 
-Contract wallets are profile entries that bind a signing key to its deployed wallet contract:
+Contract wallets are profile entries that bind a signing key to its deployed wallet contract. On a fresh setup, create a globally reusable Devnet wallet from outside a project:
 
 ```bash
-groundhog wallet create --key alice --profile devnet
+groundhog wallet create --profile devnet
 groundhog wallet ls --profile devnet
-groundhog wallet use alice --profile devnet
-groundhog wallet rm alice --profile devnet
+groundhog balance default --profile devnet
 ```
 
-While an active local runtime is recorded, `dev-0` is the fallback when no profile or global default key is selected. Hosted profiles use the configured faucet for prefund-first wallet creation. See [Develop Locally with the CLI](/tutorials/develop-locally/) for the built-in account flow and [Develop on Devnet with the CLI](/tutorials/develop-on-devnet/) for the hosted wallet flow.
+When `--key` and `--name` are omitted, the command uses the selected key and gives the wallet the same name. If no default wallet exists and the wallet belongs to the effective key, it becomes the profile default. Hosted profiles prefund the address before creating the wallet.
+
+Wallet mutations write to the project overlay when run inside a project and to global config otherwise. Select or remove a saved binding explicitly:
+
+```bash
+groundhog wallet use default --profile devnet
+groundhog wallet rm default --profile devnet
+```
+
+Removing a binding does not remove the on-chain wallet. See [Develop Locally with the CLI](/tutorials/develop-locally/) for the built-in `dev-0` flow and [Develop on Devnet with the CLI](/tutorials/develop-on-devnet/) for hosted wallet setup.
 
 ## TypeScript Bindings
 
