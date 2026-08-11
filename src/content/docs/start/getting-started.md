@@ -41,6 +41,38 @@ cargo install --locked --path crates/tools/cli
 
 The Groundhog CLI does not manage Cargo registry credentials.
 
+## Initialize the CLI
+
+Run the interactive setup before creating your first project:
+
+```bash
+groundhog init
+```
+
+Init creates reusable global `local` and `devnet` profiles. The Devnet profile includes its RPC and faucet settings. On a fresh setup with no stored keys, accept key generation to create and select the key named `default`.
+
+Groundhog stores global profiles in `~/.config/groundhog/config.toml` by default. A project's `groundhog.toml` is an optional overlay for project defaults, profile overrides, and contract aliases. Same-named profiles merge, with project values taking precedence. Groundhog honors `XDG_CONFIG_HOME` when set.
+
+Inspect the profiles created by init:
+
+```bash
+groundhog config profiles
+groundhog config get devnet --sources
+```
+
+Use `groundhog config new`, `set`, `unset`, and `use` for routine profile management instead of editing TOML. See [Groundhog CLI configuration](/tools/groundhog-cli/#configuration) for merge behavior, selection precedence, and mutation scope.
+
+### Create a Devnet Wallet
+
+For a fresh installation, create a globally reusable wallet for the selected `default` key from outside a Groundhog project:
+
+```bash
+groundhog wallet create --profile devnet
+groundhog balance default --profile devnet
+```
+
+The wallet inherits the key name. Wallet creation prefunds its address, so no separate airdrop is needed for initial setup. If you selected another key, substitute its name for `default`. See [Faucet](/tools/faucet/) for additional funding and retry guidance.
+
 ## Create and Run
 
 ```bash
@@ -65,6 +97,9 @@ Generated projects work with both `cargo` and `groundhog`. Use `cargo` for nativ
 | `groundhog build` | Builds the deployable RV32 artifact and lowering metadata | Deployable contract artifact |
 | `groundhog node` | Starts a standalone local `hog-devnode` on port `9545` | Local deploy/call testing |
 | `groundhog deploy` | Signs and submits the selected built artifact | Deploy to the selected profile |
+| `groundhog config get [profile]` | Inspects merged persisted profile configuration | Profile setup and troubleshooting |
+| `groundhog wallet create` | Creates and prefunds a contract wallet | Hosted-network setup |
+| `groundhog balance <target>` | Reads a committed native HOG balance | Funding checks |
 | `groundhog test` | Runs executor-backed RV32 artifact tests | Contract artifact tests |
 | `groundhog test --integration` | Starts an ephemeral `hog-devnode`, deploys the contract, and runs `tests/integration.rs` | End-to-end RPC tests |
 
@@ -116,7 +151,7 @@ The starter test confirms that the node is live and the contract was deployed. A
 my-counter/
   Cargo.toml              # SDK dependency, RV32 bin wrapper, dev feature toggle
   build.rs                # Activates the RPC test during integration runs
-  groundhog.toml          # local/devnet profile selection and contract aliases
+  groundhog.toml          # project profile overlays, selection, and contract aliases
   rust-toolchain.toml     # Rust toolchain and targets
   .gitignore              # ignores /target/ and /.groundhog/
   .cargo/

@@ -8,38 +8,44 @@ The hosted faucet supports two CLI workflows:
 - `groundhog wallet create` prefunds a future address, deploys its wallet contract, and initializes it for your signing key.
 - `groundhog airdrop` funds an existing wallet or address.
 
-Your Devnet profile needs both the RPC and faucet URLs supplied during onboarding:
+Run interactive setup if you have not already:
 
-```toml
-[profile.devnet]
-network = "devnet"
-rpc_url = "<DEVNET_RPC_URL>"
-faucet_url = "<DEVNET_FAUCET_URL>"
+```bash
+groundhog init
+groundhog config get devnet --sources
 ```
+
+Init creates the global `devnet` profile with its RPC and faucet settings. See [Groundhog CLI configuration](/tools/groundhog-cli/#configuration) for global profiles and project overlays.
 
 Check that the faucet advertises the same RPC before using it:
 
 ```bash
-curl -fsS "<DEVNET_FAUCET_URL>/health" | jq .
-curl -fsS "<DEVNET_FAUCET_URL>/v1/network" | jq .
-curl -fsS "<DEVNET_FAUCET_URL>/v1/network" \
-  | jq -e --arg rpc "<DEVNET_RPC_URL>" '.endpoints.rpcUrl == $rpc'
+DEVNET_RPC_URL=$(groundhog --json config get devnet | jq -er '.data.rpcUrl')
+DEVNET_FAUCET_URL=$(groundhog --json config get devnet | jq -er '.data.faucetUrl')
+
+curl -fsS "$DEVNET_FAUCET_URL/health" | jq .
+curl -fsS "$DEVNET_FAUCET_URL/v1/network" | jq .
+curl -fsS "$DEVNET_FAUCET_URL/v1/network" \
+  | jq -e --arg rpc "$DEVNET_RPC_URL" '.endpoints.rpcUrl == $rpc'
 ```
 
-Create and inspect a wallet:
+On a fresh setup, accept key generation during init to create and select the key named `default`. The commands below assume that fresh-install path. If you selected another key, substitute its name for `default`.
+
+Create and inspect the wallet:
 
 ```bash
-groundhog keys generate alice
-groundhog wallet create --key alice --profile devnet
+groundhog wallet create --profile devnet
 groundhog wallet ls --profile devnet
-groundhog balance alice --profile devnet
+groundhog balance default --profile devnet
 ```
 
-Request more HOG only when needed:
+With no `--key` or `--name`, wallet creation uses the selected key and gives the wallet the same name. It prefunds the address before deploying and initializing the wallet, so an immediate airdrop is unnecessary.
+
+Request more HOG later when needed:
 
 ```bash
-groundhog airdrop alice --profile devnet
-groundhog balance alice --profile devnet
+groundhog airdrop default --profile devnet
+groundhog balance default --profile devnet
 ```
 
 Hosted requests are subject to deployment-specific quotas. Remote airdrops use the amount selected by the faucet, so omit `--amount`.

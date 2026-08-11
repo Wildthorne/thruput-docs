@@ -45,7 +45,7 @@ Run the guided environment check if this is your first Groundhog project:
 groundhog init
 ```
 
-Decline starter-project creation because the next step creates it explicitly. The local flow below selects `dev-0` in project configuration, so generating a normal key during initialization or having an existing global key does not change which local account deploys the contract.
+Init creates global `local` and `devnet` profiles. Decline starter-project creation because the next step creates it explicitly. The local flow below selects `dev-0` in project configuration, so generating a normal key during initialization or having an existing global key does not change which local account deploys the contract.
 
 ## 2. Create a Counter Project
 
@@ -56,15 +56,16 @@ groundhog new my-counter
 cd my-counter
 ```
 
-Open `groundhog.toml` and select the built-in account under the existing local profile:
+Select the built-in account in the project's local profile:
 
-```toml
-[profile.local]
-network = "local"
-default_key = "dev-0"
+```bash
+groundhog config set default-key dev-0 \
+  --profile local \
+  --project
+groundhog config get local --sources
 ```
 
-`dev-0` is not stored in your key directory. The CLI derives its development signer and wallet address from the runtime manifest advertised by the active local node.
+The project override prevents a stored global key from replacing `dev-0` in this tutorial. `dev-0` is not stored in your key directory. The CLI derives its development signer and wallet address from the runtime manifest advertised by the active local node.
 
 ## 3. Build and Test Locally
 
@@ -212,7 +213,7 @@ Set `GROUNDHOG_DEVNODE_BINARY` to the compatible executable supplied during onbo
 
 ### A stored key is selected instead
 
-Set `default_key = "dev-0"` in the project's `[profile.local]` table. Project profile configuration takes precedence over the global key selected by `groundhog keys use`.
+Run `groundhog config set default-key dev-0 --profile local --project`. The project profile takes precedence over the global key selected by `groundhog keys use`.
 
 ### Protocol mismatch
 
