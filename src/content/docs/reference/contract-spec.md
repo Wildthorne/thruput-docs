@@ -6,7 +6,7 @@ description: "Reference for the Groundhog contract spec: the machine-readable in
 Every Groundhog contract carries a **spec**: a machine-readable description of its interfaces, the types they use, the events they emit, and the errors they throw. The spec is Groundhog's equivalent of an EVM ABI. It is generated at compile time by the SDK macros and consumed by `groundhog codegen ts`, `groundhog call`, indexers, and any other tool that needs to encode calldata or decode results and events.
 
 :::note[Version checked]
-This page was source-checked against Groundhog CLI `0.6.3` and SDK `0.17.9` on August 5, 2026.
+This page was source-checked against Groundhog CLI `0.6.3` and SDK `0.17.9` on August 5, 2026. The TypeScript codegen guidance was checked against CLI codegen `0.9.6` on August 20, 2026.
 :::
 
 ## Where the Spec Lives
@@ -113,7 +113,7 @@ Primitive kinds:
 |--------|-----------|
 | `void` | `()` |
 | `bool` | `bool` |
-| `u8` | `u8` (only valid inside `vec` or `array`) |
+| `u8` | `u8` |
 | `u32`, `i32`, `u64`, `i64`, `u128`, `i128` | the corresponding integer |
 | `string` | `String` |
 | `bytes` | variable-length byte string |
@@ -131,6 +131,8 @@ Composite kinds:
 ```
 
 These correspond to `Option<u64>`, `Vec<ContractAddress>`, `[u8; 32]`, `(u32, bool)`, a user-defined type named `Payload`, and `Signed<Payload>`. A `named` reference points at an entry in `type_defs` by name. The nested-type key differs by kind: `inner` for `option`, `element` for `vec` and `array`, `items` for `tuple`, and `preimage` for `signed_token`. `preimage` is `null` for `Signed<Opaque>`. `max_len` is the vector's declared bound (`4294967295`, i.e. `u32::MAX`, when unbounded).
+
+For the generated TypeScript representations of these types, see [Type mapping](/tools/typescript-bindings/#type-mapping).
 
 ## Type Definitions
 
@@ -290,8 +292,8 @@ See [SDK Macros](/reference/sdk-macros/) for the full macro reference and [Add E
 
 ## Consuming the Spec
 
-- [`groundhog codegen ts`](/tools/typescript-bindings/) generates TypeScript bindings from a `.spec.xdr`. It can also read a legacy `.wasm` artifact with an embedded spec.
-- `groundhog build --target wasm --bindings ts` generates TypeScript in one step for the WASM compatibility path. For RV32, build first and run `groundhog codegen ts target/groundhog/<name>.spec.xdr`.
+- `groundhog build --bindings ts` generates TypeScript bindings as part of the build.
+- [`groundhog codegen ts`](/tools/typescript-bindings/) accepts a canonical `.spec.xdr` when the binding needs a custom output path. It does not accept `.wasm`, `.rv32a`, or `.spec.json` input.
 - `groundhog call` uses local contract metadata when it can resolve it from the project or artifact.
 - Indexers and explorers can read the `.spec.json` sidecar to label methods and decode events.
 

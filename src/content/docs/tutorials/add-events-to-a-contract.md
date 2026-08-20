@@ -8,7 +8,7 @@ We're extending the counter from [Build a Counter](/tutorials/build-a-counter/) 
 **Prerequisites:** A working counter contract from [Build a Counter](/tutorials/build-a-counter/).
 
 :::note[Version checked]
-This tutorial was source-checked against Groundhog CLI `0.6.3` and SDK `0.17.9` on August 5, 2026.
+This tutorial was source-checked against Groundhog CLI `0.6.3` and SDK `0.17.9` on August 5, 2026. The generated TypeScript section was checked against CLI codegen `0.9.6` and client `0.2.0` on August 20, 2026.
 :::
 
 ## How Events Work on Groundhog
@@ -32,7 +32,7 @@ pub struct CounterIncremented<'a> {
 
 - **`#[derive(Event)]`** generates everything the event needs: a `SIGNATURE` constant, serialization for the payload, and a `CounterIncrementedPayload` companion struct for decoding. See [SDK Macros](/reference/sdk-macros/#deriveevent) or [`#[derive(Event)]` Rustdoc](https://groundhog.dev/docs/sdk/latest/sdk/derive.Event.html).
 - **`#[topic]`** makes `by` an indexed topic (topic 1), so consumers can filter events by address. Fields without the attribute, here `amount`, go into the payload.
-- **The lifetime** lets the topic borrow the address instead of copying it. 32-byte values like `ContractAddress` are used as topics directly; other types are XDR-encoded and hashed, which makes them filterable but not recoverable. Anything you need to *read* from the event belongs in the payload.
+- **The lifetime** lets the topic borrow the address instead of copying it. 32-byte values like `ContractAddress` are used as topics directly; other types are XDR-encoded and hashed, which makes them filterable but not recoverable. Anything you need to _read_ from the event belongs in the payload.
 
 ## Step 2: Declare and Emit It
 
@@ -145,9 +145,35 @@ The `signature` is `sha256(MAJOR_VERSION :: CRATE_NAME :: TYPE_NAME)`. Here it i
 Anything that consumes the spec now understands the event. Generate [TypeScript bindings](/tools/typescript-bindings/) from the RV32 spec sidecar:
 
 ```bash
+mkdir -p web/src/contracts
 groundhog codegen ts target/groundhog/counter.spec.xdr \
-  --output target/groundhog/counter.ts
+  --output web/src/contracts/counter.ts
 ```
+
+The generated `CounterIncremented` descriptor builds a typed filter, decodes matching events, and extracts events from transaction receipts:
+
+```ts
+import { CounterIncremented } from "./contracts/counter";
+
+const filter = CounterIncremented.filter({
+  contractAddresses: [contract],
+  topics: { by: caller },
+});
+
+const decoded = CounterIncremented.decode(event);
+if (decoded) {
+  console.log(decoded.topics.by, decoded.fields.amount);
+}
+
+const matches = CounterIncremented.allFromReceipt(receipt, {
+  contractAddress: contract,
+});
+const match = CounterIncremented.singleFromReceipt(receipt, {
+  contractAddress: contract,
+});
+```
+
+`decode()` returns `null` when the signature differs and throws for malformed data with the matching signature. `allFromReceipt()` returns every matching event from the selected emitter. `singleFromReceipt()` requires exactly one match. Each receipt match retains its emitting `contractAddress`.
 
 ## Step 5: Query It On Chain
 
@@ -163,7 +189,9 @@ After deploying (see [Getting Started](/start/getting-started/) for the deploy f
         {
           "contractAddresses": ["0x<64-character-contract-address>"],
           "topics": {
-            "topic0": ["0x66e9e0dfc1e9d3815c880cbd26ab9635ed58a7d544a989998a483797c45ea1a0"],
+            "topic0": [
+              "0x66e9e0dfc1e9d3815c880cbd26ab9635ed58a7d544a989998a483797c45ea1a0"
+            ],
             "topic1": [],
             "topic2": []
           }
@@ -179,7 +207,7 @@ After deploying (see [Getting Started](/start/getting-started/) for the deploy f
 }
 ```
 
-Each returned event carries its topics (topic 1 is the caller's address, directly comparable) and the XDR payload (`amount`). To filter on a *specific* caller, put that address in `topic1`. See [`groundhog_getEvents`](/reference/json-rpc-api/#groundhog_getevents) for pagination and filter semantics.
+Each returned event carries its topics (topic 1 is the caller's address, directly comparable) and the XDR payload (`amount`). To filter on a _specific_ caller, put that address in `topic1`. See [`groundhog_getEvents`](/reference/json-rpc-api/#groundhog_getevents) for pagination and filter semantics.
 
 ## Next Steps
 

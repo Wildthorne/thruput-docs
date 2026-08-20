@@ -6,7 +6,7 @@ description: How Groundhog CLI commands fit into RV32 builds, local nodes, tests
 Run normal Rust loops with `cargo`. Run Groundhog-specific work with `groundhog`: scaffolds, RV32 artifacts, local nodes, deployments, RPC calls, state inspection, keys, wallets, and generated bindings. RV32 is Groundhog's 32-bit RISC-V contract target.
 
 :::note[Version checked]
-This page was source-checked against Groundhog CLI `0.6.3` and SDK `0.17.9` on August 5, 2026.
+This page was source-checked against Groundhog CLI `0.6.3` and SDK `0.17.9` on August 5, 2026. The TypeScript bindings section was checked against CLI codegen `0.9.6` on August 20, 2026.
 :::
 
 ## Foundry Mental Model
@@ -295,15 +295,21 @@ Removing a binding does not remove the on-chain wallet. See [Develop Locally wit
 
 ## TypeScript Bindings
 
-RV32 builds emit a canonical `.spec.xdr` sidecar. Generate TypeScript from it:
+Generate TypeScript bindings as part of the build:
 
 ```bash
-groundhog build
+groundhog build --bindings ts
+```
+
+Use standalone codegen when the binding belongs elsewhere:
+
+```bash
+mkdir -p ./web/src/contracts
 groundhog codegen ts \
   ./target/groundhog/my_counter.spec.xdr \
   -o ./web/src/contracts/my-counter.ts
 ```
 
-The shortcut `groundhog build --target wasm --bindings ts` remains WASM-only. For RV32, run `groundhog codegen ts` against the generated `.spec.xdr`.
+Standalone TypeScript codegen accepts canonical `.spec.xdr` input. It does not accept `.wasm`, `.rv32a`, or `.spec.json` input.
 
 For generated contract bindings, see [TypeScript Bindings](/tools/typescript-bindings/). For the app-facing client package, see [TypeScript SDK](/tools/typescript-sdk/).
