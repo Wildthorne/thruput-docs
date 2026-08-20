@@ -5,7 +5,7 @@ description: Current signer APIs and the support boundary for browser-wallet int
 
 No official browser-wallet provider or adapter is published yet. The current supported user flow is the Groundhog CLI: it creates a key-owned contract wallet, resolves network-specific wallet entrypoints, wraps application calls in the wallet's `do_action` invocation, signs, and submits them.
 
-This page was source-checked against published `@groundhogchain/client` `0.1.6` and Groundhog CLI `0.6.3` on August 5, 2026.
+This page was source-checked against published `@groundhogchain/client` `0.2.0` and Groundhog CLI `0.9.6` on August 20, 2026.
 
 See [Develop on Devnet with the CLI](/tutorials/develop-on-devnet/) for that end-to-end flow.
 
@@ -31,14 +31,22 @@ Implementing `Signer` only supplies signatures over canonical transaction bytes.
 - Construction of the wallet contract's root `do_action` invocation
 - Mapping a public key to its deployed contract-wallet address
 
+The client package provides the low-level pieces needed to construct, sign, submit, and poll transactions. The responsibilities are split:
+
+- Standalone helpers such as `createTransaction()` and `signTransaction()` construct and sign transactions.
+- `GroundhogClient.sendTransaction()` submits a signed transaction.
+- `GroundhogClient.getTransactionReceipt()` and `GroundhogClient.waitForTransactionReceipt()` read or poll receipts.
+
+`GroundhogClient` does not construct or sign transactions. See the [TypeScript SDK transaction model](/tools/typescript-sdk/#transaction-model) for the package APIs and receipt flow.
+
 ## Transaction Shape
 
-Groundhog authorization is rooted at the transaction's invoked address. For normal users, that root address is the user's contract wallet. A generated application invocation is encoded as an inner invocation and passed to the wallet's `do_action` entrypoint.
+Groundhog authorization is rooted at the transaction's invoked address. In the current CLI-supported wallet flow, that root address is the user's DevWallet contract. Generated method descriptors build application invocations, which the CLI encodes as inner invocations for the DevWallet's `do_action` entrypoint. Custom wallet contracts can expose a different root method or calldata shape.
 
 The current CLI resolves wallet entrypoints from the active local runtime manifest or hosted `/v1/network` descriptor. Wallet integrations should do the same rather than hard-coding entrypoint IDs.
 
 :::caution[TypeScript support boundary]
-Published client `0.1.6` provides low-level transaction, submission, and signer primitives, but it does not provide the descriptor-driven wallet transaction builder used by the CLI. Do not submit a generated target-contract invocation as the root transaction and assume the wallet will authorize it.
+Published client `0.2.0` provides low-level transaction construction, signing, submission, and polling primitives, but it does not provide the descriptor-driven wallet transaction builder used by the CLI. Do not submit a generated target-contract invocation as the root transaction unless that contract is intentionally the authorization root.
 :::
 
 Until the wallet builder and browser adapter are published, use the CLI for state-changing calls and the [TypeScript SDK](/tools/typescript-sdk/) for supported reads and views.
