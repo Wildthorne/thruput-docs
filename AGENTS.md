@@ -66,4 +66,4 @@ Common gotchas:
 
 ## Local Files
 
-`CLAUDE.md` and `docs/plans/` are local working files and should not be committed.
+`CLAUDE.md` is a local working file and should not be committed.
