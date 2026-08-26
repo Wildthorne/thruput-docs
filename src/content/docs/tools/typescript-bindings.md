@@ -8,7 +8,7 @@ TypeScript bindings turn a contract spec into typed method descriptors, event de
 For JSON-RPC transports, transaction helpers, deployment, and package setup, see [TypeScript SDK](/tools/typescript-sdk/).
 
 :::note[Version checked]
-This page was source-checked against Groundhog CLI and codegen `0.9.6`, `@groundhogchain/client` `0.2.0`, and protocol packages `0.7.1` on August 20, 2026.
+This page was source-checked against published `@groundhogchain/client` `0.4.0`, protocol packages `0.8.0`, and CLI codegen `0.10.3` source on August 26, 2026.
 :::
 
 ## What Bindings Provide
@@ -114,6 +114,17 @@ const invocation = Counter.increment.invocation(contract, gasLimit, {
 });
 ```
 
+The descriptor builds an application invocation. Execute it through a wallet client so the configured DefaultWallet, DevWallet, or custom adapter can construct the authorized root invocation:
+
+```ts
+const txHash = await wallet.execute({
+  invocation,
+  gasLimit: walletGasLimit,
+});
+```
+
+See the [TypeScript SDK wallet flow](/tools/typescript-sdk/#bind-a-wallet-client) for account setup and receipt handling.
+
 Argumentless methods omit the final argument object. Generated argument names use camelCase, while descriptor metadata retains the original ABI name. For example, `initial_value` becomes `initialValue`.
 
 Every descriptor also exposes its entrypoint ID as a defensive copy:
@@ -162,7 +173,24 @@ const receiptOutcome = Counter.get.decodeReceiptOutcome(receipt);
 
 `decodeReceipt()` returns the typed value with `txHash`, `height`, and `events`. It throws `ContractReceiptError` for an abort, execution failure, or missing return data from a non-void method. `decodeReceiptOutcome()` returns a discriminated `return`, `abort`, or `failure` result. Both can throw `ContractDecodeError` for malformed data.
 
-These APIs require a receipt known to come from a transaction whose root invocation called that method. The descriptor cannot verify the root method identity and does not inspect nested application invocations inside a wallet call.
+These APIs require a receipt known to come from a transaction whose root invocation called that method. The descriptor cannot verify the root method identity.
+
+For a DefaultWallet transaction, decode the root `DefaultWallet.execute` receipt first. It returns one raw return buffer per child call. Then use each child method's generated `decodeReturn()` method:
+
+```ts
+import { DefaultWallet } from "@groundhogchain/client/contracts";
+
+const root = DefaultWallet.execute.decodeReceipt(receipt);
+const childReturn = root.value[0];
+
+if (!childReturn) {
+  throw new Error("Expected one child return");
+}
+
+const childValue = Counter.get.decodeReturn(childReturn);
+```
+
+This deserialization is generated from the Rust contract specification. It is not necessary to construct an XDR reader or codec manually. The application selects the descriptor because it knows which child calls it submitted; the receipt does not contain enough TypeScript method identity for the client to choose one automatically.
 
 ## Generated Exceptions
 
@@ -233,7 +261,7 @@ const event = decodeEvent(emittedEvent);
 
 ## Type Mapping
 
-CLI `0.9.6` maps contract-spec types as follows:
+The TypeScript generator maps contract-spec types as follows:
 
 | Contract type                            | TypeScript representation                          |
 | ---------------------------------------- | -------------------------------------------------- |
@@ -268,7 +296,7 @@ Encoding and decoding enforce the declared lengths. `fixedBytes()` validates and
 
 ## Standard Contract Bindings
 
-Client `0.2.0` ships supported `ERC20` and `ERC20Metadata` bindings generated from interface `0.1.9`:
+Client `0.4.0` ships `DefaultWallet`, `DevWallet`, `ERC20`, and `ERC20Metadata` bindings. The wallet bindings use interface `0.1.0`; the ERC-20 bindings use interface `0.1.9`:
 
 ```ts
 import { ERC20 } from "@groundhogchain/client/contracts";
@@ -287,6 +315,19 @@ const transfer = ERC20.transfer.invocation(token, gasLimit, {
 
 The standard entrypoint also exports `ERC20Error`, `ERC20Spec`, `ERC20TransferEvent`, `ERC20ApprovalEvent`, and `decodeERC20Event`. Generated argument, result, exception, and filter types are available from the same subpath.
 
+Wallet bindings expose the root methods used by wallet clients and explicit wallet operations:
+
+```ts
+import { DefaultWallet, DevWallet } from "@groundhogchain/client/contracts";
+
+const defaultWalletResult = DefaultWallet.execute.decodeReceipt(defaultWalletReceipt);
+const devWalletResult = DevWallet.doAction.decodeReceipt(devWalletReceipt);
+```
+
+`DefaultWalletSpec`, `DevWalletSpec`, and their generated argument, result, and exception types are exported from the same entrypoint. Pubkey accounts use DefaultWallet behavior automatically. Source-address accounts can use a deployed smart wallet such as DevWallet with `devWalletAdapter`.
+
+Root receipt decoding does not inspect a nested application call. Decode the root with its wallet descriptor, then use typed views or event descriptors for the application-level result.
+
 ## Bindings vs SDK
 
 Generated bindings sit on top of the client runtime:
@@ -294,7 +335,8 @@ Generated bindings sit on top of the client runtime:
 | Need                                                      | Use                                                        |
 | --------------------------------------------------------- | ---------------------------------------------------------- |
 | Connect to JSON-RPC                                       | [TypeScript SDK](/tools/typescript-sdk/)                   |
-| Construct, sign, submit, and poll a low-level transaction | [TypeScript SDK](/tools/typescript-sdk/#transaction-model) |
+| Bind an account and execute an application invocation     | [TypeScript SDK](/tools/typescript-sdk/#bind-a-wallet-client) |
+| Construct, sign, submit, and poll a low-level transaction | [TypeScript SDK](/tools/typescript-sdk/#low-level-signing) |
 | Build a typed application invocation                      | Generated method descriptor                                |
 | Decode a typed method return or exception                 | Generated method descriptor                                |
 | Run a typed view or decode a root receipt                 | Generated method descriptor                                |
@@ -305,5 +347,5 @@ Generated bindings sit on top of the client runtime:
 - [TypeScript SDK](/tools/typescript-sdk/) for the app-facing client package
 - [Groundhog CLI](/tools/groundhog-cli/) for CLI codegen commands
 - [Contract Spec](/reference/contract-spec/) for the canonical codegen input
-- [Wallet Integration](/tools/wallet-integration/) for wallet-root limitations
+- [Wallet Integration](/tools/wallet-integration/) for account, signer, and browser-wallet boundaries
 - [JSON-RPC API](/reference/json-rpc-api/) for the underlying gateway surface
