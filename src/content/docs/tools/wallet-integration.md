@@ -1,65 +1,142 @@
 ---
 title: Wallet Integration Status
-description: Current signer APIs and the support boundary for browser-wallet integration.
+description: Integrate Groundhog account signers and wallet transaction construction in TypeScript.
 ---
 
-No official browser-wallet provider or adapter is published yet. The current supported user flow is the Groundhog CLI: it creates a key-owned contract wallet, resolves network-specific wallet entrypoints, wraps application calls in the wallet's `do_action` invocation, signs, and submits them.
+The TypeScript SDK supports signers, Groundhog account models, and wallet transaction construction. It does not provide an official browser connection or permission provider.
 
-This page was source-checked against published `@groundhogchain/client` `0.2.0` and Groundhog CLI `0.9.6` on August 20, 2026.
+:::note[Version checked]
+This page was source-checked against published `@groundhogchain/client` `0.4.0` and protocol packages `0.8.0` on August 26, 2026.
+:::
 
-See [Develop on Devnet with the CLI](/tutorials/develop-on-devnet/) for that end-to-end flow.
+| Layer                                | Current support                                                          |
+| ------------------------------------ | ------------------------------------------------------------------------ |
+| Signers and account models           | `Signer`, pubkey accounts, and source-address accounts                   |
+| Wallet transaction construction      | Wallet clients, DefaultWallet, DevWallet, and custom invocation adapters |
+| Browser connection and permission UX | No official provider or adapter                                          |
 
-## Current TypeScript Extension Point
+## Signer Boundary
 
-`@groundhogchain/client` exports a generic signer interface for integrating a wallet, hardware signer, remote signer, or custom key manager:
+`Signer` is the extension point for a browser wallet, hardware signer, remote signer, or custom key manager:
 
-```typescript
+```ts
 import type { PublicKey, Signature } from "@groundhogchain/protocol";
 
-export interface Signer {
-  sign(message: Uint8Array): Promise<Signature>;
+interface Signer {
   publicKey: PublicKey;
+  sign(message: Uint8Array): Promise<Signature>;
 }
 ```
 
-Implementing `Signer` only supplies signatures over canonical transaction bytes. It does not provide:
+The `message` passed to `sign()` is the transaction signature preimage:
 
-- Browser connection or account-selection UX
-- Permission prompts
-- Network discovery
-- Wallet creation or recovery
-- Construction of the wallet contract's root `do_action` invocation
-- Mapping a public key to its deployed contract-wallet address
+```text
+cxs(DomainSeparator("Transaction")) || networkHash || txs(transaction)
+```
 
-The client package provides the low-level pieces needed to construct, sign, submit, and poll transactions. The responsibilities are split:
+It binds the signature to the protocol domain and one network. It is not bare transaction bytes, the transaction hash, or a serialized signed transaction. A signer integration must show which network it is signing for and must not substitute its own serialization.
 
-- Standalone helpers such as `createTransaction()` and `signTransaction()` construct and sign transactions.
-- `GroundhogClient.sendTransaction()` submits a signed transaction.
-- `GroundhogClient.getTransactionReceipt()` and `GroundhogClient.waitForTransactionReceipt()` read or poll receipts.
+## Account Models
 
-`GroundhogClient` does not construct or sign transactions. See the [TypeScript SDK transaction model](/tools/typescript-sdk/#transaction-model) for the package APIs and receipt flow.
+Groundhog supports two account models:
 
-## Transaction Shape
+- A **pubkey account** derives its address from one public key and a nonce. It can sign transactions immediately and uses the network's DefaultWallet behavior without deploying a wallet contract.
+- A **source-address account** uses a smart-wallet contract already deployed at its source address. That contract defines authorization and the root invocation shape. DevWallet is one smart wallet used by local development accounts.
 
-Groundhog authorization is rooted at the transaction's invoked address. In the current CLI-supported wallet flow, that root address is the user's DevWallet contract. Generated method descriptors build application invocations, which the CLI encodes as inner invocations for the DevWallet's `do_action` entrypoint. Custom wallet contracts can expose a different root method or calldata shape.
+The SDK represents both models as account objects that contain the address, authorization claim, and ordered signer entries:
 
-The current CLI resolves wallet entrypoints from the active local runtime manifest or hosted `/v1/network` descriptor. Wallet integrations should do the same rather than hard-coding entrypoint IDs.
+```ts
+const pubkeyAccount = createPubkeyAccount({ signer, nonce: 0n });
 
-:::caution[TypeScript support boundary]
-Published client `0.2.0` provides low-level transaction construction, signing, submission, and polling primitives, but it does not provide the descriptor-driven wallet transaction builder used by the CLI. Do not submit a generated target-contract invocation as the root transaction unless that contract is intentionally the authorization root.
-:::
+const sourceAccount = createSourceAddressAccount({
+  address: walletAddress,
+  signers: [{ signer, publicKeyId: 0n }],
+  allowedKeys: bitMap(0x01n),
+  requiredWeight: weight(1n),
+});
+```
 
-Until the wallet builder and browser adapter are published, use the CLI for state-changing calls and the [TypeScript SDK](/tools/typescript-sdk/) for supported reads and views.
+## Wallet Clients
 
-## Planned Integration Surface
+`createWalletClient()` binds four pieces of state and behavior to an existing client instance:
 
-A complete browser-wallet integration will need a published contract between the app and wallet for:
+- The account address and authorization claim
+- The account's signers
+- The network identity used in each transaction signature preimage
+- The invocation adapter that wraps application calls through the wallet
 
-- Connecting and selecting accounts
-- Reporting network identity and wallet address
-- Reviewing the inner application invocation
-- Building or validating the wallet-root invocation
-- Signing canonical transaction bytes
-- Returning submission results and user-facing errors
+A cluster-aware client supplies the network identity learned during its endpoint handshake. When the cluster has a network hash pin, client creation compares the two before returning. Pubkey accounts receive `defaultWalletAdapter` automatically:
 
-This page will become an implementation guide when that adapter and protocol are available.
+```ts
+const client = await createGroundhogClient({ cluster: devnet() });
+const account = createPubkeyAccount({ signer });
+const wallet = createWalletClient({ client, account });
+
+const txHash = await wallet.execute({
+  invocation: applicationInvocation,
+  gasLimit: walletGasLimit,
+});
+```
+
+`devnet()` performs an endpoint identity handshake, but its default descriptor does not pin an expected hash. Pass `networkHash` to `devnet()` when the application must reject a different network at that endpoint.
+
+An unqualified `{ transport }` client skips cluster identity validation. Its wallet binding must receive the trusted network hash explicitly:
+
+```ts
+const wallet = createWalletClient({
+  client: unqualifiedClient,
+  account,
+  networkHash,
+});
+```
+
+Wallet decoration adds account-specific closures to the supplied client. One client instance can bind only one account. Create separate client instances for multiple accounts, even when they share an endpoint.
+
+## Source-Address Wallets
+
+Source-address accounts require an explicit adapter to expose `prepareExecution()` and `execute()`:
+
+```ts
+const wallet = createWalletClient({
+  client,
+  account: sourceAccount,
+  invocationAdapter: devWalletAdapter,
+});
+```
+
+`devWalletAdapter` wraps an application invocation through DevWallet's `doAction` method. `defaultWalletAdapter` wraps it through DefaultWallet's `execute` method. A custom smart wallet can provide its generated binding and define a structural adapter:
+
+```ts
+const customWalletAdapter = defineWalletInvocationAdapter({
+  createRootInvocation(accountAddress, request: CustomWalletRequest) {
+    return CustomWallet.execute.invocation(accountAddress, request.gasLimit, {
+      call: request.invocation,
+      policy: request.policy,
+    });
+  },
+});
+```
+
+`prepareExecution()` returns the wrapped transaction for inspection. `execute()` prepares, wraps, signs, and submits it. The explicit `prepareTransaction()`, `signTransaction()`, `sendInvocation()`, and `sendTransaction()` methods remain available for wallet-specific root operations such as deployment.
+
+See the [TypeScript SDK workflow](/tools/typescript-sdk/#bind-a-wallet-client) for funding, execution, deployment, and receipt examples.
+
+## Browser Wallet Boundary
+
+The SDK constructs network-bound wallet transactions, but it does not yet define browser-facing behavior for:
+
+- Discovering and connecting a wallet
+- Selecting accounts
+- Requesting permissions
+- Presenting transaction approval prompts
+- Creating, recovering, or persisting wallets
+- Communicating between an application and a wallet extension
+
+An application can implement those concerns and expose the selected key through `Signer`. The wallet client then handles Groundhog account authorization, invocation wrapping, transaction preparation, signing input, submission, and receipt polling.
+
+## Related Documentation
+
+- [TypeScript SDK](/tools/typescript-sdk/) for the complete client and wallet workflow
+- [TypeScript Bindings](/tools/typescript-bindings/) for generated application and wallet descriptors
+- [Authorization](/how-it-works/authorization/) for protocol admission rules
+- [Develop on Devnet](/tutorials/develop-on-devnet/) for the supported CLI workflow

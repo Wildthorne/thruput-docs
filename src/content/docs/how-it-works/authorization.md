@@ -3,18 +3,18 @@ title: Authorization
 description: How transaction signatures, address auth data, caller identity, and auth tokens work in Groundhog.
 ---
 
-Groundhog treats addresses uniformly. A contract address can hold code, store auth data, receive calls, and originate transactions once its auth data is installed.
+Groundhog treats addresses uniformly. An address can hold code, store auth data, receive calls, and originate transactions through either supported admission model.
 
 Authorization has two layers:
 
-1. **Transaction admission**: hogd checks source-address signatures before execution.
+1. **Transaction admission**: hogd checks the transaction's auth claim and signatures before execution.
 2. **Runtime authorization**: contracts use caller identity, explicit signature checks, and typed auth tokens while executing.
 
 These layers are related but separate. Transaction admission decides whether the root transaction may enter the block. Runtime authorization decides what authority a contract gives to a caller or token it receives.
 
 ## Transaction Admission
 
-A `SignedTransaction` contains the transaction plus decorated signatures:
+A `SignedTransaction` contains an inner transaction plus decorated signatures:
 
 ```text
 struct DecoratedSignature {
@@ -28,13 +28,19 @@ struct SignedTransaction {
 };
 ```
 
-The source address for admission is the root invocation's `invoked_address`. hogd loads that address's `AddressAuthData`, then verifies the signatures over the XDR-encoded `Transaction` (`tx`), not over the `SignedTransaction` wrapper.
+The source address is the root invocation's `invoked_address`. Every transaction signature covers this preimage:
 
-If hogd cannot load auth data for the source address, admission fails. Devnode and genesis accounts have auth data installed for them. Other addresses can install or update their own auth data during execution with the auth-data syscalls.
+```text
+cxs(DomainSeparator("Transaction")) || networkHash || txs(transaction)
+```
 
-## Source-Address Claims
+`txs(value)` denotes its standard XDR encoding. The domain separator prevents a transaction signature from being interpreted as a signature over another object. The network hash binds the signature to one Groundhog network and prevents cross-network replay.
 
-The active admission claim is `kSourceAddressAuthData`:
+The canonical transaction hash is `sha256(txs(transaction))`. It identifies the inner transaction and excludes signatures. It is distinct from both the signature preimage and the encoded `SignedTransaction` wrapper.
+
+## Admission Models
+
+The transaction's `AuthClaim` selects one of two admission models:
 
 ```text
 enum AuthClaim switch (AuthClaimType claim_type) {
@@ -49,9 +55,22 @@ case kPubkeySignature:
 };
 ```
 
-`kPubkeySignature` exists in the protocol type today, but hogd rejects it as malformed. Do not build against it yet.
+### Pubkey Accounts
 
-For `kSourceAddressAuthData`, hogd checks:
+`kPubkeySignature` authorizes an account whose address is derived from `PubkeyAccountPreimage { pubkey, nonce }`. hogd accepts the claim only when:
+
+- the derived address equals the root invocation's `invoked_address`;
+- the source address has no registered `AddressAuthData`;
+- the transaction has exactly one Ed25519 signature, with `public_key_id` 0;
+- that signature verifies against the public key in the preimage.
+
+During root execution at an undeployed pubkey-account address, the runtime falls back to the network's configured DefaultWallet contract. This gives a new pubkey account wallet behavior without first deploying code at its derived address. The fallback applies only to the root invocation.
+
+### Source-Address Accounts
+
+`kSourceAddressAuthData` authorizes the root invocation from auth data stored at its source address. The source address must have `AddressAuthData`; a source-address claim without it is rejected.
+
+hogd checks:
 
 - `allowed_keys` does not set bits beyond `kMaxSigners = 21`.
 - Every signature's `public_key_id` appears in `allowed_keys`.
@@ -60,7 +79,7 @@ For `kSourceAddressAuthData`, hogd checks:
 - Each signature verifies against its registered public key. The current helper path supports Ed25519.
 - The sum of matched key weights is at least `max(address.required_weight, claim.required_weight)`.
 
-That last rule lets the address set a standing minimum threshold while each transaction can require an equal or higher threshold.
+The threshold is `max(address.required_weight, claim.required_weight)`. This lets the address set a standing minimum while each transaction can require an equal or higher threshold.
 
 Contracts can inspect the root transaction's auth claim with [`get_auth_claim()`](https://groundhog.dev/docs/sdk/latest/sdk/auth_claim/fn.get_auth_claim.html), but admission has already happened by the time contract code runs.
 
@@ -97,7 +116,7 @@ set_address_required_weight(1)?;
 remove_address_public_key(0)?;
 ```
 
-Use these for account contracts, wallet contracts, and contracts that are meant to originate later transactions. Replay protection is transaction-level, through the transaction `Uniquifier`. `AddressAuthData` does not contain nonce policy or gas-sponsorship policy fields.
+Use these for source-address accounts, wallet contracts, and contracts that are meant to originate later transactions. Replay protection is transaction-level, through the transaction `Uniquifier`. `AddressAuthData` does not contain nonce policy or gas-sponsorship policy fields.
 
 ## Caller Identity
 
@@ -240,7 +259,6 @@ The protocol currently caps an auth-token payload at 256 bytes, tree depth at 4,
 
 Do not rely on these patterns yet:
 
-- `kPubkeySignature` auth claims. The type exists, but hogd rejects it.
 - Detached admission-time signatures that directly become `Signed<T>` values.
 - Nonce or gas-sponsorship policy fields in `AddressAuthData`.
 - Durable, storable, or off-chain portable `Signed<T>` handles. A `Signed<T>` is a runtime handle owned by invocation frames inside a transaction.

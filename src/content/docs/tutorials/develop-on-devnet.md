@@ -8,7 +8,7 @@ This tutorial moves the local development loop onto Devnet. You will use the sig
 Complete [Develop Locally with the CLI](/tutorials/develop-locally/) first if you have not yet built, deployed, and called a contract against `hog-devnode`.
 
 :::note[Version checked]
-This tutorial was source-checked against Groundhog CLI `0.6.3` on August 5, 2026.
+This tutorial uses the latest tagged CLI release, `0.10.2`. Network identity and funding behavior were also checked against CLI and RPC `0.10.3` source at `c6051ef`.
 :::
 
 ## Before You Start
@@ -35,7 +35,7 @@ Authenticate Cargo and install the current CLI if needed:
 ```bash
 cargo login --registry groundhog
 cargo install groundhog-cli \
-  --version "=0.6.3" \
+  --version "=0.10.2" \
   --registry groundhog \
   --locked
 
@@ -52,36 +52,24 @@ On a fresh setup with no stored keys, accept key generation. Init creates and se
 
 Executor credentials are separate from Cargo registry credentials and are not required for this workflow.
 
-## 2. Validate the Devnet Endpoints
+## 2. Configure Devnet Identity
 
-Read the RPC and faucet URLs created by init:
-
-```bash
-DEVNET_RPC_URL=$(groundhog --json config get devnet | jq -er '.data.rpcUrl')
-DEVNET_FAUCET_URL=$(groundhog --json config get devnet | jq -er '.data.faucetUrl')
-```
-
-Check the faucet and its public network descriptor:
+Inspect the Devnet profile created by init:
 
 ```bash
-curl -fsS "$DEVNET_FAUCET_URL/health" | jq .
-curl -fsS "$DEVNET_FAUCET_URL/v1/network" | jq .
-curl -fsS "$DEVNET_FAUCET_URL/v1/network" \
-  | jq -e --arg rpc "$DEVNET_RPC_URL" '.endpoints.rpcUrl == $rpc'
+groundhog config get devnet --sources
 ```
 
-The final command should print `true`. Obtain the correct endpoint pair before continuing if it prints `false` or exits with an error.
-
-Check the RPC directly:
+Init supplies the network, RPC URL, faucet URL, and HOG contract alias. Hosted transaction signatures also require an expected network hash. Set the trusted 64-character lowercase hash supplied in your Devnet onboarding instructions, without a `0x` prefix:
 
 ```bash
-curl -fsS \
-  -H 'content-type: application/json' \
-  --data '{"jsonrpc":"2.0","id":1,"method":"groundhog_version","params":[]}' \
-  "$DEVNET_RPC_URL" | jq .
+export DEVNET_NETWORK_HASH="<64-lowercase-hex>"
+groundhog config set network-hash "$DEVNET_NETWORK_HASH" \
+  --profile devnet \
+  --global
 ```
 
-The manual comparison is required. Deploy and call validate the descriptor against the profile RPC, but wallet creation and airdrop currently consume the descriptor without making that comparison.
+Wallet creation, airdrop, deploy, and call validate the selected RPC's live network identity. A mismatch fails before the CLI signs a transaction. See [Authorization](/how-it-works/authorization/) for why signatures include the network hash.
 
 ## 3. Check the Devnet Signing Key
 
@@ -112,10 +100,13 @@ Run wallet creation from a directory outside a Groundhog project so it updates t
 ```bash
 groundhog wallet create --profile devnet
 groundhog wallet ls --profile devnet
-groundhog balance default --profile devnet
+groundhog airdrop --profile devnet
+groundhog balance --profile devnet
 ```
 
 Wallet creation performs a prefund-first flow through the hosted faucet. The faucet funds the future address, deploys the wallet contract, and initializes it for your public key. It never receives your private key.
+
+That prefund pays for wallet creation only. The airdrop funds the effective wallet before its first application deployment.
 
 With no `--key` or `--name`, the CLI uses the selected key and saves the wallet under the same name. Deploy and call resolve the saved wallet through `default`.
 
@@ -204,9 +195,9 @@ Check structured output with pipeline failure propagation enabled:
 ```bash
 set -o pipefail
 groundhog --json view my-counter get --profile devnet \
-  | jq -e '.ok == true and .data.returnValue == 15'
-groundhog --json balance default --profile devnet \
-  | jq -e '.ok == true and .command == "balance"'
+  | jq -e '.ok == true and .data.schemaVersion == 1 and .data.returnValue == 15'
+groundhog --json balance --profile devnet \
+  | jq -e '.ok == true and .command == "balance" and .data.schemaVersion == 1'
 ```
 
 ## 9. Confirm Dry Runs Do Not Commit
@@ -231,17 +222,17 @@ The final value should be `12`.
 
 ## 10. Request More HOG If Needed
 
-Wallet creation includes prefunding for the initial flow. Check the balance before requesting more:
+Check the effective wallet's balance before requesting more:
 
 ```bash
-groundhog balance default --profile devnet
+groundhog balance --profile devnet
 ```
 
 If a later deployment needs more HOG:
 
 ```bash
-groundhog airdrop default --profile devnet
-groundhog balance default --profile devnet
+groundhog airdrop --profile devnet
+groundhog balance --profile devnet
 ```
 
 Do not pass `--amount` for a hosted Devnet airdrop. The faucet sets the amount and enforces deployment-specific quotas.
@@ -252,7 +243,16 @@ Remote airdrops are idempotent. If an airdrop reports a pending attempt, rerun t
 
 ### RPC and faucet mismatch
 
-Recheck the two URLs with the commands in step 2. Do not combine endpoints from different Devnet deployments.
+The CLI rejects a descriptor, RPC identity, or configured network hash mismatch. For optional diagnosis, inspect both public identities without treating the result as a substitute for a trusted onboarding value:
+
+```bash
+DEVNET_RPC_URL=$(groundhog --json config get devnet | jq -er '.data.rpcUrl')
+DEVNET_FAUCET_URL=$(groundhog --json config get devnet | jq -er '.data.faucetUrl')
+curl -fsS "$DEVNET_FAUCET_URL/v1/network" | jq '{rpcUrl: .endpoints.rpcUrl, networkHash}'
+curl -fsS -H 'content-type: application/json' \
+  --data '{"jsonrpc":"2.0","id":1,"method":"groundhog_networkInfo","params":[]}' \
+  "$DEVNET_RPC_URL" | jq '.result'
+```
 
 ### Missing RPC or faucet URL
 
@@ -264,7 +264,7 @@ Run `groundhog wallet ls --profile devnet`. On a fresh setup, the saved wallet a
 
 ### Insufficient funds
 
-Check `groundhog balance default --profile devnet`, then request one airdrop if needed. Avoid unnecessary requests because quotas apply to shared infrastructure.
+Check `groundhog balance --profile devnet`, then request one airdrop if needed. Avoid unnecessary requests because quotas apply to shared infrastructure.
 
 ## Persistent State and Cleanup
 
@@ -277,6 +277,8 @@ groundhog wallet rm default --profile devnet
 groundhog keys rm default
 ```
 
+Both commands remove local data only. `keys rm` asks for confirmation. In non-interactive automation, use `groundhog keys rm default --force` only when permanent key removal is intended.
+
 Do not run those commands as routine tutorial cleanup. Keep the key if you intend to reuse the wallet or deployed contract.
 
 ## Next Steps
@@ -284,3 +286,4 @@ Do not run those commands as routine tutorial cleanup. Keep the key if you inten
 - [Build a Counter](/tutorials/build-a-counter/) for the generated contract's implementation details
 - [Groundhog CLI](/tools/groundhog-cli/) for command and flag reference
 - [Faucet](/tools/faucet/) for wallet funding behavior and retries
+- [TypeScript SDK](/tools/typescript-sdk/) for the cluster-aware Devnet client flow

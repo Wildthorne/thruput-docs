@@ -6,7 +6,7 @@ description: "Reference for the Groundhog contract spec: the machine-readable in
 Every Groundhog contract carries a **spec**: a machine-readable description of its interfaces, the types they use, the events they emit, and the errors they throw. The spec is Groundhog's equivalent of an EVM ABI. It is generated at compile time by the SDK macros and consumed by `groundhog codegen ts`, `groundhog call`, indexers, and any other tool that needs to encode calldata or decode results and events.
 
 :::note[Version checked]
-This page was source-checked against Groundhog CLI `0.6.3` and SDK `0.17.9` on August 5, 2026. The TypeScript codegen guidance was checked against CLI codegen `0.9.6` on August 20, 2026.
+This page was checked against the latest tagged CLI, `0.10.2`, and current CLI `0.10.3` source. The tagged CLI scaffolds SDK `0.21.0`; current source scaffolds SDK `0.23.1`.
 :::
 
 ## Where the Spec Lives
@@ -17,11 +17,10 @@ This page was source-checked against Groundhog CLI `0.6.3` and SDK `0.17.9` on A
 |----------|--------|---------|
 | `<artifact>.spec.xdr` sidecar | XDR | Canonical, as a standalone file. Accepted by `groundhog codegen ts`. |
 | `<artifact>.spec.json` sidecar | JSON | Human-readable rendering for inspection and debugging. Not designed to be parsed back. |
-| `groundhogspecv0` custom section inside a `.wasm` | XDR | WASM-only. Lets legacy WASM tooling read the spec from the binary. |
 
 For a contract crate named `counter`, the default RV32 build writes `target/groundhog/counter.rv32a`, `target/groundhog/counter.spec.json`, and `target/groundhog/counter.spec.xdr`.
 
-Under the hood, the SDK macros embed raw spec fragments in the compiled binary. `groundhog build` collects the fragments, canonicalizes them (deduplication, sorting, validation), and writes the sidecars. WASM builds also get a finalized `groundhogspecv0` custom section in the `.wasm`.
+Under the hood, the SDK macros embed raw spec fragments in the compiled binary. `groundhog build` collects the fragments, canonicalizes them (deduplication, sorting, validation), and writes the sidecars.
 
 ## Top-Level Structure
 
@@ -34,7 +33,7 @@ The JSON rendering has four top-level keys:
 | `type_defs` | The layout of every named user type (struct, enum, union) reachable from an interface. |
 | `events` | Every event the contract declares. |
 
-The complete spec for the counter contract from [Build a Counter](/tutorials/build-a-counter/), built as crate `counter` at version `0.1.0` (the `version` and `selector` values below depend on the crate's name and version):
+The complete spec for the counter contract from [Build a Counter](/tutorials/build-a-counter/), built as crate `counter` at version `0.1.0` (the identifiers below depend on the crate's name and version):
 
 ```json
 {
@@ -45,15 +44,20 @@ The complete spec for the counter contract from [Build a Counter](/tutorials/bui
       "version": "0.1.0",
       "throws": [
         {
-          "selector": "0x7a90653c020cb9ec",
-          "type": { "kind": "named", "name": "Error" }
+          "selector": "0xeb2cf72be75a4c62",
+          "type": { "kind": "named", "name": "CounterError" }
         }
       ],
       "methods": [
         {
           "name": "decrement",
-          "args": [{ "name": "amount", "ty": { "kind": "u64" } }],
+          "args": [{ "name": "amount", "type": { "kind": "u64" } }],
           "return_type": { "kind": "void" }
+        },
+        {
+          "name": "error",
+          "args": [],
+          "return_type": { "kind": "u64" }
         },
         {
           "name": "get",
@@ -62,12 +66,17 @@ The complete spec for the counter contract from [Build a Counter](/tutorials/bui
         },
         {
           "name": "increment",
-          "args": [{ "name": "amount", "ty": { "kind": "u64" } }],
+          "args": [{ "name": "amount", "type": { "kind": "u64" } }],
           "return_type": { "kind": "void" }
         },
         {
           "name": "initialize",
-          "args": [{ "name": "initial_value", "ty": { "kind": "u64" } }],
+          "args": [{ "name": "initial_value", "type": { "kind": "u64" } }],
+          "return_type": { "kind": "void" }
+        },
+        {
+          "name": "ping",
+          "args": [{ "name": "tag", "type": { "kind": "u64" } }],
           "return_type": { "kind": "void" }
         }
       ]
@@ -76,11 +85,18 @@ The complete spec for the counter contract from [Build a Counter](/tutorials/bui
   "type_defs": [
     {
       "kind": "enum",
-      "name": "Error",
+      "name": "CounterError",
       "variants": [{ "name": "NotAuthorized", "value": 1 }]
     }
   ],
-  "events": []
+  "events": [
+    {
+      "name": "PingEvent",
+      "signature": "f0c8fa264c489d9d6bc8796daa7d6ab408d76b37ef41b6d6d951e20f63d10f52",
+      "topics": [{ "name": "tag", "type": { "kind": "u64" } }],
+      "fields": []
+    }
+  ]
 }
 ```
 
@@ -95,9 +111,9 @@ Each interface entry corresponds to one `#[contract]` trait or inherent impl:
 | `throws` | Error types any method of this interface may throw, with their selectors. See [Errors](#errors). |
 | `methods` | The exported methods, sorted by name. |
 
-Each method lists its `name`, `args` (each `{ "name", "ty" }`), and `return_type`.
+Each method lists its `name`, `args` (each `{ "name", "type" }`), and `return_type`.
 
-Entrypoint IDs are **not** stored in the spec. Clients derive them deterministically from the interface name, the major version, and the normalized method signature. See [Contracts](/how-it-works/contracts/) for how entrypoint IDs are encoded into wasm export names.
+Entrypoint IDs are **not** stored in the spec. Clients derive them deterministically from the interface name, the major version, and the normalized method signature. See [Contracts](/how-it-works/contracts/) for entrypoint encoding details.
 
 :::note[What "major version" means]
 Selectors, event signatures, and entrypoint IDs all hash the interface or crate's *major version*, defined as the leftmost non-zero version component (mirroring Cargo's SemVer-compatibility rule): `1.2.3` → `1`, `0.9.2` → `0.9`, `0.0.2` → `0.0.2`. SemVer-compatible releases therefore keep the same identifiers; a breaking version bump changes all of them.
@@ -151,7 +167,7 @@ pub struct Payload {
 {
   "kind": "struct",
   "name": "Payload",
-  "fields": [{ "name": "count", "ty": { "kind": "u32" } }]
+  "fields": [{ "name": "count", "type": { "kind": "u32" } }]
 }
 ```
 
@@ -202,7 +218,7 @@ pub enum Envelope {
       "discriminant": 1,
       "case_type": {
         "kind": "struct",
-        "fields": [{ "name": "payload", "ty": { "kind": "named", "name": "Payload" } }]
+        "fields": [{ "name": "payload", "type": { "kind": "named", "name": "Payload" } }]
       }
     },
     {
@@ -231,10 +247,10 @@ Each entry in `events` describes one event the contract declares. Inclusion work
   "name": "TransferEvent",
   "signature": "5ff62377bf52711e75461f4d8f9b4585f17d1c20f7e1eceb280194a7764bae5f",
   "topics": [
-    { "name": "from", "ty": { "kind": "address" } },
-    { "name": "to", "ty": { "kind": "address" } }
+    { "name": "from", "type": { "kind": "address" } },
+    { "name": "to", "type": { "kind": "address" } }
   ],
-  "fields": [{ "name": "amount", "ty": { "kind": "u128" } }]
+  "fields": [{ "name": "amount", "type": { "kind": "u128" } }]
 }
 ```
 
@@ -293,7 +309,7 @@ See [SDK Macros](/reference/sdk-macros/) for the full macro reference and [Add E
 ## Consuming the Spec
 
 - `groundhog build --bindings ts` generates TypeScript bindings as part of the build.
-- [`groundhog codegen ts`](/tools/typescript-bindings/) accepts a canonical `.spec.xdr` when the binding needs a custom output path. It does not accept `.wasm`, `.rv32a`, or `.spec.json` input.
+- [`groundhog codegen ts`](/tools/typescript-bindings/) accepts a canonical `.spec.xdr` when the binding needs a custom output path. It does not accept an artifact or `.spec.json` input.
 - `groundhog call` uses local contract metadata when it can resolve it from the project or artifact.
 - Indexers and explorers can read the `.spec.json` sidecar to label methods and decode events.
 

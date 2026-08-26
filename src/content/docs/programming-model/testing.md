@@ -8,7 +8,7 @@ description: "How to test Groundhog contracts: native logic tests, RV32 integrat
 Groundhog contracts have three useful test paths:
 
 :::note[Version checked]
-This page was source-checked against Groundhog CLI `0.6.3` and SDK `0.17.9` on August 5, 2026.
+The latest tagged CLI, `0.10.2`, scaffolds SDK `0.21.0` and `groundhog-json-rpc-client` `0.9.6`. Integration account behavior was also checked against CLI `0.10.3` source.
 :::
 
 | Command | What it covers | Use for |
@@ -37,14 +37,14 @@ tests/
 
 The starter remains ignored under ordinary `cargo test`, even if you explicitly enable its feature. `groundhog test --integration` enables the feature and sets `GROUNDHOG_INTEGRATION_TEST=1`, which lets the scaffold's `build.rs` activate the live test. You can rename the module and test functions without changing how activation works.
 
-The generated Cargo entries keep RPC and Tokio dependencies out of WASM and RV32 guest builds:
+The generated Cargo entries keep RPC and Tokio dependencies out of RV32 guest builds:
 
 ```toml
 [features]
 groundhog-integration-test = ["dep:groundhog-json-rpc-client", "dep:tokio"]
 
-[target.'cfg(not(any(target_arch = "wasm32", target_arch = "riscv32")))'.dependencies]
-groundhog-json-rpc-client = { version = "0.6.2", registry = "groundhog", optional = true }
+[target.'cfg(not(target_arch = "riscv32"))'.dependencies]
+groundhog-json-rpc-client = { version = "0.9.6", registry = "groundhog", optional = true }
 tokio = { version = "1", features = ["macros", "rt-multi-thread"], optional = true }
 ```
 
@@ -176,14 +176,14 @@ The `try_decrement` method (generated alongside `decrement` by the `#[contract]`
 | `GROUNDHOG_RPC_URL` | RPC URL for the ephemeral node |
 | `GROUNDHOG_CONTRACT_ADDRESS` | Deployed contract address |
 | `GROUNDHOG_PROFILE` | `integration` |
-| `GROUNDHOG_DEFAULT_KEY` | `dev-0` |
+| `GROUNDHOG_DEFAULT_KEY` | Lowest-index `local_user`, normally `dev-1` |
 | `GROUNDHOG_RUNTIME_MANIFEST` | Runtime manifest path, when available |
 
 The full run is:
 
 1. Build the RV32 artifact.
 2. Start an isolated local node.
-3. Deploy it with `dev-0`.
+3. Deploy it with the runtime's lowest-index `local_user`, normally `dev-1`. `dev-0` remains reserved for the local faucet.
 4. Enable `groundhog-integration-test` and run only the `integration` Cargo test target with the environment above.
 5. Shut down the node after the test run, including after test failures.
 

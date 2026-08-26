@@ -8,7 +8,7 @@ We're extending the counter from [Build a Counter](/tutorials/build-a-counter/) 
 **Prerequisites:** A working counter contract from [Build a Counter](/tutorials/build-a-counter/).
 
 :::note[Version checked]
-This tutorial was source-checked against Groundhog CLI `0.6.3` and SDK `0.17.9` on August 5, 2026. The generated TypeScript section was checked against CLI codegen `0.9.6` and client `0.2.0` on August 20, 2026.
+The Rust workflow uses CLI `0.10.2` and its generated SDK `0.21.0` project. The generated TypeScript API was checked against CLI `0.10.3` source and published TypeScript client `0.4.0`.
 :::
 
 ## How Events Work on Groundhog

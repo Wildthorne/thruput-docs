@@ -8,7 +8,7 @@ This tutorial builds an ERC-20-compatible token with transfers, allowances, mint
 **Prerequisites:** Complete [Build a Counter](/tutorials/build-a-counter/) first.
 
 :::note[Version checked]
-This tutorial was source-checked against Groundhog CLI `0.6.3`, SDK `0.17.9`, and `groundhog-erc20-if` `0.1.7` on August 5, 2026.
+This tutorial starts from CLI `0.10.2`, whose generated project uses SDK `0.21.0` and `groundhog-erc20-if` `0.1.12`.
 :::
 
 ## 1. Create the Project
@@ -20,13 +20,13 @@ groundhog new erc20 --template stub
 cd erc20
 ```
 
-The generated RV32 wrapper and Groundhog profiles can remain unchanged. This tutorial replaces the library implementation and native test. Remove the stub artifact tests because they refer to the generated `StubClient`:
+The generated RV32 wrapper and Groundhog profiles can remain unchanged. This tutorial replaces the library implementation and native test. Remove the stub RV32 test because it refers to the generated `StubClient`:
 
 ```bash
-rm tests/test_rv32.rs tests/test_wasm.rs
+rm tests/test_rv32.rs
 ```
 
-Add the standard interface dependency and extend the generated `dev` feature in `Cargo.toml`. Replace `/path/to/sdk_rs` with one SDK source checkout so both crates resolve from the same release:
+Add the matching standard interface dependency and extend the generated `dev` feature in `Cargo.toml`:
 
 ```toml
 [features]
@@ -36,8 +36,8 @@ default = ["dev"]
 dev = ["sdk/dev", "groundhog-erc20-if/dev"]
 
 [dependencies]
-sdk = { path = "/path/to/sdk_rs/crates/sdk" }
-groundhog-erc20-if = { path = "/path/to/sdk_rs/standard-interfaces/groundhog-erc20" }
+sdk = { version = "0.21.0", registry = "groundhog" }
+groundhog-erc20-if = { version = "=0.1.12", registry = "groundhog" }
 
 [dev-dependencies]
 erc20 = { path = ".", features = ["dev"] }

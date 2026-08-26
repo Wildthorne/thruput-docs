@@ -6,7 +6,7 @@ description: How a transaction moves from submission to committed state.
 This page describes how a transaction moves through the system, from client submission to committed ledger state.
 
 :::note[Version checked]
-This page was source-checked against the current `hogd` executor and coordinator protocol on August 5, 2026.
+This page was source-checked against the current `hogd` executor, authorization service, and coordinator protocol on August 26, 2026.
 :::
 
 ## Overview
@@ -22,16 +22,16 @@ A transaction passes through six stages:
 
 ## Stage 1: Submission
 
-The client signs a transaction and submits it via the JSON-RPC gateway. The gateway forwards it to the mempool.
+The client signs the domain-separated preimage containing the network hash and inner transaction, then submits the signed wrapper through the JSON-RPC gateway. The network hash prevents replay on another Groundhog network. The gateway submits directly to the hogd scheduler.
 
 ## Stage 2: Authorization
 
-The mempool sends the transaction to the auth server, a separate process that verifies signatures against the target address's authorization data. This happens before the transaction enters the scheduling queue, not during execution.
+The mempool sends the transaction to the auth server, a separate process that verifies the root address, auth claim, and signatures. Pubkey claims use the public key embedded in the claim. Source-address claims use the root address's registered authorization data. This happens before the transaction enters the scheduling queue, not during execution.
 
 - If verification succeeds: the transaction enters the scheduling queue
 - If verification fails: the transaction is rejected
 
-See [Authorization](/how-it-works/authorization/) for details on the authorization system.
+See [Authorization](/how-it-works/authorization/) for the signature preimage and admission models.
 
 ## Stage 3: Scheduling
 

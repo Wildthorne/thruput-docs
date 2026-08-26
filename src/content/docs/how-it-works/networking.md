@@ -11,7 +11,7 @@ The **coordinator** (chuckd, written in Go) sits above the execution layer. It d
 
 The **mempool** (scheduler, part of hogd) is the hub of the execution layer. All execution components register with it: executors, DB shards, event server, auth server. The mempool orchestrates block production, transaction execution, and state commits.
 
-Separately, the **RPC gateway** (groundhog-rpc) provides external API access. It connects to the mempool and indexer but does not participate in consensus. It can be scaled independently of the validator.
+Separately, the **RPC gateway** (groundhog-rpc) provides external API access. It connects to the scheduler, indexer, database gateway, and view gateway but does not participate in consensus. It can be scaled independently of the validator.
 
 ```
                     ┌─────────────────┐
@@ -35,7 +35,7 @@ Separately, the **RPC gateway** (groundhog-rpc) provides external API access. It
 
     ┌─────────────────┐
     │  RPC Gateway    │    ← external JSON-RPC API
-    │ (groundhog-rpc) │──── connects to mempool + indexer
+    │ (groundhog-rpc) │──── connects to scheduler + read backends
     └─────────────────┘
 ```
 
@@ -61,7 +61,7 @@ All internal communication uses XDR-RPC over TCP. Protocol definitions live in `
 
 The mempool (scheduler) is more than a transaction pool. It orchestrates the block lifecycle:
 
-- Receives submitted transactions from the coordinator
+- Receives client transactions directly from the RPC gateway and peer transactions from the coordinator
 - Verifies transactions through the auth server
 - Maintains per-account transaction queues with balance-proportional scheduling
 - Assembles block nominations when the coordinator requests them
@@ -80,25 +80,24 @@ The coordinator (chuckd) is the consensus participant. It connects to the mempoo
 | `schedulercoord_propose_block` | "Build a proposal for this block" |
 | `schedulercoord_validate_block` | "Is this peer's proposed block valid?" |
 | `schedulercoord_commit_block` | "Finalize this block" |
-| `schedulercoord_submit_unvetted` | Forward client transactions to the mempool |
 | `schedulercoord_submit_vetted` | Forward peer-gossiped transactions to the mempool |
 
 The mempool also calls back to the coordinator via a reverse RPC channel to notify it when transactions pass vetting (triggering dissemination to peers).
 
 ## External Access
 
-Clients submit transactions and query state through two paths:
+Clients submit transactions and query state through the public gateway.
 
-**JSON-RPC gateway.** A separate service (`groundhog-rpc`) that exposes a JSON-RPC 2.0 API over HTTP. It connects to the mempool (for transaction submission and status) and the indexer (for receipts, events, and history) via x23 RPC. The gateway is architecturally separate from the validator. It does not participate in consensus and can be scaled independently. See [JSON-RPC API](/reference/json-rpc-api/) for the method reference.
+**JSON-RPC gateway.** A separate service (`groundhog-rpc`) that exposes a JSON-RPC 2.0 API over HTTP. It submits transactions directly to the hogd scheduler. Reads use the scheduler, indexer, database gateway, or view gateway according to the method. The gateway is architecturally separate from the validator. It does not participate in consensus and can be scaled independently. See [JSON-RPC API](/reference/json-rpc-api/) for the method reference.
 
-**Wallet integration.** Wallets sign transactions client-side (helpers live in `groundhog-rpc/crates/signing`) and submit them through the JSON-RPC gateway. The gateway is the only supported external entry point for transaction submission.
+**Wallet integration.** Wallets sign transactions client-side (helpers live in `groundhog-rpc/crates/tools/signing`) and submit them through the JSON-RPC gateway. The gateway is the only supported external entry point for transaction submission.
 
 ## Transaction Flow
 
 A transaction moves through the system like this:
 
 1. Client signs and submits via the RPC gateway
-2. The gateway (or coordinator) forwards the transaction to the mempool (`submit_unvetted`)
+2. The gateway submits the transaction directly to the hogd scheduler as unvetted input
 3. Mempool sends the transaction to the auth server for signature verification
 4. Verified transactions are queued by account with balance-proportional scheduling
 5. Coordinator asks the mempool to build a proposal (`propose_block`)
