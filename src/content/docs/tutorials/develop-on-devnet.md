@@ -8,7 +8,7 @@ This tutorial moves the local development loop onto Devnet. You will use the sig
 Complete [Develop Locally with the CLI](/tutorials/develop-locally/) first if you have not yet built, deployed, and called a contract against `hog-devnode`.
 
 :::note[Version checked]
-This tutorial uses the latest tagged CLI release, `0.10.2`. Network identity and funding behavior were also checked against CLI and RPC `0.10.3` source at `c6051ef`.
+This tutorial was checked against Devnet on August 31, 2026. At that time `groundhog_version` reported wire format `5.0.0`, implementation `0.11.0`, and packaging release `0.1.25`.
 :::
 
 ## Before You Start
@@ -28,17 +28,15 @@ This tutorial writes a signing key to your normal Groundhog configuration. Use a
 The commands below assume a fresh Groundhog configuration with no stored keys. If you are reusing an installation, follow the [Groundhog CLI configuration and wallet guidance](/tools/groundhog-cli/) to align the Devnet key and wallet selections before adapting this tutorial.
 :::
 
-## 1. Install and Initialize the CLI
+:::caution[Devnet resets]
+Devnet may be reset. A reset changes its network hash and removes existing wallets, balances, and deployments. After a reset, repeat the identity configuration below, create the wallet again, request an airdrop, and redeploy the contract.
+:::
 
-Authenticate Cargo and install the current CLI if needed:
+## 1. Initialize the CLI
+
+Use the Groundhog client bundle installed in the local-development tutorial and confirm the CLI version:
 
 ```bash
-cargo login --registry groundhog
-cargo install groundhog-cli \
-  --version "=0.10.2" \
-  --registry groundhog \
-  --locked
-
 groundhog --version
 ```
 
@@ -60,14 +58,35 @@ Inspect the Devnet profile created by init:
 groundhog config get devnet --sources
 ```
 
-Init supplies the network, RPC URL, faucet URL, and HOG contract alias. Hosted transaction signatures also require an expected network hash. Set the trusted 64-character lowercase hash supplied in your Devnet onboarding instructions, without a `0x` prefix:
+Init supplies the network, RPC URL, faucet URL, and HOG contract alias. Read the deployment version and packaging release from that RPC:
 
 ```bash
-export DEVNET_NETWORK_HASH="<64-lowercase-hex>"
+DEVNET_RPC_URL=$(groundhog --json config get devnet | jq -er '.data.rpcUrl')
+DEVNET_VERSION_JSON=$(curl -fsS -H 'content-type: application/json' \
+  --data '{"jsonrpc":"2.0","id":1,"method":"groundhog_version","params":[]}' \
+  "$DEVNET_RPC_URL")
+echo "$DEVNET_VERSION_JSON" \
+  | jq -e '.result | {wireFormat, implementation, releaseVersion}'
+DEVNET_RELEASE_VERSION=$(echo "$DEVNET_VERSION_JSON" \
+  | jq -er '.result.releaseVersion | select(type == "string" and length > 0)')
+printf 'Use Groundhog client bundle v%s\n' "$DEVNET_RELEASE_VERSION"
+```
+
+`releaseVersion` identifies the matching [Groundhog packaging release](https://github.com/groundhogchain/packaging/releases). Before continuing, download that release's client archive for your platform, even if a newer packaging release exists. Versioned extracted directories can coexist; point `GROUNDHOG_CLIENT_HOME` and `PATH` at the matching directory as shown in the local-development tutorial, then rerun `groundhog --version`.
+
+Hosted transaction signatures also require the live network hash. Read it from the node, validate its format, remove the RPC's `0x` prefix, and save it in the Devnet profile:
+
+```bash
+DEVNET_NETWORK_HASH=$(curl -fsS -H 'content-type: application/json' \
+  --data '{"jsonrpc":"2.0","id":1,"method":"groundhog_networkInfo","params":[]}' \
+  "$DEVNET_RPC_URL" \
+  | jq -er '.result.networkHash | select(test("^0x[0-9a-f]{64}$")) | ltrimstr("0x")')
 groundhog config set network-hash "$DEVNET_NETWORK_HASH" \
   --profile devnet \
   --global
 ```
+
+The signing network hash is not the faucet descriptor's `genesisHash`. Do not substitute one for the other.
 
 Wallet creation, airdrop, deploy, and call validate the selected RPC's live network identity. A mismatch fails before the CLI signs a transaction. See [Authorization](/how-it-works/authorization/) for why signatures include the network hash.
 
@@ -243,16 +262,19 @@ Remote airdrops are idempotent. If an airdrop reports a pending attempt, rerun t
 
 ### RPC and faucet mismatch
 
-The CLI rejects a descriptor, RPC identity, or configured network hash mismatch. For optional diagnosis, inspect both public identities without treating the result as a substitute for a trusted onboarding value:
+The CLI rejects a descriptor, RPC identity, or configured network hash mismatch. Inspect the RPC and faucet identities directly:
 
 ```bash
 DEVNET_RPC_URL=$(groundhog --json config get devnet | jq -er '.data.rpcUrl')
 DEVNET_FAUCET_URL=$(groundhog --json config get devnet | jq -er '.data.faucetUrl')
-curl -fsS "$DEVNET_FAUCET_URL/v1/network" | jq '{rpcUrl: .endpoints.rpcUrl, networkHash}'
+curl -fsS "$DEVNET_FAUCET_URL/v1/network" \
+  | jq '{rpcUrl: .endpoints.rpcUrl, networkHash, genesisHash}'
 curl -fsS -H 'content-type: application/json' \
   --data '{"jsonrpc":"2.0","id":1,"method":"groundhog_networkInfo","params":[]}' \
   "$DEVNET_RPC_URL" | jq '.result'
 ```
+
+The RPC and faucet `networkHash` values must agree. `genesisHash` identifies different data and is expected to differ.
 
 ### Missing RPC or faucet URL
 
@@ -268,7 +290,7 @@ Check `groundhog balance --profile devnet`, then request one airdrop if needed. 
 
 ## Persistent State and Cleanup
 
-Devnet is shared and persistent. Deleting local files does not remove your wallet or deployed contracts from the chain.
+Devnet is shared and persists between ordinary requests, but operators may reset it. Deleting local files does not remove your wallet or deployed contracts from the current chain. A Devnet reset does.
 
 Removing a wallet binding only removes local configuration. Removing the signing key permanently removes your ability to control that wallet unless you backed up the key first. Because this tutorial saved the binding globally, run these commands from outside a Groundhog project:
 
