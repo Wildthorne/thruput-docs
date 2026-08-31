@@ -8,7 +8,7 @@ This tutorial walks through the complete local CLI loop. You will build and test
 Local development is the fastest way to exercise deployment and RPC behavior. It does not require a hosted faucet, a hosted endpoint, or a persistent signing key.
 
 :::note[Version checked]
-This tutorial uses the latest tagged CLI, `0.10.2`. That release scaffolds SDK `0.21.0` and `groundhog-json-rpc-client` `0.9.6`. Account behavior was also checked against CLI `0.10.3` source.
+This tutorial was checked on August 31, 2026 with Groundhog client bundle `0.1.26`, which contains Groundhog CLI `0.11.1` and `hog-devnode` `0.1.26`. That CLI's generated project declares SDK `0.24.1` and `groundhog-json-rpc-client` `0.11.0`.
 :::
 
 ## Prerequisites
@@ -17,25 +17,22 @@ You need:
 
 - Rust and Cargo through [rustup](https://rustup.rs/)
 - `jq` for structured-output checks
-- Access to the private Groundhog Cargo registry
-- Groundhog CLI `0.10.2`
-- A compatible `hog-devnode` executable supplied during onboarding
+- A token for the private Groundhog Cargo registry
+- Access to the [Groundhog packaging releases](https://github.com/groundhogchain/packaging/releases)
+- The Groundhog client bundle for your platform
 
-Authenticate Cargo and install the published CLI:
+Download the client archive from the current packaging release. Use `groundhog-client-macos-arm64.tar.gz` on Apple Silicon or `groundhog-client-linux-x86_64.tar.gz` on x86-64 Linux. Both archives contain compatible `groundhog` and `hog-devnode` binaries, contract artifacts, and the bundle manifest. The macOS archive also contains the runtime libraries required by `hog-devnode`.
 
-```bash
-cargo login --registry groundhog
-cargo install groundhog-cli \
-  --version "=0.10.2" \
-  --registry groundhog \
-  --locked
-```
-
-Point the CLI at `hog-devnode` if it is not beside the `groundhog` executable or on `PATH`:
+Extract the complete archive and keep its directory layout intact. Add its `bin` directory to `PATH`:
 
 ```bash
-export GROUNDHOG_DEVNODE_BINARY="/path/to/hog-devnode"
+export GROUNDHOG_CLIENT_HOME="/path/to/extracted/groundhog-client-<version>-<platform>"
+export PATH="$GROUNDHOG_CLIENT_HOME/bin:$PATH"
+groundhog --version
+hog-devnode --version
 ```
+
+Because `hog-devnode` is beside `groundhog`, local-node commands find it without `GROUNDHOG_DEVNODE_BINARY`.
 
 ## 1. Initialize the CLI
 
@@ -54,6 +51,12 @@ From the directory where you keep development projects:
 ```bash
 groundhog new my-counter
 cd my-counter
+```
+
+The generated project defines the private registry in `.cargo/config.toml`. Authenticate from the project directory before the first build:
+
+```bash
+cargo login --registry groundhog
 ```
 
 Select the built-in account in the project's local profile:
@@ -105,7 +108,6 @@ my_counter.spec.json
 Open a second terminal, keep it running, and start the node:
 
 ```bash
-export GROUNDHOG_DEVNODE_BINARY="/path/to/hog-devnode"
 groundhog node
 ```
 
@@ -195,8 +197,7 @@ the RV32 artifact, and runs the scaffolded `tests/integration.rs`. Invoke it
 like this:
 
 ```bash
-GROUNDHOG_DEVNODE_BINARY="/path/to/hog-devnode" \
-  groundhog test --integration
+groundhog test --integration
 ```
 
 The generated starter stays ignored under ordinary `cargo test`. Add your
@@ -225,7 +226,7 @@ across several commands, use the long-running `groundhog node` flow above.
 
 ### `hog-devnode` is not found
 
-Set `GROUNDHOG_DEVNODE_BINARY` to the compatible executable supplied during onboarding. The CLI also checks beside the `groundhog` executable and on `PATH`.
+Use the `groundhog` and `hog-devnode` binaries from the same Groundhog client bundle, preserve the extracted directory layout, and add its `bin` directory to `PATH`. For a custom location, set `GROUNDHOG_DEVNODE_BINARY` to that bundle's `hog-devnode` executable.
 
 ### `dev-1` is unavailable
 

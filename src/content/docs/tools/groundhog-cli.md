@@ -6,7 +6,7 @@ description: How Groundhog CLI commands fit into RV32 builds, local nodes, tests
 Run normal Rust loops with `cargo`. Run Groundhog-specific work with `groundhog`: scaffolds, RV32 artifacts, local nodes, deployments, RPC calls, state inspection, keys, wallets, and generated bindings. RV32 is Groundhog's 32-bit RISC-V contract target.
 
 :::note[Version checked]
-This page was source-checked against Groundhog CLI source `0.10.3` at `groundhog-rpc` commit `c6051ef` on August 26, 2026. The latest tagged and installable CLI release is `0.10.2`; this page does not imply that a `0.10.3` release artifact exists.
+This page was source-checked on August 31, 2026 against Groundhog CLI `0.11.1` in Groundhog client bundle `0.1.26`. Its generated project declares SDK `0.24.1` and `groundhog-json-rpc-client` `0.11.0`.
 :::
 
 ## Foundry Mental Model
@@ -31,6 +31,7 @@ Start with native tests and the default RV32 build:
 groundhog new my-counter     # create the project
 cd my-counter
 groundhog config set default-key dev-1 --profile local --project
+cargo login --registry groundhog
 cargo test                   # fast native tests
 groundhog build              # write the RV32 artifact and lowering metadata
 ```
@@ -83,9 +84,9 @@ For complete command sequences, follow [Develop Locally with the CLI](/tutorials
 
 ## First-Run Setup
 
-Early-access Cargo registry credentials are handled by Cargo, not the CLI. Configure Cargo from your onboarding instructions before creating or building SDK projects.
+Early-access Cargo registry credentials are handled by Cargo, not the CLI. Obtain the registry token through onboarding. Generated projects define the registry index in `.cargo/config.toml`; run `cargo login --registry groundhog` from the generated project directory before its first build.
 
-`groundhog node` and `groundhog test --integration` also require a compatible `hog-devnode` executable, which is distributed separately. `groundhog node` accepts `--hog-devnode-binary`; both commands support `GROUNDHOG_DEVNODE_BINARY`, a sibling executable beside `groundhog`, or `PATH`. Integration mode does not accept the command-line flag.
+Install `groundhog` and `hog-devnode` together from the same [Groundhog client bundle](https://github.com/groundhogchain/packaging/releases). Keep the extracted directory layout intact; the macOS bundle includes runtime libraries beside the binaries. `groundhog node` accepts `--hog-devnode-binary`; both it and `groundhog test --integration` also discover `GROUNDHOG_DEVNODE_BINARY`, a sibling executable beside `groundhog`, or `hog-devnode` on `PATH`. Integration mode does not accept the command-line flag.
 
 Run interactive setup before creating your first project:
 
