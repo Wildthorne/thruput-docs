@@ -64,7 +64,7 @@ sdk::declare_mock_contract!();
 
 mod implementation;
 
-pub use groundhog_erc20_if::{ERC20, ERC20Client, ERC20ClientError};
+pub use groundhog_erc20_if::{ERC20, ERC20Client};
 pub use implementation::TokenContract;
 ```
 

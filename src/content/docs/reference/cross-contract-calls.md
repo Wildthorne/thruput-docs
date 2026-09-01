@@ -95,40 +95,29 @@ client.throw_alpha_not_found();
 
 ### try_ calls (inspect)
 
-Prefixing any method with `try_` returns a `Result` you can match on.
+Prefixing any method with `try_` returns a `Result` you can match on. The error type is the SDK's `CallError` — the same type for every client.
 
 ```rust
 let client = MultiClient::new(&addr);
 
 match client.try_throw_alpha_not_found() {
     Ok(()) => { /* success */ }
-    Err(MultiClientError::AlphaError(AlphaError::NotFound)) => {
-        // Handle specific error variant
-    }
-    Err(other) => {
-        // Handle everything else
-    }
+    Err(e) => match_exn!(e, {
+        AlphaError::NotFound => { /* handle this error */ }
+        _ => e.re_throw(),
+    }),
 }
 ```
 
-### The generated error enum
+### CallError
 
-For a client named `FooClient`, the macro generates `FooClientError`. The enum contains one variant per declared `throws` type, plus a fixed set of variants for SDK-level and decoding failures.
-
-Given `#[contract(client = MultiClient, throws(AlphaError, BetaError))]`, the generated enum is:
+`try_*` does not pre-decode the exception into a per-interface enum. A caught exception stays a `RawException`, and `CallError` describes only how the call failed:
 
 ```rust
-pub enum MultiClientError {
-    // One variant per declared throws type (named after the type)
-    AlphaError(AlphaError),
-    BetaError(BetaError),
-
-    // Fixed variants present on every client error enum
-    Library(LibraryExn),
+pub enum CallError {
+    Exception(RawException),
     Fault(FaultString),
-    Unknown(RawException),
     Invalid,
-    BadDecode(RawException),
     UnparseableReturn(FaultString),
     UnparseableAbort(FaultString),
     UnparseableAuthHandles(FaultString),
@@ -138,60 +127,79 @@ pub enum MultiClientError {
 
 | Variant | When it appears |
 |---------|-----------------|
-| `{ErrorType}(ErrorType)` | The callee threw a declared error type. One variant per type in `throws`. |
-| `Library(LibraryExn)` | The SDK itself threw (for example, a `Balance` underflow or encoding failure). |
+| `Exception(RawException)` | The callee threw. Any exception type — declared in `throws` or not, including the SDK's own `LibraryExn`. |
 | `Fault(FaultString)` | The callee panicked. Contains a debug message when the `debugging` feature is enabled. |
-| `Unknown(RawException)` | The callee threw an error type not listed in `throws`. |
 | `Invalid` | The call could not be made (e.g. invalid contract address before the call dispatched). |
-| `BadDecode(RawException)` | The selector matched a declared type, but the payload could not be decoded. |
 | `UnparseableReturn(FaultString)` | The callee committed but its return buffer could not be decoded as the expected type. |
 | `UnparseableAbort(FaultString)` | The callee aborted but the abort payload could not be parsed. |
 | `UnparseableAuthHandles(FaultString)` | The callee committed but the returned auth-token handle list was malformed. |
 | `EncodingArgs(FaultString)` | The caller's arguments could not be encoded before dispatch. |
 
-Match arms on this enum should include a wildcard or cover every variant; otherwise `match` will fail to compile if a new fixed variant is added.
+### Matching exceptions with `match_exn!`
 
-### Matching on specific errors
+An exception carries a selector derived from its type, independent of any interface's `throws` list. `match_exn!` matches on that, so errors from different interfaces are peers:
 
 ```rust
 match client.try_transfer(&recipient, 100) {
     Ok(()) => { /* transfer succeeded */ }
-    Err(ERC20ClientError::ERC20Error(ERC20Error::MustBeContractOwner)) => {
-        // Caller is not the owner
-    }
-    Err(ERC20ClientError::Library(_)) => {
-        // SDK-level failure (for example, Balance underflow during transfer)
-    }
-    Err(ERC20ClientError::Fault(f)) => {
+    Err(CallError::Fault(f)) => {
         // The callee panicked
     }
-    Err(ERC20ClientError::Unknown(ref raw)) => {
-        // Undeclared error type. You can attempt manual decoding
-        // if you know the type:
-        if let Some(secret) = raw.try_as::<SecretError>() {
-            // decoded successfully
+    Err(e) => match_exn!(e, {
+        ERC20Error::MustBeContractOwner => {
+            // Caller is not the owner
         }
-    }
-    Err(ERC20ClientError::BadDecode(ref raw)) => {
-        // Selector matched but payload was malformed
-    }
+        ERC20PausableError::EnforcedPause => {
+            // Declared by an extension the ERC20 interface knows nothing
+            // about — matched here exactly like a declared error
+        }
+        LibraryExn::NonNegativeIntUnderflow => {
+            // SDK-level failure inside the callee
+        }
+        _ => e.re_throw(),
+    }),
 }
 ```
 
-### Decoding unknown errors
+Everything structural — `Ok`, `Fault`, `Invalid`, the encode/decode failures — stays an ordinary `match`, with the exhaustiveness checking that comes with it. `match_exn!` only does typed downcasting, and its arms are tried in order, so it requires a final `_` arm.
 
-`RawException` exposes `selector()` and `payload()` for raw inspection. If you know the concrete type, use `try_as`:
+Two rules follow from how the macro infers the type from each arm's pattern:
+
+- Every typed arm must be path-rooted (`Type::Variant`, `Type::Variant { .. }`, or a unit-struct `Type`). A bare identifier would be a binding, leaving nothing to infer the type from; `_` is the untyped escape hatch, and the error value is still in scope there.
+- `|` cannot combine patterns of different exception types. Alternates within one type are fine.
+
+### Matching a single type
+
+When only one exception type matters, `try_as` skips the macro:
 
 ```rust
-match client.try_call_something() {
-    Err(MyClientError::Unknown(ref raw)) => {
-        if let Some(err) = raw.try_as::<SomeKnownError>() {
-            // Successfully decoded
-        }
-    }
-    _ => {}
+assert_eq!(
+    client.try_transfer(&recipient, 100).unwrap_err().try_as(),
+    Some(ERC20Error::MustBeContractOwner),
+);
+```
+
+`None` covers all three ways this can miss: the failure carried no exception, it carried a different type, or the payload failed to decode.
+
+### Telling a corrupt error from an unknown one
+
+`try_as` returns `None` both for a selector belonging to another type and for a matching selector whose payload will not decode, and `match_exn!` sweeps both into `_`. `try_decode` separates them:
+
+```rust
+match client.try_call_something().unwrap_err().try_decode::<SomeKnownError>() {
+    Some(Ok(err)) => { /* decoded */ }
+    Some(Err(_)) => { /* right selector, payload did not decode */ }
+    None => { /* no exception, or a different type */ }
 }
 ```
+
+This matters more than "a callee sent garbage" suggests. An exception's selector is the first 8 bytes of `sha256(major_version :: crate :: type)` and says nothing about the payload's layout, so a callee that **adds a variant** to an exception enum makes a semver-compatible change that leaves the selector unchanged — and an older caller cannot decode the result. Through `try_as` that is indistinguishable from an error type the caller has never heard of. If confusing the two would change a decision your contract makes, ask `try_decode`.
+
+The reverse direction is not detectable at all: decoding reads a *prefix*, so a callee that **appends a field** to a struct exception is accepted silently by an older caller, which decodes the shorter shape and drops the extra data.
+
+### Raw inspection
+
+`RawException` also exposes `selector()` and `payload()` for inspecting bytes directly, and `re_throw()` to propagate the original abort verbatim.
 
 ## Error Forwarding
 
