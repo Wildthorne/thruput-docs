@@ -151,20 +151,15 @@ Use `groundhog test --integration` when the thing under test is not just contrac
 Use `try_*` methods to verify that operations fail as expected:
 
 ```rust
-use my_counter::{register_mock_contract, CounterClient, CounterClientError};
+use my_counter::{register_mock_contract, CounterClient};
 
-match client.try_decrement(10) {
-    Ok(_) => panic!("expected underflow"),
-    Err(err) => assert!(
-        matches!(err, CounterClientError::Library(
-            LibraryExn::NonNegativeIntUnderflow
-        )),
-        "expected underflow, got: {err:?}"
-    ),
-}
+assert_eq!(
+    client.try_decrement(10).unwrap_err().try_as(),
+    Some(LibraryExn::NonNegativeIntUnderflow),
+);
 ```
 
-The `try_decrement` method (generated alongside `decrement` by the `#[contract]` macro) returns a `Result` instead of aborting. The error type is `CounterClientError`, a per-client enum with variants for each declared error type plus the fixed variants `Library(LibraryExn)`, `Fault(FaultString)`, `Unknown(RawException)`, `Invalid`, `BadDecode(RawException)`, `UnparseableReturn(FaultString)`, `UnparseableAbort(FaultString)`, `UnparseableAuthHandles(FaultString)`, and `EncodingArgs(FaultString)`. See [Error Handling](/reference/error-handling/) for the full error model.
+The `try_decrement` method (generated alongside `decrement` by the `#[contract]` macro) returns a `Result` instead of aborting. The error type is the SDK's `CallError`, which is the same for every client: a caught exception stays undecoded inside it, and `try_as` decodes it as whichever exception type you name. When more than one type is of interest, `match_exn!` matches several in one place. See [Error Handling](/reference/error-handling/) for the full error model.
 
 ## Integration Test Environment
 

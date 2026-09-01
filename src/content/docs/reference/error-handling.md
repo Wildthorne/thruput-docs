@@ -8,7 +8,7 @@ Exported Groundhog contract methods return their declared values and signal fail
 You cannot catch an exception within the same contract. To handle errors from another contract, use `try_*` client methods (see [Cross-Contract Calls](/reference/cross-contract-calls/)).
 
 :::note[Version checked]
-This page was source-checked against SDK `0.17.9` on August 5, 2026.
+This page was source-checked against SDK `0.24.0` on August 30, 2026.
 :::
 
 For exact SDK item docs, see [`#[contract_exception]`](https://groundhog.dev/docs/sdk/latest/sdk/attr.contract_exception.html), [`throw`](https://groundhog.dev/docs/sdk/latest/sdk/fn.throw.html), [`ensure`](https://groundhog.dev/docs/sdk/latest/sdk/fn.ensure.html), [`OrThrow`](https://groundhog.dev/docs/sdk/latest/sdk/trait.OrThrow.html), and [Rust API Docs](/tools/rust-api-docs/).
@@ -171,20 +171,25 @@ Every public SDK function whose name starts with `try_` reports its own failures
 
 `LibraryExn` is `#[non_exhaustive]`: when matching, always include a wildcard arm.
 
-When calling another contract via a `try_*` method, `LibraryExn` errors appear in the `Library` variant of the generated client error enum:
+When calling another contract via a `try_*` method, `LibraryExn` is caught like any other exception type:
 
 ```rust
 match client.try_do_something() {
-    Err(FooClientError::Library(LibraryExn::NonNegativeIntUnderflow)) => {
-        // The called contract underflowed an NNInt
-    }
-    // ...
+    Err(e) => match_exn!(e, {
+        LibraryExn::NonNegativeIntUnderflow => {
+            // The called contract underflowed an NNInt
+        }
+        _ => e.re_throw(),
+    }),
+    Ok(_) => {}
 }
 ```
 
 ## Cross-Contract Errors
 
-When you define a contract interface with `throws`, the `#[contract]` macro generates a client error enum named `{Client}Error`. This enum has one variant per declared error type, plus built-in variants for library errors, faults, and unknown errors.
+A thrown exception travels as `[selector][payload]`, where the selector is derived from the exception *type* — not from the interface that threw it. Callers match on that selector, so what a caller can catch does not depend on what the callee's interface declared.
+
+`throws` declares an interface's error contract: it is published in the contract spec and tells callers what to expect. It does not gate catching.
 
 ### Declaring thrown errors
 
@@ -206,40 +211,44 @@ pub trait MultiThrows {
 }
 ```
 
-### Generated client error enum
-
-For `throws(AlphaError, BetaError)` on a contract with `client = MultiClient`, the macro generates:
-
-```rust
-// Generated. You don't write this
-enum MultiClientError {
-    AlphaError(AlphaError),   // Declared error types
-    BetaError(BetaError),
-    Library(LibraryExn),      // SDK internal errors
-    Fault(FaultString),       // Panics from the called contract
-    Unknown(RawException),    // Errors with unrecognized selectors
-    BadDecode(RawException),  // Recognized selector but payload failed to decode
-}
-```
-
 ### Catching errors with `try_*` methods
 
-Every method on the generated client has a `try_` variant that returns `Result<T, {Client}Error>` instead of aborting:
+Every method on the generated client has a `try_` variant returning `Result<T, CallError>` instead of aborting. `CallError` is the same type for every client; a caught exception stays undecoded inside it, and `match_exn!` decodes it against the types you name:
 
 ```rust
 let client = MultiClient::new(&addr);
 
 match client.try_throw_alpha_not_found() {
-    Err(MultiClientError::AlphaError(AlphaError::NotFound)) => {
-        // Handle the expected error
-    }
-    Err(MultiClientError::Fault(f)) => {
-        // The called contract panicked
-    }
     Ok(val) => {
         // Success
     }
-    _ => {}
+    Err(CallError::Fault(f)) => {
+        // The called contract panicked
+    }
+    Err(e) => match_exn!(e, {
+        AlphaError::NotFound => {
+            // Handle the expected error
+        }
+        _ => e.re_throw(),
+    }),
+}
+```
+
+Failures that carry no exception — `Fault`, `Invalid`, the encode/decode variants — stay ordinary `match` arms on `CallError`. `match_exn!` handles only the typed part, and its arms are tried in order, so a final `_` arm is required.
+
+### Library errors
+
+`LibraryExn` is matched like any other exception type — there is no special wrapper variant:
+
+```rust
+match client.try_do_something() {
+    Err(e) => match_exn!(e, {
+        LibraryExn::NonNegativeIntUnderflow => {
+            // The called contract underflowed an NNInt
+        }
+        _ => e.re_throw(),
+    }),
+    Ok(_) => {}
 }
 ```
 
@@ -249,18 +258,33 @@ Non-try client methods (e.g. `client.do_something()` without the `try_` prefix) 
 
 ### Undeclared errors
 
-If a contract throws an error type not listed in `throws`, callers receive it as `Unknown(RawException)`. You can still decode it if you know the type:
+An error type absent from `throws` is caught exactly like a declared one — the selector identifies it either way:
 
 ```rust
 match client.try_throw_undeclared() {
-    Err(MultiClientError::Unknown(ref raw)) => {
-        // Decode manually if you know the type
-        if let Some(secret) = raw.try_as::<SecretError>() {
-            // Handle it
+    Err(e) => match_exn!(e, {
+        SecretError => {
+            // Never declared by the interface; matched all the same
         }
-    }
-    _ => {}
+        _ => e.re_throw(),
+    }),
+    Ok(_) => {}
 }
 ```
+
+This is what lets an extension define errors the base interface does not declare. `ERC20PausableError::EnforcedPause` can come back from `ERC20::transfer`, and an `ERC20Client` caller matches it in the same `match_exn!` as `ERC20Error` — no separate decode step, and no coupling of the base interface to the extension.
+
+### Matching a single type
+
+When only one exception type matters, `try_as` skips the macro:
+
+```rust
+assert_eq!(
+    client.try_transfer(&to, 1).unwrap_err().try_as(),
+    Some(ERC20PausableError::EnforcedPause),
+);
+```
+
+`None` covers all three ways this can miss: no exception, a different type, or a payload that failed to decode. Use `try_decode` when the last of those must be distinguished from the other two — see [Cross-Contract Calls](/reference/cross-contract-calls/#telling-a-corrupt-error-from-an-unknown-one), which also explains why it is reachable through ordinary semver-compatible evolution rather than only through forgery.
 
 See [Cross-Contract Calls](/reference/cross-contract-calls/) for the full calling patterns.

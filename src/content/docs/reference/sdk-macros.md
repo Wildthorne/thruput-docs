@@ -4,7 +4,7 @@ description: "Reference for #[contract], #[contract_exception], #[contract_type]
 ---
 
 :::note[Version checked]
-This reference was source-checked against SDK `0.17.9` on August 5, 2026.
+This reference was source-checked against SDK `0.24.0` on August 30, 2026.
 :::
 
 Rustdoc shortcuts: [`#[contract]`](https://groundhog.dev/docs/sdk/latest/sdk/attr.contract.html), [`#[contract_exception]`](https://groundhog.dev/docs/sdk/latest/sdk/attr.contract_exception.html), [`#[storage]`](https://groundhog.dev/docs/sdk/latest/sdk/attr.storage.html), [`#[contract_type]`](https://groundhog.dev/docs/sdk/latest/sdk/attr.contract_type.html), [`#[derive(Event)]`](https://groundhog.dev/docs/sdk/latest/sdk/derive.Event.html), [`#[derive(Deletable)]`](https://groundhog.dev/docs/sdk/latest/sdk/derive.Deletable.html), [`#[derive(ContractTypeSpec)]`](https://groundhog.dev/docs/sdk/latest/sdk/derive.ContractTypeSpec.html), and [`declare_mock_contract!`](https://groundhog.dev/docs/sdk/latest/sdk/macro.declare_mock_contract.html). See [Rust API Docs](/tools/rust-api-docs/) for common SDK links.
@@ -37,9 +37,8 @@ Generates contract entrypoints, a client struct for cross-contract calls, and a 
 
 - `throws` belongs on the trait definition or inherent impl, not on the trait impl. The compiler rejects `throws` on a trait impl.
 - Accepts a single type (`throws = MyError`) or a list (`throws(AlphaError, BetaError)`).
-- The last path segment becomes the variant name in the generated error enum. `throws(errors::MyError)` produces `ClientError::MyError(...)`.
-- Duplicate variant names (e.g. `foo::Error` and `bar::Error`) are rejected at compile time.
-- `Library`, `Fault`, and `Unknown` are reserved variant names.
+- `throws` declares the interface's error contract for the [contract spec](/reference/contract-spec/). It does not restrict what a caller can catch: exceptions are identified on the wire by a selector derived from the type, so a caller can match any exception type it knows about, declared or not.
+- Listing the same type twice is rejected at compile time. Types that merely share a last path segment (`foo::Error` and `bar::Error`) are fine, and no names are reserved.
 
 ### `emits` rules
 
@@ -58,23 +57,27 @@ The generated client struct provides:
 | `client.with_commit_locking()` | Returns a client whose calls use the runtime's try-invoke commit-locking flag. |
 | `client.with_read_only()` | Returns a client whose calls are rejected if the callee writes storage. |
 | `client.method(args...)` | Calls the contract method. Re-throws on exception. |
-| `client.try_method(args...)` | Calls the contract method. Returns `Result<T, ClientError>` so exceptions can be inspected. |
+| `client.try_method(args...)` | Calls the contract method. Returns `Result<T, CallError>` so exceptions can be inspected. |
 
 The names `new`, `with_gas_limit`, `with_commit_locking`, `with_read_only`, and any name starting with `try_` are reserved. Contract methods using these names are rejected at compile time.
 
-### Generated error enum
+### Inspecting errors
 
-When `throws` is specified, the macro generates a `{Client}Error` enum:
+`try_` methods return the SDK's `CallError` — the same type for every client. A caught exception stays undecoded inside it; `match_exn!` decodes it against the types you name, and `try_as` handles the single-type case:
 
 ```rust
-pub enum CounterClientError {
-    MyError(MyError),       // one variant per thrown type
-    Library(LibraryExn),    // SDK-internal errors
-    Fault(FaultString),     // panics and host faults
-    Unknown(RawException),  // unrecognized exception selectors
-    BadDecode(RawException) // recognized selector, payload decode failed
+match client.try_decrement(10) {
+    Ok(()) => {}
+    Err(CallError::Fault(f)) => { /* the callee panicked */ }
+    Err(e) => match_exn!(e, {
+        MyError::NotAuthorized => { /* ... */ }
+        LibraryExn::NonNegativeIntUnderflow => { /* ... */ }
+        _ => e.re_throw(),
+    }),
 }
 ```
+
+See [Error Handling](/reference/error-handling/) for the full model.
 
 ### Examples
 
