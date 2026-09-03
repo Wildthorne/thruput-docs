@@ -108,7 +108,7 @@ For a command-by-command map, including the Foundry/Anvil mental model for local
 
 ### What `groundhog build` Produces
 
-`groundhog build` defaults to `--target rv32`. It compiles the RV32 (32-bit RISC-V) entrypoint binary, lowers it, and writes:
+`groundhog build` always builds the RV32 (32-bit RISC-V) target; there is no `--target` flag. It compiles the entrypoint binary, lowers it, and writes:
 
 - `target/groundhog/<name>.rv32a`: deployable contract artifact
 - `target/groundhog/<name>.rv32.json`: RV32 lowering metadata
@@ -118,10 +118,12 @@ For a command-by-command map, including the Foundry/Anvil mental model for local
 The effective Cargo build is:
 
 ```bash
-cargo build \
+cargo \
+  --config .cargo/contract.toml \
+  build \
   --release \
   --no-default-features \
-  --features rv32-entrypoints \
+  --features entrypoints \
   --target riscv32im-unknown-none-elf \
   -p my-counter \
   --bin my_counter

@@ -177,7 +177,7 @@ const match = CounterIncremented.singleFromReceipt(receipt, {
 
 ## Step 5: Query It On Chain
 
-After deploying (see [Getting Started](/start/getting-started/) for the deploy flow) and calling `increment`, the event is queryable through the gateway. Filter on the contract address and the signature from the spec as `topic0`, with a `0x` prefix:
+After deploying (see [Develop Locally with the CLI](/tutorials/develop-locally/#6-dry-run-and-deploy) for the deploy flow) and calling `increment`, the event is queryable through the gateway. Filter on the contract address and the signature from the spec as `topic0`, with a `0x` prefix:
 
 ```json
 {
