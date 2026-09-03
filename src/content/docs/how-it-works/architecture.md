@@ -24,7 +24,7 @@ If two transactions both lazily increase a balance, the deltas merge. If two tra
 
 This is not an optimization bolted onto a sequential design. It is the design. Every layer of Groundhog, from the ledger format to the syscall interface to the SDK, is built around typed, mergeable storage.
 
-The SDK provides convenience layers (`Balance`, `NNInt`, `Map`, `#[storage]` macros) that make common patterns easy, but these are optional. You can work directly with the raw syscall interface and build your own storage abstractions. The SDK is middleware, not a framework. See [Getting Started](/start/getting-started/#the-sdk-is-layered) for the full layering.
+The SDK provides convenience layers (`Balance`, `NNInt`, `Map`, `#[storage]` macros) that make common patterns easy, but these are optional. You can work directly with the raw syscall interface and build your own storage abstractions. The SDK is middleware, not a framework. See [Getting Started](/start/getting-started/#sdk-surfaces) for the full layering.
 
 For the contract-writing rules, see [Merged Deltas](/programming-model/execution/#merged-deltas). For the engine internals, see [Execution Model](/how-it-works/execution-model/). For the full type API, see [Storage Types Reference](/reference/storage-types/).
 

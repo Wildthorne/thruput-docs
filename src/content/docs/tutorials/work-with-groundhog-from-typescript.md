@@ -71,7 +71,7 @@ Create the generated counter project and select the local development account:
 groundhog new my-counter
 cd my-counter
 
-groundhog config set default-key dev-0 \
+groundhog config set default-key dev-1 \
   --profile local \
   --project
 ```

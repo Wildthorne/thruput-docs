@@ -204,7 +204,7 @@ Scripts should check `ok` and the command-specific `data.schemaVersion` before r
 
 ## Build and Test
 
-`groundhog build` defaults to `--target rv32` and writes the deployable 32-bit RISC-V artifact plus lowering metadata:
+`groundhog build` always builds the RV32 target (there is no `--target` flag) and writes the deployable 32-bit RISC-V artifact plus lowering metadata:
 
 ```text
 target/groundhog/<name>.rv32a
