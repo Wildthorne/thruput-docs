@@ -59,6 +59,22 @@ Errors:
 
 Finalizes the SHA-256 hash computation at the specified index, returns the digest, and removes the buffer.
 
+### SHA256Copy
+
+| | |
+|---|---|
+| **Number** | 33 |
+
+| Direction | Name | Type |
+|-----------|------|------|
+| in | `src_index` | `u32` |
+| in | `dst_index` | `u32` |
+
+Errors:
+- `InvalidSyscallInput` if the hash computation at `src_index` does not exist, or if `dst_index` does not already hold a hash computation and there are too many active hash buffers.
+
+Copies the in-progress SHA-256 hash computation at `src_index` to `dst_index`, replacing any hash computation already at `dst_index`. Both computations can then be extended and finalized independently. Copying an index onto itself succeeds and changes nothing.
+
 ## Calldata
 
 ### GetCalldataLen
@@ -147,6 +163,7 @@ Emits an event with up to three 32-byte topics and a data payload. The serialize
 Errors:
 - `InvalidSyscallInput` if the call is rejected before a child frame runs: the target is missing, the flags are invalid, or an auth-token id is malformed, duplicated, or not owned by the current frame.
 - `Reentrance` if the invoked address is already on the call stack.
+- `InvokeDepthExceeded` if the transaction already holds the maximum number of invocation frames open. Like `Reentrance`, the call is rejected before any child frame runs and the syscall is a no-op. This is a resource limit rather than a malformed call: the same invocation succeeds from a shallower frame.
 
 Invokes the specified entrypoint of the contract at `address` with the supplied calldata and auth tokens, creating a new call frame. The new frame is capped at `min(gas_limit, remaining gas in current frame)`; unused child-frame gas returns to the caller's execution budget. This is not a token refund. The SDK defaults `gas_limit` to `u64::MAX` so the child inherits everything the parent has left.
 
@@ -376,6 +393,7 @@ Inserts an entry into the retrocausal queue at `key`.
 Errors:
 - `NoRetrocausalQueueEntry` if the queue is empty.
 - `InvalidSyscallInput` if the key exists but holds a different storage type.
+- `RetrocausalQueueReadLimitReached` if the transaction has reached its per-transaction limit on concurrent retrocausal-queue reads. This does not fail the transaction; a contract may use it as a stop condition.
 
 Consumes (or with `peek = true`, only inspects) the next entry from the retrocausal queue at `key`.
 
@@ -393,6 +411,7 @@ Consumes (or with `peek = true`, only inspects) the next entry from the retrocau
 Errors:
 - `InvalidSyscallInput` if the key exists but holds a different storage type.
 - `NoRetrocausalQueueEntry` if the queue is empty.
+- `RetrocausalQueueReadLimitReached` if the transaction has reached its per-transaction limit on concurrent retrocausal-queue reads. This does not fail the transaction; a contract may use it as a stop condition.
 
 Returns the length (in bytes) of the next entry in the retrocausal queue at `key`.
 
@@ -554,6 +573,40 @@ Errors: none beyond the universal `Fault` / `NoSyscall`.
 
 Returns the current block height.
 
+### GetBlockTimepoint
+
+| | |
+|---|---|
+| **Number** | 35 |
+
+| Direction | Name | Type |
+|-----------|------|------|
+| out | `block_timepoint` | `TimePoint` |
+
+Errors: none beyond the universal `Fault` / `NoSyscall`.
+
+Returns the timepoint of the block currently executing. The value is fixed by the coordinator before execution begins and is carried in the block's `ProposalHeader`, so it is part of the block identity and is identical for every invocation in the block.
+
+Like a block height, this is consensus data rather than a trusted clock: it is chosen by the proposer within whatever bounds the network's validators enforce. Contracts should treat it as coarse-grained wall-clock time, suitable for expiries, vesting schedules, and deadlines, and must not rely on it for fine-grained ordering or as a source of randomness.
+
+## Network
+
+### GetNetworkHash
+
+| | |
+|---|---|
+| **Number** | 34 |
+
+| Direction | Name | Type |
+|-----------|------|------|
+| out | `network_hash` | `NetworkHash` |
+
+Errors: none beyond the universal `Fault` / `NoSyscall`.
+
+Returns the hash of the network name, the identifier that separates this network's blocks from those of every other network. It is fixed for the life of the network, so it is constant across every block and every invocation.
+
+Transaction signatures already commit to this value (the signature preimage is `cxs(DomainSeparator("Transaction")) || network_hash || xdr(tx)`). Exposing it to contracts lets a contract bind its own off-chain signed messages to this network the same way, so a message signed for one network cannot be replayed against a contract at the same address on another.
+
 ## Transaction
 
 ### GetSourceTransactionHash
@@ -603,3 +656,4 @@ The full `SyscallErrorCode` enum, from `protocol/syscall_error.x`:
 | 8 | `StorageKeyNotExist` | The storage key does not exist in the current view. |
 | 9 | `NoRetrocausalQueueEntry` | The retrocausal queue is empty. |
 | 10 | `RetrocausalQueueReadLimitReached` | The transaction reached its concurrent RCQ read limit. The contract may use this as a stop condition. |
+| 11 | `InvokeDepthExceeded` | The transaction already holds the maximum number of invocation frames open, so another would exceed the network's cross-invoke depth bound. A resource limit, not a malformed call: the same invocation succeeds from a shallower frame. |
