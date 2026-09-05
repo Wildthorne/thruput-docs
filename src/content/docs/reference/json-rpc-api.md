@@ -4,11 +4,11 @@ description: Groundhog JSON-RPC methods, wire types, and error codes.
 ---
 
 :::caution[Draft]
-This API is under active development. Method signatures and response formats may change.
+This API is under active development. Method signatures and response formats may change; breaking changes bump the major version of `groundhog_version.wireFormat`.
 :::
 
 :::note[Version checked]
-This page was source-checked against `groundhog-rpc` `0.10.3` at commit `c6051ef` and JSON-RPC wire format `4.0.0` on August 26, 2026.
+This page was source-checked against `groundhog-rpc` `0.11.1` (client bundle `0.1.26`) and JSON-RPC wire format `5.0.0`.
 :::
 
 The Groundhog gateway exposes JSON-RPC 2.0 over HTTP. For its place in the node topology, see [Networking](/how-it-works/networking/).
@@ -190,14 +190,16 @@ Get wire, implementation, build, and packaging-platform versions.
 
 ```json
 {
-  "wireFormat": "4.0.0",
-  "implementation": "0.10.3",
-  "platformVersion": "0.1.25-rc.1",
-  "commitHash": "<commit>"
+  "wireFormat": "5.0.0",
+  "implementation": "0.11.1",
+  "commitHash": "<commit>",
+  "releaseVersion": "0.1.26",
+  "bundleManifestDigest": "<sha256>",
+  "platformVersion": "0.1.26"
 }
 ```
 
-`platformVersion` is omitted when unavailable. `commitHash` may be `null`. Consumers may branch on `wireFormat`. `implementation`, `platformVersion`, and `commitHash` are diagnostic fields.
+`releaseVersion` and `bundleManifestDigest` are present only when the serving binary matches an installed release bundle; `platformVersion` is the legacy alias of `releaseVersion` and is omitted when unavailable. `commitHash` may be `null`. Consumers may branch on `wireFormat`. `implementation`, `commitHash`, and the release fields are diagnostic.
 
 ### `groundhog_view`
 

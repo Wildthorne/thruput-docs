@@ -134,9 +134,9 @@ Configure GitHub Packages as described in [TypeScript SDK installation](/tools/t
 
 ```bash
 npm install \
-  @groundhogchain/client@0.4.0 \
-  @groundhogchain/protocol@0.8.0 \
-  @groundhogchain/contract-spec@0.8.0
+  @groundhogchain/client@0.5.1 \
+  @groundhogchain/protocol@0.10.0 \
+  @groundhogchain/contract-spec@0.10.0
 
 npm install --save-dev typescript tsx @types/node
 ```

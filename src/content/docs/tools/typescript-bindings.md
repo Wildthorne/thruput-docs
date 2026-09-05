@@ -296,7 +296,7 @@ Encoding and decoding enforce the declared lengths. `fixedBytes()` validates and
 
 ## Standard Contract Bindings
 
-Client `0.4.0` ships `DefaultWallet`, `DevWallet`, `ERC20`, and `ERC20Metadata` bindings. The wallet bindings use interface `0.1.0`; the ERC-20 bindings use interface `0.1.9`:
+Client `0.5.1` ships `DefaultWallet`, `DevWallet`, `ERC20`, and `ERC20Metadata` bindings. The wallet bindings use interface `0.1.0`; the ERC-20 bindings use interface `0.1.9`:
 
 ```ts
 import { ERC20 } from "@groundhogchain/client/contracts";
