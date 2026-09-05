@@ -8,7 +8,7 @@ Exported Groundhog contract methods return their declared values and signal fail
 You cannot catch an exception within the same contract. To handle errors from another contract, use `try_*` client methods (see [Cross-Contract Calls](/reference/cross-contract-calls/)).
 
 :::note[Version checked]
-This page was source-checked against SDK `0.24.0` on August 30, 2026.
+This page was source-checked against SDK `0.29.0`.
 :::
 
 For exact SDK item docs, see [`#[contract_exception]`](https://groundhog.dev/docs/sdk/latest/sdk/attr.contract_exception.html), [`throw`](https://groundhog.dev/docs/sdk/latest/sdk/fn.throw.html), [`ensure`](https://groundhog.dev/docs/sdk/latest/sdk/fn.ensure.html), [`OrThrow`](https://groundhog.dev/docs/sdk/latest/sdk/trait.OrThrow.html), and [Rust API Docs](/tools/rust-api-docs/).

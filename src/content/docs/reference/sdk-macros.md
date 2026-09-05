@@ -4,7 +4,7 @@ description: "Reference for #[contract], #[contract_exception], #[contract_type]
 ---
 
 :::note[Version checked]
-This reference was source-checked against SDK `0.24.0` on August 30, 2026.
+This reference was source-checked against SDK `0.29.0`.
 :::
 
 Rustdoc shortcuts: [`#[contract]`](https://groundhog.dev/docs/sdk/latest/sdk/attr.contract.html), [`#[contract_exception]`](https://groundhog.dev/docs/sdk/latest/sdk/attr.contract_exception.html), [`#[storage]`](https://groundhog.dev/docs/sdk/latest/sdk/attr.storage.html), [`#[contract_type]`](https://groundhog.dev/docs/sdk/latest/sdk/attr.contract_type.html), [`#[derive(Event)]`](https://groundhog.dev/docs/sdk/latest/sdk/derive.Event.html), [`#[derive(Deletable)]`](https://groundhog.dev/docs/sdk/latest/sdk/derive.Deletable.html), [`#[derive(ContractTypeSpec)]`](https://groundhog.dev/docs/sdk/latest/sdk/derive.ContractTypeSpec.html), and [`declare_mock_contract!`](https://groundhog.dev/docs/sdk/latest/sdk/macro.declare_mock_contract.html). See [Rust API Docs](/tools/rust-api-docs/) for common SDK links.

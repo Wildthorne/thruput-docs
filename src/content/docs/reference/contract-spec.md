@@ -6,7 +6,7 @@ description: "Reference for the Groundhog contract spec: the machine-readable in
 Every Groundhog contract carries a **spec**: a machine-readable description of its interfaces, the types they use, the events they emit, and the errors they throw. The spec is Groundhog's equivalent of an EVM ABI. It is generated at compile time by the SDK macros and consumed by `groundhog codegen ts`, `groundhog call`, indexers, and any other tool that needs to encode calldata or decode results and events.
 
 :::note[Version checked]
-This page was checked against the latest tagged CLI, `0.10.2`, and current CLI `0.10.3` source. The tagged CLI scaffolds SDK `0.21.0`; current source scaffolds SDK `0.23.1`.
+This page was checked against CLI `0.14.0`, which scaffolds SDK `0.29.0`.
 :::
 
 ## Where the Spec Lives
