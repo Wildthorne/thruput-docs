@@ -11,15 +11,15 @@ Rustdoc shortcuts: [`#[contract]`](https://groundhog.dev/docs/sdk/latest/sdk/att
 
 ## `#[contract]`
 
-Generates contract entrypoints, a client struct for cross-contract calls, and a client error enum.
+Generates contract entrypoints, a client struct for cross-contract calls, and the spec metadata for the declared errors and events.
 
 ### Applies to
 
 | Target | What it generates |
 |--------|-------------------|
-| Trait definition | Client struct, client error enum, entrypoints metadata |
+| Trait definition | Client struct, entrypoints metadata |
 | Trait impl | Export functions, mock registration (dev builds) |
-| Inherent impl | Export functions, client struct, client error enum |
+| Inherent impl | Export functions, client struct |
 | Free function | Export function only (no client) |
 
 ### Parameters
@@ -462,7 +462,6 @@ sdk::declare_mock_contract!();
 
 Annotates a user-defined struct or enum so that the SDK knows how to serialize, deserialize, and describe it across contract boundaries. Required for any type used as an argument, return value, or storage value where the SDK needs a typed schema.
 
-The deprecated spelling `#[contracttype]` is still accepted but should not be used in new code.
 
 ### Applies to
 

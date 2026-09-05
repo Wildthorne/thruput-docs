@@ -157,7 +157,7 @@ Every public SDK function whose name starts with `try_` reports its own failures
 |---------|--------------|---------|
 | `Syscall(SyscallExn)` | 0 | A host syscall returned an error (e.g. storage key not found) |
 | `Handling(HandlingError)` | 1 | Error while handling an incoming contract call (decoding args, encoding result) |
-| `Calling(CallingError)` | 2 | Error while making an outgoing contract call (encoding args, decoding result) |
+| `Calling(CallingError)` | 2 | Error while making an outgoing contract call: encoding args, decoding the result, or the runtime refusing the invoke as reentrant (`Reentrance`) or past the cross-invoke depth bound (`DepthExceeded`) |
 | `Called(FaultString)` | 3 | The called contract reverted |
 | `AuthToken(AuthTokenError)` | 4 | Error encoding or consuming an authorization token |
 | `BytestringWrongSize { expected, found }` | 5 | A fixed-size bytestring read found a different length |
@@ -168,6 +168,7 @@ Every public SDK function whose name starts with `try_` reports its own failures
 | `StorageKeypathOverflow` | 10 | A no-allocation storage keypath exceeded its fixed budget |
 | `RetrocausalQueueEntryWrongSize { expected, found }` | 11 | A fixed-size queue read found a different entry length |
 | `CapacityConstraintAlreadyWritten` | 12 | `set_capacity` followed an incompatible write in the same transaction |
+| `UnknownMethod` | 13 | The callee has no entrypoint for the invoked method ID |
 
 `LibraryExn` is `#[non_exhaustive]`: when matching, always include a wildcard arm.
 

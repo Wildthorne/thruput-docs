@@ -5,7 +5,7 @@ description: Calling other contracts from your contract.
 
 ## Client Generation
 
-The `#[contract]` macro generates a client struct when you specify the `client` parameter. The client mirrors every public method on the trait or impl block.
+The `#[contract]` macro always generates a client struct, named `{Interface}Client` unless you override it with `client = CustomName`. The client mirrors every public method on the trait or impl block.
 
 For exact macro behavior, see [`#[contract]` Rustdoc](https://groundhog.dev/docs/sdk/latest/sdk/attr.contract.html) or [SDK Macros](/reference/sdk-macros/#contract).
 
@@ -35,7 +35,7 @@ For each method `foo`, the generated client provides:
 | Method | Signature | On error |
 |--------|-----------|----------|
 | `foo(...)` | Same return type as the trait method | Re-throws. Your contract aborts too. |
-| `try_foo(...)` | `Result<T, {Client}Error>` | Returns the error for inspection. |
+| `try_foo(...)` | `Result<T, CallError>` | Returns the error for inspection. Match it with `match_exn!`, or decode it with `try_as` / `try_decode`. |
 
 ## Making Calls
 
@@ -115,9 +115,12 @@ match client.try_throw_alpha_not_found() {
 
 ```rust
 pub enum CallError {
-    Exception(RawException),
-    Fault(FaultString),
     Invalid,
+    Reentrance,
+    DepthExceeded,
+    InvokeRejected(SysErr),
+    Exception(RawException),
+    Fault(FaultInfo),
     UnparseableReturn(FaultString),
     UnparseableAbort(FaultString),
     UnparseableAuthHandles(FaultString),
@@ -127,13 +130,22 @@ pub enum CallError {
 
 | Variant | When it appears |
 |---------|-----------------|
-| `Exception(RawException)` | The callee threw. Any exception type — declared in `throws` or not, including the SDK's own `LibraryExn`. |
-| `Fault(FaultString)` | The callee panicked. Contains a debug message when the `debugging` feature is enabled. |
 | `Invalid` | The call could not be made (e.g. invalid contract address before the call dispatched). |
+| `Reentrance` | The target already had a frame open on the invocation stack, so the runtime refused the call as reentrant. See [`Reentrance`](/reference/syscalls/) in the syscall errors. |
+| `DepthExceeded` | Admitting the call would have exceeded the network's cross-invoke depth bound. The same call succeeds from a shallower frame. |
+| `InvokeRejected(SysErr)` | The invoke syscall was refused for another reason, carrying the raw syscall error. |
+| `Exception(RawException)` | The callee threw. Any exception type — declared in `throws` or not, including the SDK's own `LibraryExn`. |
+| `Fault(FaultInfo)` | The callee panicked. `FaultInfo` holds the test harness's panic record — message and location — and is **not** a wire type: it exists only under the `dev` feature. This is unlike `FaultString` (which the other variants and `LibraryExn` carry), where the message is host-only and encodes to zero bytes on every target and feature. |
 | `UnparseableReturn(FaultString)` | The callee committed but its return buffer could not be decoded as the expected type. |
 | `UnparseableAbort(FaultString)` | The callee aborted but the abort payload could not be parsed. |
 | `UnparseableAuthHandles(FaultString)` | The callee committed but the returned auth-token handle list was malformed. |
 | `EncodingArgs(FaultString)` | The caller's arguments could not be encoded before dispatch. |
+
+The first four variants mean the callee never ran: the invoke syscall was
+refused before any child frame opened, so the call was a complete no-op that
+observed nothing and wrote nothing. `CallError::is_rejected_before_call()`
+tests for exactly that set, which is the distinction to reach for when a
+retry or a fallback is only safe if the callee did not execute.
 
 ### Matching exceptions with `match_exn!`
 
