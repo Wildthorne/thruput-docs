@@ -250,7 +250,7 @@ Each entry in `events` describes one event the contract declares. Inclusion work
     { "name": "from", "type": { "kind": "address" } },
     { "name": "to", "type": { "kind": "address" } }
   ],
-  "fields": [{ "name": "amount", "type": { "kind": "u128" } }]
+  "fields": [{ "name": "amount", "type": { "kind": "i128" } }]
 }
 ```
 
@@ -267,7 +267,7 @@ The signature is computed as:
 signature = sha256(MAJOR_VERSION ++ "::" ++ CRATE_NAME ++ "::" ++ TYPE_NAME)
 ```
 
-where `CRATE_NAME` is the crate that defines the event type and `MAJOR_VERSION` is its major version. For `TransferEvent` defined in `groundhog-erc20-if` version `0.1.7`: `sha256("0.1::groundhog-erc20-if::TransferEvent")` = `5ff62377…` above.
+where `CRATE_NAME` is the crate that defines the event type and `MAJOR_VERSION` is its major version. For `TransferEvent` defined in `groundhog-erc20-if` (currently `0.1.21`): `sha256("0.1::groundhog-erc20-if::TransferEvent")` = `5ff62377…` above. Only the major component enters the hash, so patch releases of the interface crate keep the same signature.
 
 To find instances of an event on chain, query [`groundhog_getEvents`](/reference/json-rpc-api/#groundhog_getevents) with the contract's address and `topic0 = "0x" + signature` (filters always require a contract address).
 
@@ -290,7 +290,7 @@ The selector is the first 8 bytes of the same hash construction used for event s
 selector = sha256(MAJOR_VERSION ++ "::" ++ CRATE_NAME ++ "::" ++ TYPE_NAME)[0..8]
 ```
 
-Unlike event signatures, selectors are rendered with a `0x` prefix. When a contract throws, the exception payload is tagged with the selector. Clients use the spec to map a selector back to its named type and decode the payload; unrecognized selectors surface as `Unknown` in generated clients (see [SDK Macros](/reference/sdk-macros/#contract)).
+Unlike event signatures, selectors are rendered with a `0x` prefix. When a contract throws, the exception payload is tagged with the selector. Clients use the spec to map a selector back to its named type and decode the payload; Rust clients keep an unrecognized exception raw inside `CallError::Exception` (see [Error Handling](/reference/error-handling/)); TypeScript bindings surface it as `{ kind: "unknown", selector, data }` (see [TypeScript Bindings](/tools/typescript-bindings/#generated-exceptions)).
 
 ## How Code Surfaces Into the Spec
 
