@@ -43,7 +43,7 @@ HOG transferred between accounts enters the recipient's scheduling queue as newl
 ### Toll-Free Calls
 
 :::caution[Planned, Not Implemented]
-Gas sponsorship is on the roadmap but no implementation currently ships. The previous prototype was removed and is being redesigned. The description below is the intent, not current behaviour.
+Gas sponsorship is on the roadmap but no implementation currently ships. The description below is the intent, not current behaviour.
 :::
 
 The goal is to let contracts sponsor execution for their callers: a transaction would include a claim naming a sponsoring contract, so the caller would not need to hold enough free HOGs to cover the full gas limit. This is how you would build applications with zero user-facing costs once sponsorship lands.

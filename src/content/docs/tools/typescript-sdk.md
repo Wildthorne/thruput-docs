@@ -22,9 +22,9 @@ Install the coordinated package set:
 
 ```bash
 NODE_AUTH_TOKEN="$(gh auth token)" npm install \
-  @groundhogchain/client@0.4.0 \
-  @groundhogchain/protocol@0.8.0 \
-  @groundhogchain/contract-spec@0.8.0
+  @groundhogchain/client@0.5.1 \
+  @groundhogchain/protocol@0.10.0 \
+  @groundhogchain/contract-spec@0.10.0
 ```
 
 ## Connect to a Cluster
@@ -47,7 +47,7 @@ const [network, tip, version] = await Promise.all([
 console.log(toHex0x(network.networkHash), tip.height, version.wireFormat);
 ```
 
-The predefined helpers are `mainnet()`, `devnet()`, and `localnet()`. Use `defineCluster()` for a reusable custom cluster. `devnet()` supplies a default endpoint and declares airdrop support, but it does not pin a network hash. It completes the identity handshake and uses the identity returned by that endpoint for signing.
+The predefined helpers are `devnet()`, `localnet()`, and `mainnet()`. `mainnet()` declares the cluster name only; there is no mainnet endpoint yet. Use `defineCluster()` for a reusable custom cluster. `devnet()` supplies a default endpoint and declares airdrop support, but it does not pin a network hash. It completes the identity handshake and uses the identity returned by that endpoint for signing.
 
 Pin the identity when the application must reject an endpoint for a different network:
 
