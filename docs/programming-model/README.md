@@ -29,5 +29,5 @@ When writing or editing content, verify claims against sibling source repos befo
 - Error types: `../sdk_rs/crates/sdk/src/exn/`, macros in `../sdk_rs/crates/macros/src/`
 - Protocol storage rules: `../protocol/storage_item.x`, `../protocol/syscalls.yaml`
 - Engine merge/reservation rules: `../hogd/hogd/storage_item/`, `../hogd/hogd/hogexec/runtime/`
-- JSON-RPC and TypeScript client behavior: `../groundhog-rpc/`, `../protocol-ts/`, `../ts-client/`
-- Current examples: `../sdk_rs/example-contracts/` first; `../groundhog-examples/` as a secondary reference
+- JSON-RPC and TypeScript client behavior: `../groundhog-rpc/`, `../protocol-ts/`, `../client-ts/`
+- Current examples: `../groundhog-examples/`

@@ -54,7 +54,7 @@ Other repos:
 - JSON-RPC gateway: `../groundhog-rpc/`
 - Protocol definitions: `../protocol/`
 - TypeScript protocol bindings: `../protocol-ts/`
-- TypeScript client/SDK: `../ts-client/`
+- TypeScript client/SDK: `../client-ts/`
 
 Common gotchas:
 
