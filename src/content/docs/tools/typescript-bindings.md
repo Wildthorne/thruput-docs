@@ -8,7 +8,7 @@ TypeScript bindings turn a contract spec into typed method descriptors, event de
 For JSON-RPC transports, transaction helpers, deployment, and package setup, see [TypeScript SDK](/tools/typescript-sdk/).
 
 :::note[Version checked]
-This page was source-checked against published `@groundhogchain/client` `0.4.0`, protocol packages `0.8.0`, and CLI codegen `0.10.3` source on August 26, 2026.
+This page was source-checked against published `@groundhogchain/client` `0.5.1`, protocol packages `0.10.0`, and CLI codegen `0.12.0` source on September 2, 2026.
 :::
 
 ## What Bindings Provide

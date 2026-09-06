@@ -6,7 +6,7 @@ description: Integrate Groundhog account signers and wallet transaction construc
 The TypeScript SDK supports signers, Groundhog account models, and wallet transaction construction. It does not provide an official browser connection or permission provider.
 
 :::note[Version checked]
-This page was source-checked against published `@groundhogchain/client` `0.4.0` and protocol packages `0.8.0` on August 26, 2026.
+This page was source-checked against published `@groundhogchain/client` `0.5.1` and protocol packages `0.10.0` on September 2, 2026.
 :::
 
 | Layer                                | Current support                                                          |

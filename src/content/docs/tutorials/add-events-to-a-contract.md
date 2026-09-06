@@ -8,7 +8,7 @@ We're extending the counter from [Build a Counter](/tutorials/build-a-counter/) 
 **Prerequisites:** A working counter contract from [Build a Counter](/tutorials/build-a-counter/).
 
 :::note[Version checked]
-The Rust workflow uses CLI `0.10.2` and its generated SDK `0.21.0` project. The generated TypeScript API was checked against CLI `0.10.3` source and published TypeScript client `0.4.0`.
+The Rust workflow uses CLI `0.12.0` and its generated SDK `0.27.0` project. The generated TypeScript API was checked against CLI `0.12.0` codegen source and published TypeScript client `0.5.1` on September 2, 2026.
 :::
 
 ## How Events Work on Groundhog
@@ -73,8 +73,9 @@ pub use implementation::CounterIncremented;
 Every event emitted during a test transaction is captured on the `TransactResult` that `env.transact` returns. Add to `tests/test.rs`:
 
 ```rust
-use counter::{register_mock_contract, CounterClient, CounterIncremented};
 use sdk::*;
+
+use counter::{CounterClient, CounterIncremented, register_mock_contract};
 
 static NONCE: SHA256Hash = sdk::sha256_static!("COUNTER_NONCE");
 
@@ -82,7 +83,7 @@ static NONCE: SHA256Hash = sdk::sha256_static!("COUNTER_NONCE");
 fn test_increment_emits_event() {
     let env = TestEnvironment::no_cost();
     let test_contract = register_mock_contract(&env);
-    let contract_hash = test_contract.as_hash().clone();
+    let contract_hash = *test_contract.as_hash();
 
     let result = env.transact(|tx| {
         tx.call(&ContractAddress::named("test")).run(move || {

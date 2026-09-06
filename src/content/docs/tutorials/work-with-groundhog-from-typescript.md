@@ -15,7 +15,7 @@ You will:
 6. Use the standard ERC-20 bindings and follow a normal token call sequence.
 
 :::note[Version checked]
-This tutorial was source-checked against Groundhog CLI and codegen `0.10.3`, `@groundhogchain/client` `0.4.0`, and protocol packages `0.8.0` on August 26, 2026.
+This tutorial was source-checked against Groundhog CLI and codegen `0.12.0`, `@groundhogchain/client` `0.5.1`, and protocol packages `0.10.0` on September 2, 2026.
 :::
 
 ## How the Pieces Fit

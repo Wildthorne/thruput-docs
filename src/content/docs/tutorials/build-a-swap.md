@@ -75,7 +75,7 @@ pub enum ISwapV2PairError {
 }
 ```
 
-`throws(ISwapV2PairError, ERC20Error)` generates separate client error variants for pair errors and token errors. LP `initialize`, `mint`, and `burn` failures propagate as `ERC20Error`. Reserve-token transfer helpers deliberately map client failures to `ISwapV2PairError::TransferFailed`. The declared `LPTokenFailure` variant is not constructed by the current implementation.
+`throws(ISwapV2PairError, ERC20Error)` records both error types in the contract spec; a caller matches either one in the same `match_exn!` on the `CallError` a `try_*` call returns. LP `initialize`, `mint`, and `burn` failures propagate as `ERC20Error`. Reserve-token transfer helpers deliberately map client failures to `ISwapV2PairError::TransferFailed`. The declared `LPTokenFailure` variant is not constructed by the current implementation.
 
 The trait itself:
 
