@@ -166,7 +166,7 @@ impl Counter {
     }
 
     pub fn get(&self) -> u64 {
-        self.value.try_get().unwrap_or(0) as u64
+        self.value.try_get().none_if_missing().unwrap_or(0) as u64
     }
 
     pub fn ping(&self, tag: u64) {
@@ -187,7 +187,7 @@ Line by line:
 
 - **`strict_inc` aborts on underflow.** If the counter is at 3 and you call `decrement(5)`, the result would be -2. `NNInt` rejects the change and the transaction aborts automatically. You don't need to check for this.
 
-- **`try_get().unwrap_or(0)`** reads the current value. `try_get()` returns `Result<i128, LibraryExn>`; the scaffold's `unwrap_or(0)` therefore maps every read error to zero, not only missing storage. Production code that should default only missing storage uses `try_get().none_if_missing().unwrap_or(0)`.
+- **`try_get().none_if_missing().unwrap_or(0)`** reads the current value. `try_get()` returns `Result<i128, LibraryExn>`, so a bare `unwrap_or(0)` would report zero for every read error, not just a never-incremented counter. `none_if_missing()` converts only absence into `None` and re-throws anything else, so a wrong-type slot or an overflowed accumulation surfaces instead of looking like a legitimate zero.
 
 - **`as u64` narrows the stored value.** `NNInt` stores `i128`, so a value above `u64::MAX` would truncate in this scaffold. A production counter should return `i128` or perform a checked conversion with a domain error.
 
@@ -202,8 +202,9 @@ Line by line:
 The scaffold creates `tests/test.rs`:
 
 ```rust
-use counter::{register_mock_contract, CounterClient};
 use sdk::*;
+
+use counter::{CounterClient, register_mock_contract};
 
 static NONCE: SHA256Hash = sdk::sha256_static!("COUNTER_NONCE");
 
@@ -219,7 +220,7 @@ fn test_counter() {
     let (env, contract_hash) = setup();
 
     env.transact(|tx| {
-        let caller = <ContractAddress as Named>::named("test_counter");
+        let caller = ContractAddress::named("test_counter");
         tx.call(&caller).run(move || {
             let addr = deploy_contract(&NONCE, &contract_hash);
             let client = CounterClient::new(&addr);
@@ -259,7 +260,7 @@ fn test_counter_underflow() {
     let (env, contract_hash) = setup();
 
     env.transact(|tx| {
-        let caller = <ContractAddress as Named>::named("test_counter_underflow");
+        let caller = ContractAddress::named("test_counter_underflow");
         tx.call(&caller).run(move || {
             let addr = deploy_contract(&NONCE, &contract_hash);
             let client = CounterClient::new(&addr);

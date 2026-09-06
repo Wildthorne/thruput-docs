@@ -59,7 +59,7 @@ Other repos:
 Common gotchas:
 
 - SDK uses `strict_inc(delta)`. There is no `strict_add` or `strict_sub`.
-- Use `#[contract_error]`, not manual error derives.
+- Use `#[contract_exception]`, not manual error derives.
 - Map access is `.at(key)` and `.at_mut(key)`, not `.get()`.
 - Client methods take `&self`. `with_gas_limit` returns a new client.
 - Do not invent performance numbers, dates, token economics, validator requirements, RPC fields, or SDK APIs.

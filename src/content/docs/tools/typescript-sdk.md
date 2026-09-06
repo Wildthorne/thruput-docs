@@ -6,7 +6,7 @@ description: Connect to Groundhog, manage accounts, and execute typed contract c
 `@groundhogchain/client` connects to JSON-RPC, performs a network identity handshake, manages wallet accounts, and executes invocations built by generated contract bindings.
 
 :::note[Version checked]
-This page was source-checked against published `@groundhogchain/client` `0.4.0` and `@groundhogchain/protocol` packages `0.8.0` on August 26, 2026. The public client types structurally align with RPC wire `4.0.0`.
+This page was source-checked against published `@groundhogchain/client` `0.5.1` and `@groundhogchain/protocol` packages `0.10.0` on September 2, 2026. The public client types structurally align with RPC wire `4.0.0`.
 :::
 
 ## Install

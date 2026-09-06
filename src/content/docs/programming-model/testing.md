@@ -44,8 +44,13 @@ The generated Cargo entries keep RPC and Tokio dependencies out of RV32 guest bu
 groundhog-integration-test = ["dep:groundhog-json-rpc-client", "dep:tokio"]
 
 [target.'cfg(not(target_arch = "riscv32"))'.dependencies]
-groundhog-json-rpc-client = { version = "0.13.0", registry = "groundhog", optional = true }
+sdk = { version = "0.29.0", registry = "groundhog", features = ["std"] }
 tokio = { version = "1", features = ["macros", "rt-multi-thread"], optional = true }
+
+[target.'cfg(not(target_arch = "riscv32"))'.dependencies.groundhog-json-rpc-client]
+version = "0.13.0"
+registry = "groundhog"
+optional = true
 ```
 
 The generated `build.rs` contains:
@@ -81,8 +86,9 @@ pub use implementation::*;
 ## Basic Pattern
 
 ```rust
-use my_counter::{register_mock_contract, CounterClient};
 use sdk::*;
+
+use my_counter::{CounterClient, register_mock_contract};
 
 static NONCE: SHA256Hash = sdk::sha256_static!("COUNTER_NONCE");
 
@@ -98,7 +104,7 @@ fn test_counter() {
     let (env, contract_hash) = setup();
 
     env.transact(|tx| {
-        let caller = <ContractAddress as Named>::named("test_counter");
+        let caller = ContractAddress::named("test_counter");
         tx.call(&caller).run(move || {
             let addr = deploy_contract(&NONCE, &contract_hash);
             let client = CounterClient::new(&addr);
@@ -151,7 +157,7 @@ Use `groundhog test --integration` when the thing under test is not just contrac
 Use `try_*` methods to verify that operations fail as expected:
 
 ```rust
-use my_counter::{register_mock_contract, CounterClient};
+use my_counter::{CounterClient, register_mock_contract};
 
 assert_eq!(
     client.try_decrement(10).unwrap_err().try_as(),
