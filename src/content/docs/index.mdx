@@ -1,97 +1,69 @@
 ---
 title: Groundhog
-description: Developer documentation for the Groundhog L1 blockchain.
+description: Build ambitious on-chain applications with Groundhog, Rust, and your coding agent.
 template: splash
 pagefind: false
 prev: false
 next: false
 hero:
-  title: Groundhog
-  tagline: |
-    The L1 built for abundance, not scarcity.
-    <br/><br/>
-    <span style="font-size: 0.85em; opacity: 0.75;">Transactions record typed changes, called deltas. Deltas that can safely coexist merge, letting contracts run in parallel while balance limits still hold. <a href="/programming-model/execution/#merged-deltas">How merged deltas work.</a></span>
+  title: Put the hard part on-chain.
+  tagline: Build simulations, game logic, and complex contract workflows. Bring your idea and your coding agent. Groundhog gives you room to compute.
   actions: []
 ---
 
-:::caution[Confidential -- Early Access]
-This documentation is shared under NDA with early access partners. Do not distribute or share publicly.
-:::
+import AgentStart from '../../components/AgentStart.astro';
 
-## Pick Your Path
+<div class="access-note"><span class="access-dot" aria-hidden="true"></span><strong>Early access</strong><span>Confidential documentation for authorised participants. Do not share publicly.</span></div>
 
-<div class="two-paths">
-  <a href="/start/" class="path-card path-build">
-    <span class="path-label">Builder</span>
-    <span class="path-title">Build something</span>
-    <span class="path-desc">Pick your background, set up the SDK, write a contract, and deploy a working counter.</span>
-    <span class="path-steps">
-      <span class="path-step">
-        <span class="step-num">1</span>
-        <span class="step-text">Choose Your Background</span>
-      </span>
-      <span class="path-step">
-        <span class="step-num">2</span>
-        <span class="step-text">Getting Started</span>
-      </span>
-      <span class="path-step">
-        <span class="step-num">3</span>
-        <span class="step-text">Tutorials</span>
-      </span>
-    </span>
-    <span class="path-cta">Start here <span class="path-arrow">&rarr;</span></span>
+<AgentStart />
+
+## More room for the idea
+
+<div class="capability-grid">
+  <a class="info-card" href="/programming-model/execution/">
+    <span class="card-index">01 / COMPUTE</span>
+    <h3>Keep the logic on-chain</h3>
+    <p>Explore longer-running, more involved contract logic. Start with a simulation, a matching algorithm, or a complete game turn.</p>
+    <span class="card-link">Explore execution <span aria-hidden="true">↗</span></span>
   </a>
-  <a href="/how-it-works/architecture/" class="path-card path-understand">
-    <span class="path-label">Architect</span>
-    <span class="path-title">Understand the engine</span>
-    <span class="path-desc">How a few simple primitives give you correctness guarantees and unlock parallel execution as a consequence.</span>
-    <span class="path-steps">
-      <span class="path-step">
-        <span class="step-num">1</span>
-        <span class="step-text">Architecture</span>
-      </span>
-      <span class="path-step">
-        <span class="step-num">2</span>
-        <span class="step-text">Execution Model</span>
-      </span>
-      <span class="path-step">
-        <span class="step-num">3</span>
-        <span class="step-text">Deep Dive</span>
-      </span>
-    </span>
-    <span class="path-cta">Start here <span class="path-arrow">&rarr;</span></span>
+  <a class="info-card" href="/programming-model/execution/#gas">
+    <span class="card-index">02 / CAPACITY</span>
+    <h3>Compute without gas fees</h3>
+    <p>Gas meters execution but costs zero tokens. Hold HOG for capacity and fund storage deposits. Execution still has limits.</p>
+    <span class="card-link">Understand capacity <span aria-hidden="true">↗</span></span>
+  </a>
+  <a class="info-card" href="/programming-model/storage-types/">
+    <span class="card-index">03 / CONCURRENCY</span>
+    <h3>Build on shared state</h3>
+    <p>Typed storage lets compatible changes merge while contracts execute in parallel. Use the SDK’s balance and collection types.</p>
+    <span class="card-link">Choose your storage <span aria-hidden="true">↗</span></span>
   </a>
 </div>
 
-## Why Groundhog?
+## Start small. Then stretch it.
 
-<div class="why-grid">
-  <div class="why-item">
-    <span class="why-header">
-      <svg class="why-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-      <span class="why-title">Free Compute</span>
-    </span>
-    <span class="why-desc">No gas fees. Hold HOG tokens for capacity, not pay per operation. Storage is a refundable deposit, not a burn.</span>
-  </div>
-  <div class="why-item">
-    <span class="why-header">
-      <svg class="why-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="13 17 18 12 13 7"/><polyline points="6 17 11 12 6 7"/></svg>
-      <span class="why-title">Parallel Execution</span>
-    </span>
-    <span class="why-desc">Typed storage primitives let independent and commutative transactions execute across available cores.</span>
-  </div>
-  <div class="why-item">
-    <span class="why-header">
-      <svg class="why-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-      <span class="why-title">Irrevocable Finality</span>
-    </span>
-    <span class="why-desc">Transactions are final when confirmed. No reorgs, no probabilistic finality.</span>
-  </div>
-  <div class="why-item">
-    <span class="why-header">
-      <svg class="why-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-      <span class="why-title">Less Ordering Dependence</span>
-    </span>
-    <span class="why-desc">Commutative deltas produce the same merged state in any order. Conflicting transactions are excluded instead of being serialized inside the block.</span>
-  </div>
+<div class="resource-grid">
+  <a class="resource-card" href="/tutorials/build-a-counter/">
+    <span class="resource-kind">FIRST CONTRACT</span>
+    <h3>Make something work</h3>
+    <p>Build and test a counter. Learn the contract loop before expanding your idea.</p>
+    <span aria-hidden="true">↗</span>
+  </a>
+  <a class="resource-card" href="/tutorials/work-with-groundhog-from-typescript/">
+    <span class="resource-kind">APPLICATIONS</span>
+    <h3>Connect an interface</h3>
+    <p>Use generated TypeScript bindings to call your contract and read its results.</p>
+    <span aria-hidden="true">↗</span>
+  </a>
+  <a class="resource-card" href="/how-it-works/architecture/">
+    <span class="resource-kind">UNDER THE HOOD</span>
+    <h3>Understand the engine</h3>
+    <p>Explore execution, consensus, and the storage model behind Groundhog.</p>
+    <span aria-hidden="true">↗</span>
+  </a>
+</div>
+
+<div class="landing-footer">
+  <p>Prefer to work through the docs yourself? <a href="/start/getting-started/">Follow Getting Started.</a></p>
+  <p><a href="/tools/faucet/">Fund a wallet</a><span aria-hidden="true"> · </span><a href="/tools/block-explorer/">Inspect a transaction</a><span aria-hidden="true"> · </span><a href="https://github.com/groundhogchain/groundhog-examples">Browse examples</a></p>
 </div>

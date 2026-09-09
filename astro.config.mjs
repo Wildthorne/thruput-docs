@@ -27,6 +27,7 @@ export default defineConfig({
         {
           label: "Tools",
           items: [
+            "start/build-with-an-agent",
             "tools/groundhog-cli",
             "tools/rust-api-docs",
             "tools/typescript-sdk",

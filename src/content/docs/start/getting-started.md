@@ -3,6 +3,8 @@ title: Getting Started
 description: Set up the Groundhog CLI and build your first RV32 contract.
 ---
 
+Working with a coding agent? Start with [Build with an Agent](/start/build-with-an-agent/) to check access and load the instructions for your CLI release.
+
 ## How to Start
 
 The **[Groundhog CLI](/tools/groundhog-cli/)** is the recommended way to get going. It scaffolds a project, manages the Rust toolchain, builds deployable RV32 artifacts, and wraps the local-node workflow. RV32 is Groundhog's 32-bit RISC-V contract target. The tutorials on this site all start from CLI-generated projects.
@@ -14,32 +16,42 @@ That said, the CLI is a convenience, not a requirement. You can also:
 
 The CLI is just a consumer of the SDK. It generates the same Rust crate you'd write by hand: a standard Cargo project that depends on the SDK and uses its storage types and macros. Normal `cargo build` and `cargo test` target the host. `groundhog build` and `groundhog test` target RV32 by default.
 
-:::note[Version checked]
-The published Groundhog CLI is `0.14.0`. Its generated projects use SDK `0.29.0` and `groundhog-json-rpc-client` `0.13.0`, on the toolchain pinned in the generated `rust-toolchain.toml` (`nightly-2026-07-01`).
+## Choose and Install a Client Bundle
+
+Use one complete Groundhog client bundle so the CLI, local node, runtime libraries, and contract artifacts come from a compatible release. For the first installation, obtain the release selection from the hackathon organisers or your onboarding contact. Do not select a newer prerelease just because its agent guide is available.
+
+After installing that initial bundle and running `groundhog init`, hosted Devnet users should follow [Devnet version discovery](/tutorials/develop-on-devnet/#2-configure-devnet-identity). Check the serving release and switch to its matching client bundle before creating a wallet or submitting transactions. Discovery uses the installed CLI’s profile; it is not a prerequisite for the first installation.
+
+:::note[Rehearsed local preview]
+On September 9, 2026, the local counter loop passed on macOS ARM64 and in a fresh Ubuntu 26.04 x86-64 container under ARM64 emulation with client bundle `0.1.27-rc.4`, CLI `0.16.0-rc.1`, and `hog-devnode` `0.1.27-rc.4`. Its scaffold declares SDK `0.32.0`, JSON-RPC client `0.13.0`, and toolchain `nightly-2026-07-01`. The Linux run needed system libraries and separately supplied registry and FFI credentials. These checks do not qualify credential-free installation or the current hosted Devnet.
 :::
 
-## Configure Cargo and Install
+Before starting, obtain access to the [packaging releases](https://github.com/groundhogchain/packaging/releases), the private Groundhog Cargo registry, and the SDK's native-test FFI download. Install Rust and Cargo through [rustup](https://rustup.rs/) if needed. Keep tokens and passwords out of agent conversations.
 
-During early access, the SDK and CLI are distributed through the private Groundhog Cargo registry. Configure Cargo with the registry index and token from your onboarding instructions first.
+Download the selected release's client archive for your platform. The rehearsed Apple Silicon archive is `groundhog-client-macos-arm64.tar.gz`; the Linux x86-64 archive is `groundhog-client-linux-x86_64.tar.gz`. Extract the complete archive and keep its directory layout intact.
 
-```bash
-# Install Rust (if you don't have it)
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-
-# Install the published CLI from the private registry
-cargo install groundhog-cli \
-  --version "=0.14.0" \
-  --registry groundhog \
-  --locked
-```
-
-To install from a `groundhog-rpc` source checkout instead:
+On Ubuntu 26.04, install the build tools and Linux node's system libraries before checking the binaries:
 
 ```bash
-cargo install --locked --path crates/tools/cli
+sudo apt-get update
+sudo apt-get install -y ca-certificates curl build-essential jq libjemalloc2 libsnappy1v5
 ```
 
-The Groundhog CLI does not manage Cargo registry credentials.
+Other Linux distributions may use different package names. The node requires `libjemalloc.so.2` and `libsnappy.so.1`; these system libraries are separate from the files in the client archive.
+
+Set the actual extracted directory in each terminal you use:
+
+```bash
+export GROUNDHOG_CLIENT_HOME="/path/to/extracted/groundhog-client-<version>-<platform>"
+export PATH="$GROUNDHOG_CLIENT_HOME/bin:$PATH"
+command -v groundhog
+groundhog --version
+"$GROUNDHOG_CLIENT_HOME/bin/hog-devnode" --version
+```
+
+Confirm these are the versions in the selected release. An older `groundhog` elsewhere on your machine may lack `--skill` or use different commands. Native tests still need FFI access, and the CLI does not manage Cargo registry credentials.
+
+The local tutorial includes a [runtime selection check](/tutorials/develop-locally/#verify-the-selected-runtime). An inherited `GROUNDHOG_DEVNODE_BINARY` can override the adjacent bundled node, even after you change `PATH`.
 
 ## Initialize the CLI
 
@@ -79,11 +91,34 @@ The wallet inherits the key name and becomes the effective wallet. Wallet creati
 ```bash
 groundhog new my-counter
 cd my-counter
+```
+
+### Configure Cargo Access
+
+Generated projects define the Groundhog registry in `.cargo/config.toml`. Cargo also needs a credential provider to use your registry token. A token alone does not resolve `authenticated registries require a credential-provider to be configured`.
+
+For an agent or automation session, have your onboarding contact or credential manager supply `CARGO_REGISTRIES_GROUNDHOG_TOKEN` in the task's environment. Then select Cargo's environment-token provider in that shell:
+
+```bash
+export CARGO_REGISTRIES_GROUNDHOG_CREDENTIAL_PROVIDER=cargo:token
+```
+
+This path does not require `cargo login` or write a token to disk. Repeat the provider selection in another terminal used for builds. Keep tokens out of command arguments, agent conversations, and project files.
+
+If you already use a credential manager for this registry, keep its provider instead. For interactive login, configure your preferred provider using [Cargo's credential-provider documentation](https://doc.rust-lang.org/cargo/reference/registry-authentication.html), then run `cargo login --registry groundhog` from the project directory. The `cargo:token` provider stores interactive login tokens in Cargo's plaintext credentials file; OS keychain providers offer another storage option.
+
+### Test and Build
+
+Native tests currently also require `HOGD_FFI_PASSWORD` supplied through your environment during onboarding. Keep it available in the shell running `cargo test`. Credentials saved by `groundhog init` are used by CLI-managed subprocesses; raw Cargo does not read the CLI's credential file. `groundhog status --json` reports credential availability to the CLI, not whether raw Cargo can access the download.
+
+```bash
 cargo test
 groundhog build
 ```
 
 You now have a working counter contract with passing native tests and a deployable RV32 artifact under `target/groundhog/`. The CLI also offers a `stub` template (`groundhog new my-contract --template stub`) if you want a bare-bones starting point.
+
+Keep the dependency versions and toolchain generated by your installed CLI. Do not replace its `Cargo.toml` with one copied from a tutorial for another release.
 
 The scaffold creates `.gitignore` entries for `/target/` and `/.groundhog/`.
 
