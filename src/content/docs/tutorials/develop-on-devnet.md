@@ -7,8 +7,8 @@ This tutorial moves the local development loop onto Devnet. You will use the sig
 
 Complete [Develop Locally with the CLI](/tutorials/develop-locally/) first if you have not yet built, deployed, and called a contract against `hog-devnode`.
 
-:::note[Version checked]
-This tutorial was checked against Devnet on August 31, 2026. At that time `groundhog_version` reported wire format `5.0.0`, implementation `0.11.0`, and packaging release `0.1.25`.
+:::note[Hosted version must be discovered]
+An earlier check on August 31, 2026 observed wire format `5.0.0`, implementation `0.11.0`, and packaging release `0.1.25`. Those are historical values, not installation pins. Use the live discovery steps below. The local preview rehearsal described in Getting Started did not qualify the hosted Devnet flow.
 :::
 
 ## Before You Start

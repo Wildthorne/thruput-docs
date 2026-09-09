@@ -8,9 +8,11 @@
   },
   "scripts": {
     "dev": "astro dev",
-    "build": "astro build",
+    "build": "node scripts/check-agent-guide.mjs && astro build",
     "preview": "astro preview",
-    "astro": "astro"
+    "astro": "astro",
+    "check:agent-guide": "node scripts/check-agent-guide.mjs",
+    "test": "node --test scripts/*.test.mjs"
   },
   "dependencies": {
     "@astrojs/check": "^0.9.9",

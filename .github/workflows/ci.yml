@@ -11,6 +11,8 @@ jobs:
     runs-on: namespace-profile-default
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-node@v6
         with:
@@ -20,6 +22,14 @@ jobs:
         run: corepack enable
 
       - run: pnpm install --frozen-lockfile
+
+      - name: Agent guide checks
+        run: pnpm test
+
+      - name: Preserve versioned guides
+        env:
+          GUIDE_BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: node scripts/check-agent-guide-history.mjs "$GUIDE_BASE"
 
       - name: Type check
         run: pnpm astro check

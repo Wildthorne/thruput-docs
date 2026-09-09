@@ -25,13 +25,12 @@ Groundhog is not EVM-compatible. The analogy is about local workflow, not byteco
 
 ## Common Workflow
 
-Start with native tests and the default RV32 build:
+Complete [Cargo access setup](/start/getting-started/#configure-cargo-access), then start with native tests and the default RV32 build:
 
 ```bash
 groundhog new my-counter     # create the project
 cd my-counter
 groundhog config set default-key dev-1 --profile local --project
-cargo login --registry groundhog
 cargo test                   # fast native tests
 groundhog build              # write the RV32 artifact and lowering metadata
 ```
@@ -84,7 +83,7 @@ For complete command sequences, follow [Develop Locally with the CLI](/tutorials
 
 ## First-Run Setup
 
-Early-access Cargo registry credentials are handled by Cargo, not the CLI. Obtain the registry token through onboarding. Generated projects define the registry index in `.cargo/config.toml`; run `cargo login --registry groundhog` from the generated project directory before its first build.
+Early-access Cargo registry credentials are handled by Cargo, not the CLI. Follow [Cargo access setup](/start/getting-started/#configure-cargo-access) to select a credential provider before using an environment token or interactive login. The client-bundle instructions also cover [Linux system prerequisites](/start/getting-started/#choose-and-install-a-client-bundle).
 
 Install `groundhog` and `hog-devnode` together from the same [Groundhog client bundle](https://github.com/groundhogchain/packaging/releases). Keep the extracted directory layout intact; the macOS bundle includes runtime libraries beside the binaries. `groundhog node` accepts `--hog-devnode-binary`; both it and `groundhog test --integration` also discover `GROUNDHOG_DEVNODE_BINARY`, a sibling executable beside `groundhog`, or `hog-devnode` on `PATH`. Integration mode does not accept the command-line flag.
 

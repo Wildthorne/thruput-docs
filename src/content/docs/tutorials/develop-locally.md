@@ -7,32 +7,30 @@ This tutorial walks through the complete local CLI loop. You will build and test
 
 Local development is the fastest way to exercise deployment and RPC behavior. It does not require a hosted faucet, a hosted endpoint, or a persistent signing key.
 
-:::note[Version checked]
-This tutorial was checked on August 31, 2026 with Groundhog client bundle `0.1.26`, which contains Groundhog CLI `0.11.1` and `hog-devnode` `0.1.26`. That CLI's generated project declares SDK `0.24.1` and `groundhog-json-rpc-client` `0.11.0`.
-:::
-
 ## Prerequisites
 
-You need:
+Install the complete client bundle using [Getting Started](/start/getting-started/#choose-and-install-a-client-bundle). That page records the rehearsed local preview and the boundary of its validation. You also need `jq` for the structured-output checks below. Keep the generated SDK dependencies and toolchain for your selected CLI.
 
-- Rust and Cargo through [rustup](https://rustup.rs/)
-- `jq` for structured-output checks
-- A token for the private Groundhog Cargo registry
-- Access to the [Groundhog packaging releases](https://github.com/groundhogchain/packaging/releases)
-- The Groundhog client bundle for your platform
+### Verify the Selected Runtime
 
-Download the client archive from the current packaging release. Use `groundhog-client-macos-arm64.tar.gz` on Apple Silicon or `groundhog-client-linux-x86_64.tar.gz` on x86-64 Linux. Both archives contain compatible `groundhog` and `hog-devnode` binaries, contract artifacts, and the bundle manifest. The macOS archive also contains the runtime libraries required by `hog-devnode`.
-
-Extract the complete archive and keep its directory layout intact. Add its `bin` directory to `PATH`:
+After setting `GROUNDHOG_CLIENT_HOME` and `PATH` as described in Getting Started, inspect what the CLI will actually run:
 
 ```bash
-export GROUNDHOG_CLIENT_HOME="/path/to/extracted/groundhog-client-<version>-<platform>"
-export PATH="$GROUNDHOG_CLIENT_HOME/bin:$PATH"
+command -v groundhog
 groundhog --version
-hog-devnode --version
+groundhog status --json | jq '.data.environment.devnode'
 ```
 
-Because `hog-devnode` is beside `groundhog`, local-node commands find it without `GROUNDHOG_DEVNODE_BINARY`.
+Read the returned `path` and `version`. They must identify the node from your selected bundle. A successful status command alone does not establish that it selected the right node. `GROUNDHOG_DEVNODE_BINARY` takes precedence over the executable beside the CLI.
+
+If you intend to use the bundle and the path points elsewhere, select its node for this terminal, then check again:
+
+```bash
+export GROUNDHOG_DEVNODE_BINARY="$GROUNDHOG_CLIENT_HOME/bin/hog-devnode"
+groundhog status --json | jq '.data.environment.devnode'
+```
+
+Use the same bundle and environment in the terminal that starts the node. This changes only the current shell; do not rewrite a developer's shell configuration or discard an intentional source-build setup. A protocol mismatch is a reason to verify the selected binaries before trying any protocol override.
 
 ## 1. Initialize the CLI
 
@@ -53,11 +51,7 @@ groundhog new my-counter
 cd my-counter
 ```
 
-The generated project defines the private registry in `.cargo/config.toml`. Authenticate from the project directory before the first build:
-
-```bash
-cargo login --registry groundhog
-```
+The generated project defines the private registry in `.cargo/config.toml`. Complete [Cargo access setup](/start/getting-started/#configure-cargo-access) from this project directory before the first build. For the native tests below, also supply the [FFI password in the task environment](/start/getting-started/#test-and-build). Credentials saved by `groundhog init` do not reach raw `cargo test`.
 
 Select the built-in account in the project's local profile:
 
@@ -111,7 +105,7 @@ Open a second terminal, keep it running, and start the node:
 groundhog node
 ```
 
-The command starts one supervised `hog-devnode`, exposes JSON-RPC on `http://127.0.0.1:9545`, and records the active endpoint and runtime manifest in global CLI state. The default artifact layout needs no extra flags. Use repeatable `--contract-artifacts-dir <DIR>` options only when the node must load contracts from nonstandard directories.
+The command starts one supervised `hog-devnode`, exposes JSON-RPC on `http://127.0.0.1:9545`, and records the active endpoint and runtime manifest in global CLI state. With the verified bundled runtime, the default artifact layout needs no extra flags. Use repeatable `--contract-artifacts-dir <DIR>` options only when the node must load contracts from nonstandard directories.
 
 The node is ephemeral. Deployments and calls share state while this process runs, but stopping it discards chain state and clears the active-runtime record.
 
@@ -238,7 +232,7 @@ Run `groundhog config set default-key dev-1 --profile local --project`. The proj
 
 ### Protocol mismatch
 
-Use a `hog-devnode` build compatible with the CLI. `groundhog node --hogd-protocol hogp/<hash>` can override the handshake token when only the token differs; incompatible protocol shapes still fail.
+First repeat the [runtime selection check](#verify-the-selected-runtime), including inherited environment overrides. Use a `hog-devnode` build compatible with the CLI. Do not use `--hogd-protocol` to make a mismatched installation appear compatible. That developer diagnostic changes only the handshake token, not the wire format; use it only when token-only compatibility has been independently established.
 
 ## Next Steps
 
