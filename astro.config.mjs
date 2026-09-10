@@ -7,6 +7,15 @@ export default defineConfig({
     starlight({
       title: "Groundhog",
       customCss: ["./src/styles/custom.css"],
+      components: {
+        Header: "./src/components/Header.astro",
+        Sidebar: "./src/components/Sidebar.astro",
+        MobileMenuToggle: "./src/components/MobileMenuToggle.astro",
+        PageTitle: "./src/components/PageTitle.astro",
+        Footer: "./src/components/Footer.astro",
+        ThemeProvider: "./src/components/ThemeProvider.astro",
+        ThemeSelect: "./src/components/ThemeSelect.astro",
+      },
       social: [
         {
           icon: "github",

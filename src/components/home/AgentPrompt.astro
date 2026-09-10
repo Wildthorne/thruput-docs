@@ -1,0 +1,104 @@
+---
+const prompt = 'Read https://docs.groundhog.dev/start/build-with-an-agent/ and help me build my first Groundhog app. If you cannot access that page, ask me for a saved copy; never ask me to paste credentials. Check my setup, access, and the actual CLI and runtime paths first, then use the guidance from my installed CLI. Start with a small working contract, run its tests, and help me deploy it. Explain any changes that need my approval.';
+---
+
+<home-agent-prompt role="group" aria-labelledby="install-label">
+  <div id="install-label">Paste into your coding agent to get started</div>
+  <div class="prompt-bar">
+    <span class="prompt-preview" title={prompt}>{prompt}</span>
+    <span class="separator" aria-hidden="true"></span>
+    <button type="button" hidden aria-label="Copy prompt">
+      <svg class="copy-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+      <svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+      <span data-button-label>Copy prompt</span>
+    </button>
+  </div>
+  <p class="copy-status" role="status" aria-live="polite"><span data-status-text></span></p>
+  <details>
+    <summary>View full prompt to copy manually</summary>
+    <textarea name="agent-prompt" aria-label="Full agent prompt" readonly rows="9">{prompt}</textarea>
+  </details>
+</home-agent-prompt>
+
+<style>
+  home-agent-prompt { display: block; margin: 2.375rem auto 0; width: 100%; max-width: 28.75rem; }
+  #install-label { margin-bottom: .875rem; font-size: .625rem; line-height: 1.625; letter-spacing: .12em; text-transform: uppercase; color: var(--brand-muted); }
+  .prompt-bar { display: flex; align-items: center; min-height: 4rem; padding: .5rem; border: 1px solid #4a4c3b; border-radius: .25rem; background: #141511; text-align: left; }
+  .prompt-preview { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0 .5rem; font-size: 1rem; color: var(--brand-muted); }
+  .separator { flex-shrink: 0; width: 1px; height: 2.25rem; background: var(--brand-border); }
+  button { display: inline-flex; flex-shrink: 0; align-items: center; justify-content: center; gap: .5rem; height: 2.25rem; margin-left: .5rem; padding: .5rem .75rem; border: 0; border-radius: .25rem; color: var(--brand-foreground); background: transparent; font: 500 .875rem/1.25rem var(--sl-font-mono); white-space: nowrap; cursor: pointer; }
+  button:hover { background: #2b2e23; }
+  button:focus-visible, summary:focus-visible { outline: 2px solid var(--brand-accent); outline-offset: 3px; }
+  button svg { width: 1rem; height: 1rem; flex-shrink: 0; }
+  .check-icon, [data-copied] .copy-icon, [hidden] { display: none; }
+  [data-copied] .check-icon { display: block; }
+  .copy-status { margin: .5rem 0 0; font-size: .75rem; line-height: 1.5; color: var(--brand-muted); }
+  .copy-status[data-success] span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  details { margin-top: .75rem; text-align: left; font-size: .875rem; color: var(--brand-muted); }
+  summary { cursor: pointer; }
+  textarea { display: block; width: 100%; margin-top: .75rem; padding: .75rem; border: 1px solid var(--brand-border); border-radius: .25rem; background: var(--brand-background); color: var(--brand-foreground); font: 1rem/1.625 var(--sl-font-mono); resize: vertical; }
+  textarea:focus-visible { outline: 2px solid var(--brand-accent); outline-offset: -1px; }
+  @media (min-width: 701px) { .prompt-preview { padding: 0 1rem; font-size: .875rem; } }
+  @media (pointer: coarse) { button { min-height: 3rem; } }
+</style>
+
+<script>
+  class HomeAgentPrompt extends HTMLElement {
+    private cleanup?: () => void;
+
+    connectedCallback() {
+      const button = this.querySelector('button');
+      const label = this.querySelector('[data-button-label]');
+      const status = this.querySelector<HTMLElement>('[role="status"]');
+      const message = this.querySelector('[data-status-text]');
+      const fallback = this.querySelector('details');
+      const prompt = this.querySelector('textarea');
+      if (!button || !label || !status || !message || !fallback || !prompt) return;
+      let timeout = 0;
+      let connected = true;
+      button.hidden = false;
+      fallback.hidden = true;
+
+      const copy = async () => {
+        clearTimeout(timeout);
+        try {
+          await navigator.clipboard.writeText(prompt.value);
+          if (!connected) return;
+          button.dataset.copied = '';
+          label.textContent = 'Copied';
+          status.dataset.success = '';
+          message.textContent = 'Prompt copied to clipboard.';
+          fallback.hidden = true;
+          timeout = window.setTimeout(() => {
+            delete button.dataset.copied;
+            label.textContent = 'Copy prompt';
+            message.textContent = '';
+            delete status.dataset.success;
+          }, 2000);
+        } catch {
+          if (!connected) return;
+          delete button.dataset.copied;
+          delete status.dataset.success;
+          label.textContent = 'Copy prompt';
+          message.textContent = 'Clipboard access was blocked. Copy the selected full prompt below.';
+          fallback.hidden = false;
+          fallback.open = true;
+          prompt.focus();
+          prompt.select();
+        }
+      };
+      button.addEventListener('click', copy);
+      this.cleanup = () => {
+        connected = false;
+        clearTimeout(timeout);
+        button.removeEventListener('click', copy);
+      };
+    }
+
+    disconnectedCallback() {
+      this.cleanup?.();
+    }
+  }
+
+  customElements.define('home-agent-prompt', HomeAgentPrompt);
+</script>

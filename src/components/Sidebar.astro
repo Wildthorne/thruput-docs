@@ -1,0 +1,12 @@
+---
+import DefaultSidebar from '@astrojs/starlight/components/Sidebar.astro';
+import SiteNavigation from './SiteNavigation.astro';
+const isHome = Astro.url.pathname === '/';
+---
+
+<SiteNavigation mobile />
+{isHome ? <a class="mobile-build" href="/start/build-with-an-agent/">Start Building</a> : <DefaultSidebar />}
+
+<style>
+  .mobile-build { padding: .75rem 1rem; background: var(--brand-accent); color: #10110f; border-radius: .25rem; text-align: center; text-decoration: none; font: 500 .875rem/1.5 var(--sl-font-mono); }
+</style>

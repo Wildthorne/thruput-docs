@@ -1,0 +1,32 @@
+---
+import Search from '@astrojs/starlight/components/Search.astro';
+import SiteNavigation from './SiteNavigation.astro';
+import ThemeSelect from './ThemeSelect.astro';
+---
+
+<div class:list={['site-header', { 'home-header': Astro.url.pathname === '/' }]}>
+  <a class="site-brand" href="/" aria-label="Thruput homepage">
+    <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15.914 4a1.5 1.5 0 00-2.474-1.561l-9 9A1.5 1.5 0 005.5 14h4.002a.5.5 0 01.471.666L8.086 20a1.5 1.5 0 002.475 1.56l9-9A1.5 1.5 0 0018.5 10h-3.997a.5.5 0 01-.472-.667z" /></svg>
+    THRUPUT
+  </a>
+  <SiteNavigation />
+  <div class="header-actions">
+    <Search />
+    <a class="build-link" href="/start/build-with-an-agent/">Start Building</a>
+    {Astro.url.pathname !== '/' && <div class="desktop-theme"><ThemeSelect /></div>}
+  </div>
+</div>
+
+<style>
+  .site-header { display: flex; align-items: center; gap: 1.5rem; height: 100%; font-family: var(--sl-font-mono); }
+  .home-header { max-width: 77.5rem; margin-inline: auto; }
+  .site-brand { display: flex; align-items: center; flex-shrink: 0; gap: .5rem; min-height: 3rem; font: 500 1.125rem/1.2 var(--sl-font); letter-spacing: -.04em; text-decoration: none; color: var(--brand-foreground); }
+  .site-brand svg { width: 1.5rem; height: 1.5rem; flex-shrink: 0; color: var(--brand-accent); }
+  .header-actions { display: flex; align-items: center; gap: .75rem; margin-left: auto; min-width: 0; }
+  .desktop-theme, .build-link { display: none; }
+  .build-link { align-items: center; justify-content: center; min-height: 2.25rem; padding: .5rem 1rem; border-radius: .25rem; background: var(--brand-accent); color: #10110f; font-size: .875rem; line-height: 1.25rem; font-weight: 500; text-decoration: none; white-space: nowrap; }
+  .build-link:hover { background: #f2f68e; }
+  @media (min-width: 50rem) { .desktop-theme { display: block; } .site-brand { font-size: 1.375rem; } .site-brand svg { width: 1.75rem; height: 1.75rem; } }
+  @media (min-width: 1100px) { .site-header { gap: 2.5rem; } .build-link { display: inline-flex; } }
+  @media (min-width: 1700px) { .home-header { max-width: 88.75rem; } }
+</style>

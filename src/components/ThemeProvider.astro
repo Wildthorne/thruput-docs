@@ -1,0 +1,10 @@
+---
+import DefaultThemeProvider from '@astrojs/starlight/components/ThemeProvider.astro';
+---
+
+{Astro.url.pathname === '/' ? (
+  <script is:inline>
+    document.documentElement.dataset.homepage = '';
+    document.documentElement.dataset.theme = 'dark';
+  </script>
+) : <DefaultThemeProvider />}

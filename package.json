@@ -12,13 +12,19 @@
     "preview": "astro preview",
     "astro": "astro",
     "check:agent-guide": "node scripts/check-agent-guide.mjs",
-    "test": "node --test scripts/*.test.mjs"
+    "test": "node --test scripts/*.test.mjs",
+    "test:browser": "playwright test"
   },
   "dependencies": {
     "@astrojs/check": "^0.9.9",
     "@astrojs/starlight": "^0.39.3",
+    "@fontsource/ibm-plex-mono": "^5.3.0",
+    "@fontsource/ibm-plex-sans": "^5.3.0",
     "astro": "^6.4.5",
     "sharp": "^0.34.2",
     "typescript": "^5.9.3"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0"
   }
 }

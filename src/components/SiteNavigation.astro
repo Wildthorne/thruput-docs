@@ -1,0 +1,28 @@
+---
+interface Props { mobile?: boolean }
+const { mobile = false } = Astro.props;
+const isHome = Astro.url.pathname === '/';
+const links = [
+  { label: 'About', href: '/how-it-works/architecture/' },
+  { label: 'Get Started', href: '/start/build-with-an-agent/' },
+  { label: 'Documentation', href: '/start/' },
+  { label: 'Community', href: '/community/contributing/' },
+];
+---
+
+<nav class:list={['site-navigation', { mobile }]} aria-label="Main navigation">
+  {links.map(({ label, href }) => (
+    <a href={href} aria-current={label === 'Documentation' && !isHome ? 'location' : undefined}>{label}</a>
+  ))}
+</nav>
+
+<style>
+  .site-navigation { display: none; align-items: center; gap: 1rem; font: 400 .6875rem/1.5 var(--sl-font-mono); }
+  a { padding-block: .75rem; color: var(--brand-foreground); text-decoration: none; white-space: nowrap; }
+  a:hover, a[aria-current] { color: var(--sl-color-text-accent); }
+  .mobile { display: flex; align-items: stretch; flex-direction: column; gap: .25rem; padding-block: .5rem 1rem; border-bottom: 1px solid var(--brand-border); font-size: 1rem; }
+  .mobile a { min-height: 3rem; padding-inline: .5rem; border-radius: .25rem; }
+  .mobile a:hover { background: var(--brand-surface); }
+  @media (min-width: 50rem) { .site-navigation { display: flex; } .mobile { display: none; } }
+  @media (min-width: 1100px) { .site-navigation { gap: 1.75rem; font-size: .75rem; } }
+</style>
