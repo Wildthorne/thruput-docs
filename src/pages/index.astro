@@ -1,0 +1,141 @@
+---
+import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro';
+import AgentPrompt from '../components/home/AgentPrompt.astro';
+import DotField from '../components/home/DotField.astro';
+
+const features = [
+  {
+    id: 'compute', label: '01 / COMPUTE', title: 'Keep the logic on-chain',
+    href: '/programming-model/execution/',
+    description: 'Match orders, run an auction, or resolve a game turn alongside the assets it moves. Start with the rules your application needs.',
+    link: 'Explore execution',
+  },
+  {
+    id: 'capacity', label: '02 / CAPACITY', title: 'Compute without gas fees',
+    href: '/programming-model/execution/#gas',
+    description: 'Gas meters execution but costs zero tokens. Hold HOG for capacity and fund storage deposits. Execution still has limits.',
+    link: 'Understand capacity',
+  },
+  {
+    id: 'concurrency', label: '03 / CONCURRENCY', title: 'Build on shared state',
+    href: '/programming-model/storage-types/',
+    description: "Typed storage lets compatible changes merge while contracts execute in parallel. Use the SDK's balance and collection types.",
+    link: 'Choose your storage',
+  },
+];
+
+const resources = [
+  {
+    id: 'first-contract', label: 'FIRST CONTRACT', title: 'Make something work',
+    href: '/tutorials/build-a-counter/',
+    description: 'Build and test a counter. Learn the contract loop before expanding your idea.',
+    link: '',
+  },
+  {
+    id: 'applications', label: 'APPLICATIONS', title: 'Connect an interface',
+    href: '/tutorials/work-with-groundhog-from-typescript/',
+    description: 'Use generated TypeScript bindings to call your contract and read its results.',
+    link: '',
+  },
+  {
+    id: 'under-the-hood', label: 'UNDER THE HOOD', title: 'Understand the engine',
+    href: '/how-it-works/architecture/',
+    description: 'Explore execution, consensus, and the storage model behind Groundhog.',
+    link: '',
+  },
+];
+
+const sections = [
+  { id: 'capabilities', title: 'More room for the idea', cards: features },
+  { id: 'resources', title: 'Start small. Then stretch it.', cards: resources },
+];
+---
+
+<StarlightPage hasSidebar={true} frontmatter={{
+  title: 'Groundhog',
+  description: 'The blockchain built for abundance. Free compute, parallel execution, and irrevocable finality.',
+  template: 'splash', pagefind: false, prev: false, next: false,
+}}>
+  <div class="home-page not-content">
+    <noscript>
+      <nav class="home-fallback" aria-label="Site navigation">
+        <a href="/start/">Documentation</a>
+        <a href="/start/build-with-an-agent/">Start Building</a>
+      </nav>
+    </noscript>
+    <section id="hero" aria-labelledby="_top">
+      <DotField />
+      <div class="home-container hero-content">
+        <h1 id="_top">The blockchain built for <br /><span class="abundance">abundance<span class="hero-cursor" aria-hidden="true">_</span></span></h1>
+        <AgentPrompt />
+      </div>
+    </section>
+    {sections.map((section) => (
+      <section class="features" aria-labelledby={section.id}>
+        <div class="home-container">
+          <h2 id={section.id}>{section.title}</h2>
+          <div class="feature-grid">
+            {section.cards.map((card) => (
+              <a class="feature-card" id={card.id} href={card.href} aria-labelledby={`${card.id}-title`}>
+                <span class="feature-label">{card.label}</span>
+                <h3 id={`${card.id}-title`}>{card.title}</h3>
+                <p>{card.description}</p>
+                <span class="learn-more">{card.link} <span aria-hidden="true">&nearr;</span></span>
+              </a>
+            ))}
+          </div>
+        </div>
+      </section>
+    ))}
+  </div>
+</StarlightPage>
+
+<style>
+  .home-page { isolation: isolate; color-scheme: only dark; background: var(--brand-background); color: var(--brand-foreground); font-family: var(--sl-font-mono); -webkit-font-smoothing: antialiased; }
+  .home-fallback { display: flex; flex-wrap: wrap; justify-content: center; gap: 1rem; padding: 1rem; border-bottom: 1px solid var(--brand-border); }
+  .home-fallback a { color: var(--brand-accent); }
+  .home-container { width: calc(100% - 2.5rem); max-width: 77.5rem; margin-inline: auto; }
+  #hero { position: relative; overflow: hidden; border-bottom: 1px solid var(--brand-border); padding-bottom: 2rem; }
+  .hero-content { position: relative; padding-top: 5.5rem; padding-bottom: 3.75rem; text-align: center; }
+  .home-page h1 { margin: 1.5rem 0 1.375rem; color: var(--brand-foreground); font-family: inherit; font-size: clamp(2.0625rem, 7.2vw, 3.0625rem); font-weight: 400; line-height: 1.25; letter-spacing: -.06em; text-wrap: balance; }
+  h1 br { display: none; }
+  .abundance { display: block; color: var(--brand-accent); }
+  .hero-cursor { position: relative; left: .03em; display: inline-block; width: 0; animation: cursor-blink 1.4s steps(1) infinite; }
+  @keyframes cursor-blink { 50% { opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) { .hero-cursor { animation: none; } }
+  .features { background: #141511; padding-block: 1.75rem; }
+  .feature-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.25rem; }
+  .feature-card { display: flex; flex-direction: column; min-width: 0; gap: 1rem; padding: 1.5rem; border: 1px solid var(--brand-border); border-radius: .375rem; background: var(--brand-surface); scroll-margin-top: 1.5rem; color: inherit; text-decoration: none; transition: border-color 180ms ease; }
+  .feature-label { margin-bottom: .5rem; font-size: .75rem; line-height: 1.5; letter-spacing: .05em; color: var(--brand-accent); }
+  .home-page h2 { margin: 0 0 2rem; color: var(--brand-foreground); font-family: inherit; font-size: clamp(1.5rem, 3vw, 2rem); line-height: 1.3; font-weight: 500; letter-spacing: -.025em; text-align: center; text-wrap: balance; }
+  .home-page h3 { margin: 0; color: var(--brand-foreground); font-family: inherit; font-size: 1.25rem; line-height: 1.5; font-weight: 500; letter-spacing: -.025em; text-wrap: balance; }
+  .feature-card p { margin: 0; font-size: 1rem; line-height: 1.625; color: var(--brand-muted); text-wrap: pretty; }
+  .learn-more { align-self: flex-start; margin-top: auto; padding-top: .5rem; color: var(--brand-accent); font-size: .875rem; text-decoration: none; }
+  .feature-card:hover { border-color: var(--brand-accent); }
+  @media (prefers-reduced-motion: reduce) { .feature-card { transition: none; } }
+  @media (min-width: 701px) {
+    .home-container { width: calc(100% - 4rem); }
+    .hero-content { padding-top: 6.5rem; padding-bottom: 4.25rem; }
+    .home-page h1 { font-size: clamp(2.5rem, 4.45vw, 4.5rem); line-height: 1.2; }
+    h1 br { display: block; }
+    .abundance { display: inline; }
+    .features { padding-block: 3.25rem; }
+    .feature-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  }
+  @media (min-width: 768px) {
+    .home-page h3 { font-size: 1.125rem; }
+    .feature-card p { font-size: .875rem; line-height: 2; }
+  }
+  @media (min-width: 1100px) {
+    .hero-content { padding-top: 7.5rem; }
+    .feature-grid { gap: 1.5rem; }
+  }
+  @media (min-width: 1101px) { .home-container { width: calc(100% - 6rem); } }
+  @media (min-width: 1700px) {
+    .home-container { max-width: 88.75rem; }
+    .hero-content { padding-top: 9.5rem; padding-bottom: 5.5rem; }
+    .home-page h1 { font-size: 5rem; }
+    .features { padding-top: 4rem; }
+    .home-page h3 { font-size: 1.25rem; }
+  }
+</style>

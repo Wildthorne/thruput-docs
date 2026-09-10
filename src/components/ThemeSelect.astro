@@ -1,0 +1,51 @@
+---
+import { Icon } from '@astrojs/starlight/components';
+---
+
+{Astro.url.pathname !== '/' && (
+  <site-theme-toggle>
+    <button type="button" aria-label="Switch to light mode" title="Switch to light mode">
+      <Icon name="sun" class="sun" />
+      <Icon name="moon" class="moon" />
+    </button>
+  </site-theme-toggle>
+)}
+
+<style>
+  button { display: flex; align-items: center; justify-content: center; width: 2.25rem; height: 2.25rem; padding: .5rem; border: 0; border-radius: .25rem; background: transparent; color: var(--brand-foreground); cursor: pointer; }
+  button:hover { color: var(--sl-color-text-accent); }
+  button :global(svg) { width: 1.125rem; height: 1.125rem; }
+  :global([data-theme='dark']) .moon, :global([data-theme='light']) .sun { display: none; }
+  @media (pointer: coarse) { button { width: 3rem; height: 3rem; } }
+</style>
+
+<script>
+  const systemTheme = matchMedia('(prefers-color-scheme: light)');
+  let preference: string | null = null;
+  try { preference = localStorage.getItem('starlight-theme'); } catch { /* Storage may be disabled. */ }
+
+  function applyTheme() {
+    if (document.documentElement.hasAttribute('data-homepage')) return;
+    const theme = preference === 'light' || preference === 'dark' ? preference : systemTheme.matches ? 'light' : 'dark';
+    document.documentElement.dataset.theme = theme;
+    const label = theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode';
+    document.querySelectorAll('site-theme-toggle button').forEach(button => {
+      button.setAttribute('aria-label', label);
+      button.setAttribute('title', label);
+    });
+  }
+
+  systemTheme.addEventListener('change', applyTheme);
+
+  class SiteThemeToggle extends HTMLElement {
+    connectedCallback() {
+      applyTheme();
+      this.querySelector('button')?.addEventListener('click', () => {
+        preference = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+        applyTheme();
+        try { localStorage.setItem('starlight-theme', preference); } catch { /* Keep the in-page preference. */ }
+      });
+    }
+  }
+  customElements.define('site-theme-toggle', SiteThemeToggle);
+</script>
