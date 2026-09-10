@@ -4,8 +4,7 @@ const prompt = 'Read https://docs.groundhog.dev/start/build-with-an-agent/ and h
 ---
 <section class="agent-start" aria-labelledby="start-building">
   <div class="agent-start-intro">
-    <p class="eyebrow">Start with your agent</p>
-    <h2 id="start-building">An idea. An agent. A working contract.</h2>
+    <h2 id="start-building">Start with your agent</h2>
     <p>Give your coding agent a starting point. Groundhog’s CLI carries the instructions for its own release.</p>
   </div>
   <div class="prompt-panel">
@@ -13,7 +12,10 @@ const prompt = 'Read https://docs.groundhog.dev/start/build-with-an-agent/ and h
       <span>Paste into your coding agent</span>
       <button type="button" data-copy-prompt hidden>Copy prompt</button>
     </div>
-    <p class="agent-prompt" data-agent-prompt>{prompt}</p>
+    <div class="prompt-body">
+      <p id="agent-prompt" class="agent-prompt" data-agent-prompt>{prompt}</p>
+      <button type="button" class="prompt-toggle" data-toggle-prompt aria-controls="agent-prompt" aria-expanded="true" hidden>Show less</button>
+    </div>
     <p class="copy-status" role="status" aria-live="polite"></p>
   </div>
   <div class="agent-start-footer">
@@ -29,13 +31,25 @@ const prompt = 'Read https://docs.groundhog.dev/start/build-with-an-agent/ and h
     const button = panel.querySelector<HTMLButtonElement>('[data-copy-prompt]');
     const prompt = panel.querySelector<HTMLElement>('[data-agent-prompt]');
     const status = panel.querySelector<HTMLElement>('[role="status"]');
-    if (!button || !prompt || !status) continue;
+    const toggle = panel.querySelector<HTMLButtonElement>('[data-toggle-prompt]');
+    if (!button || !prompt || !status || !toggle) continue;
+    const setExpanded = (expanded: boolean) => {
+      prompt.classList.toggle('is-collapsed', !expanded);
+      toggle.setAttribute('aria-expanded', String(expanded));
+      toggle.textContent = expanded ? 'Show less' : 'Show full prompt';
+    };
+    setExpanded(false);
+    toggle.hidden = false;
+    toggle.addEventListener('click', () => {
+      setExpanded(toggle.getAttribute('aria-expanded') !== 'true');
+    });
     button.hidden = false;
     button.addEventListener('click', async () => {
       try {
         await navigator.clipboard.writeText(prompt.textContent ?? '');
         status.textContent = 'Copied. Paste this into your coding agent.';
       } catch {
+        setExpanded(true);
         status.textContent = 'Select the prompt above and copy it manually.';
       }
     });
