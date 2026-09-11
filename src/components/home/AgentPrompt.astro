@@ -2,7 +2,7 @@
 const prompt = 'Read https://docs.groundhog.dev/start/build-with-an-agent/ and help me build my first Groundhog app. If you cannot access that page, ask me for a saved copy; never ask me to paste credentials. Check my setup, access, and the actual CLI and runtime paths first, then use the guidance from my installed CLI. Start with a small working contract, run its tests, and help me deploy it. Explain any changes that need my approval.';
 ---
 
-<home-agent-prompt role="group" aria-labelledby="install-label">
+<home-agent-prompt data-local-snapshot={process.env.GROUNDHOG_DOCS_SNAPSHOT ? "true" : undefined} role="group" aria-labelledby="install-label">
   <div id="install-label">Paste into your coding agent to get started</div>
   <div class="prompt-bar">
     <span class="prompt-preview" title={prompt}>{prompt}</span>
@@ -54,6 +54,14 @@ const prompt = 'Read https://docs.groundhog.dev/start/build-with-an-agent/ and h
       const fallback = this.querySelector('details');
       const prompt = this.querySelector('textarea');
       if (!button || !label || !status || !message || !fallback || !prompt) return;
+      if (this.dataset.localSnapshot) {
+        prompt.value = prompt.value.replace('https://docs.groundhog.dev', window.location.origin);
+        const preview = this.querySelector<HTMLElement>('.prompt-preview');
+        if (preview) {
+          preview.textContent = prompt.value;
+          preview.title = prompt.value;
+        }
+      }
       let timeout = 0;
       let connected = true;
       button.hidden = false;

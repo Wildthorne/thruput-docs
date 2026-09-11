@@ -11,6 +11,70 @@ pnpm build         # Production build to dist/
 pnpm preview       # Preview production build locally
 ```
 
+## Documentation snapshot workflow
+
+The site is the producer for `groundhog docs`. Its normal Astro/Starlight build
+supplies the pages, assets, fonts, and Pagefind search; there is no second site.
+
+```bash
+pnpm install --frozen-lockfile
+pnpm package:snapshot
+```
+
+Use Node 22, the pnpm version in `package.json`, and Python 3. The command creates:
+
+- `dist/docs-snapshot/`: browsable site with `snapshot.json` identifying the
+  source commit, dirty-tree status, and included agent-guide CLI version.
+- `dist/docs-artifact/snapshot.tar.gz`: deterministic archive, approximately
+  1.5 MB for the initial 50-page site.
+- `dist/docs-artifact/snapshot-lock.json`: archive SHA-256, byte length, and
+  the same source identity for review and import.
+
+CI builds and uploads `docs-snapshot-<commit>` as a GitHub Actions artifact.
+That upload remains subject to repository access; it does not publish the docs
+publicly or change hosted-site authentication. CI retention is only the handoff
+window: the selected archive is checked into the CLI repository for releases.
+
+To select documentation for a CLI release:
+
+1. Land the site changes and use the artifact from the chosen successful CI run
+   on that commit. Check its tutorials/version notes against the intended
+   release; the included guide version alone does not qualify the whole site.
+2. Download that run's `docs-snapshot-<commit>` artifact. From `groundhog-rpc`, run
+   `python3 scripts/import-docs-snapshot.py /path/to/downloaded-artifact`.
+3. Review and commit the archive and pin in the CLI change. The importer rejects
+   dirty source, checksum/identity mismatches, and unsupported archive content.
+4. Build/test/release the CLI through its normal workflow. The CLI embeds the
+   selected compressed snapshot and materializes it in the user's cache on
+   first `groundhog docs`; no first-use download is needed.
+
+The producer's local build can be dirty for previews, but such an artifact cannot
+be imported into the CLI. A committed, clean local build can also exercise the
+handoff before CI; identify that as local evidence, not a successful CI run.
+
+For content development, `pnpm build:snapshot` builds only the directory:
+
+```bash
+groundhog docs --dir "$PWD/dist/docs-snapshot" --port 4321
+```
+
+Use `--port 0` for an available port or `--json` for readiness metadata. Keep an
+explicit `--dir` snapshot unchanged while serving; `pnpm build` or another
+snapshot build may replace its output. The bundled cache is separate from this
+build tree. The local preview banner identifies source/guide versions, and the
+landing prompt uses the local server URL when JavaScript is enabled. External
+API references, repositories, and network services still require access.
+
+To exercise the snapshot through the actual CLI in Chromium:
+
+```bash
+node scripts/smoke-snapshot.mjs /absolute/path/to/groundhog
+```
+
+The smoke blocks non-loopback browser requests and checks local search,
+tutorial navigation, the agent prompt, Markdown, and desktop/mobile layout.
+Screenshots are written below `test-results/snapshot/`.
+
 ## Content
 
 Markdown files live in `src/content/docs/`, organized by section. The sidebar is manually configured in `astro.config.mjs`.

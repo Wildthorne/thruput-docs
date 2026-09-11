@@ -1,0 +1,18 @@
+---
+import DefaultBanner from '@astrojs/starlight/components/Banner.astro';
+const snapshot = process.env.GROUNDHOG_DOCS_SNAPSHOT
+  ? JSON.parse(process.env.GROUNDHOG_DOCS_SNAPSHOT)
+  : undefined;
+---
+
+{snapshot ? (
+  <aside class="snapshot-banner" aria-label="Local documentation snapshot" data-pagefind-ignore>
+    <strong>Local docs preview</strong>
+    <span>Source {snapshot.sourceRevision.slice(0, 8)}{snapshot.sourceDirty ? ' (modified)' : ''} · Agent guide: CLI {snapshot.agentGuideCliVersion}</span>
+    <span>Check each page’s version notes. External API docs and services need network access.</span>
+  </aside>
+) : <DefaultBanner {...Astro.props} />}
+
+<style>
+  .snapshot-banner { display: flex; flex-wrap: wrap; justify-content: center; gap: .25rem 1rem; padding: .625rem 1rem; background: var(--sl-color-bg-accent); color: var(--sl-color-text-invert); font-size: .8125rem; line-height: 1.5; }
+</style>
