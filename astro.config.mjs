@@ -8,6 +8,7 @@ export default defineConfig({
       title: "Groundhog",
       customCss: ["./src/styles/custom.css"],
       components: {
+        Banner: "./src/components/DocsSnapshotBanner.astro",
         Header: "./src/components/Header.astro",
         Sidebar: "./src/components/Sidebar.astro",
         MobileMenuToggle: "./src/components/MobileMenuToggle.astro",

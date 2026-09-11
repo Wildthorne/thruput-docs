@@ -24,3 +24,6 @@ pnpm-debug.log*
 
 # local working files
 CLAUDE.md
+
+# Python packaging tests
+__pycache__/

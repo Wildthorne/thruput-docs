@@ -13,7 +13,9 @@
     "astro": "astro",
     "check:agent-guide": "node scripts/check-agent-guide.mjs",
     "test": "node --test scripts/*.test.mjs",
-    "test:browser": "playwright test"
+    "test:browser": "playwright test",
+    "build:snapshot": "node scripts/build-snapshot.mjs",
+    "package:snapshot": "pnpm build:snapshot && python3 scripts/package-snapshot.py"
   },
   "dependencies": {
     "@astrojs/check": "^0.9.9",
