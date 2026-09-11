@@ -1,39 +1,46 @@
 ---
-title: Block Explorer Status
-description: Current explorer availability and the public RPC data available to explorer clients.
+title: Block Explorer
+description: Use the devnet explorer to look up transactions, inspect receipts and events, and check address activity.
 ---
 
-No public Groundhog block-explorer UI is documented or deployed yet. The `hogd` repository contains an internal command-line transaction diagnostic named `block_explorer`, but it is not a user-facing web application.
+Use the [devnet explorer](https://explorer-production-c351.up.railway.app) to look up transactions, inspect receipts and events, and check address balances and recent activity.
 
-## Data Available Today
+## Look Up a Transaction or Address
 
-The public JSON-RPC gateway exposes the core data an explorer can use:
+1. Open the [devnet explorer](https://explorer-production-c351.up.railway.app).
+2. Paste a transaction hash or address into the search field. Use the full `0x`-prefixed, 32-byte value (64 hexadecimal characters after `0x`).
+3. Select **Search**.
 
-| Data | Public API |
-|------|------------|
-| Chain height and hash | `groundhog_chainTip` |
-| Transaction status | `groundhog_getTransactionStatus` |
-| Committed receipt and events | `groundhog_getTransactionReceipt` |
-| Transactions whose root invocation targets an address | `groundhog_getTransactionsByAddress` |
-| Filtered, paginated events | `groundhog_getEvents` |
-| Native HOG balance | `groundhog_getBalance` |
-| Raw committed storage | `groundhog_getStorageAt` |
-| Read-only contract execution | `groundhog_view` |
+The home page also lists recent HOG transfers. Select a transaction to inspect it, or follow an address link to view that address.
 
-Address history is rooted-address history. It does not include every transaction that touched an address through a nested invocation.
+### Transactions
 
-## Current Gaps
+The transaction page shows:
 
-The current gateway returns JSON-RPC error `-32052` for:
+- Transaction status and, once committed, block height and execution result.
+- Receipt events, including decoded token transfers, mints, and burns where supported.
+- Raw receipt data for debugging.
 
-- `groundhog_getBlockByNumber`
-- `groundhog_pendingTransactionCount`
+Events without a supported decoder appear as raw topics and data.
 
-There is no public whole-chain `groundhog_getTransactions` method. Those gaps prevent a complete block-by-block explorer experience through the public gateway today.
+### Addresses and Tokens
+
+The address page shows the native HOG balance. For non-token addresses, it also shows recent transactions and sent or received HOG transfers. Recognized token contracts show token metadata and token transfer history. Other contracts can show their emitted events.
+
+Address transaction history combines transactions whose root invocation targets the address with HOG transfer activity. It does not cover every nested invocation or every token transfer involving the address.
+
+### Share a Result
+
+Copy the page URL to share a transaction or address:
+
+```text
+https://explorer-production-c351.up.railway.app/tx/<transaction-hash>
+https://explorer-production-c351.up.railway.app/address/<address>
+```
 
 ## Inspect State Without an Explorer
 
-Use the CLI for common development checks:
+Use the CLI for terminal workflows, local nodes, or when the explorer is unavailable:
 
 ```bash
 groundhog balance <wallet-or-address> --profile devnet
@@ -41,4 +48,6 @@ groundhog view <contract-or-alias> <method> --profile devnet
 groundhog storage <contract-or-alias> 0x<32-byte-key> --profile devnet
 ```
 
-Use the [JSON-RPC API](/reference/json-rpc-api/) directly for receipts, status, address-rooted history, and event pagination. This page will link to the public explorer once a supported UI and deployment URL exist.
+These commands use devnet. For a local node, use `--profile local` instead.
+
+Use the [JSON-RPC API](/reference/json-rpc-api/) directly for receipts, status, address-rooted history, and event pagination.
