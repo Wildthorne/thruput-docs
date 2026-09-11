@@ -1,142 +1,188 @@
 ---
-title: Wallet Integration Status
-description: Integrate Groundhog account signers and wallet transaction construction in TypeScript.
+title: Wallet Integration
+description: Discover a Groundhog wallet, connect an account, and prepare, sign, save, submit, and observe a transaction.
 ---
 
-The TypeScript SDK supports signers, Groundhog account models, and wallet transaction construction. It does not provide an official browser connection or permission provider.
+Use a wallet provider to request account access and transaction approval without exposing a raw signer to your application. The SDK adapter separates signing from broadcasting so you can save a recovery record first. Wallet and extension authors should implement the [Wallet Provider contract](/tools/wallet-provider/).
 
-:::note[Version checked]
-This page was source-checked against published `@groundhogchain/client` `0.5.1` and protocol packages `0.10.0` on September 2, 2026.
-:::
+## Choose the Integration
 
-| Layer                                | Current support                                                          |
-| ------------------------------------ | ------------------------------------------------------------------------ |
-| Signers and account models           | `Signer`, pubkey accounts, and source-address accounts                   |
-| Wallet transaction construction      | Wallet clients, DefaultWallet, DevWallet, and custom invocation adapters |
-| Browser connection and permission UX | No official provider or adapter                                          |
+For a runnable browser app, start with [Connect a Wallet to Your App](/tutorials/connect-a-wallet-to-your-app/).
 
-## Signer Boundary
+| Application | API |
+| --- | --- |
+| Dapp using an external wallet | `/provider` discovery and `/wallet` `createProviderWalletClient()` |
+| Script or service managing its own keys | `Signer`, `createPubkeyAccount()`, and `createWalletClient()` in the [SDK wallet workflow](/tools/typescript-sdk/#bind-a-wallet-client) |
+| Existing source-address wallet such as DevWallet | Local-signer wallet client with an explicit [invocation adapter](/tools/typescript-sdk/) |
 
-`Signer` is the extension point for a browser wallet, hardware signer, remote signer, or custom key manager:
+Provider contract `1.0.0` supports protocol pubkey accounts only. A wire `WalletAccount` from `/provider` contains `address`, `publicKey`, and an account-derivation `nonce`. It is distinct from the local-signer account type exported by `/wallet`. There are no official React bindings in this implementation; this flow is framework-neutral.
+
+## Discover and Connect
+
+Start discovery when your wallet picker mounts. Show all discovered providers and let the user choose one. Discovery handles either load order, validates announcements, and reports up to 32 distinct IDs. The first valid announcement for an ID wins. IDs and names are display metadata, not proof of wallet identity. Render names as text, never HTML.
 
 ```ts
-import type { PublicKey, Signature } from "@groundhogchain/protocol";
+import {
+  discoverWalletProviders,
+  type WalletProvider,
+} from "@groundhogchain/client/provider";
 
-interface Signer {
-  publicKey: PublicKey;
-  sign(message: Uint8Array): Promise<Signature>;
+export function mountWalletPicker(
+  showChoice: (provider: WalletProvider) => void,
+) {
+  const stopDiscovery = discoverWalletProviders(showChoice);
+  return stopDiscovery; // Call when the picker unmounts.
 }
 ```
 
-The `message` passed to `sign()` is the transaction signature preimage:
+Call `connect` from the user's chosen wallet action. Validate its result with `parseWalletSession()`, then let the user select an authorized account. `getSession` reads existing access without prompting. An unauthorized session has no accounts but still reports the wallet's current network hash.
 
-```text
-cxs(DomainSeparator("Transaction")) || networkHash || txs(transaction)
-```
+Choose the application's network explicitly. Compare the session's `networkHash` with your trusted configuration, and use an RPC client connected to that same network. This wire hash is 64 lowercase hex characters without `0x`. The adapter checks any validated client network identity; an unqualified transport client leaves endpoint identity verification to your application. Requests do not switch networks implicitly.
 
-It binds the signature to the protocol domain and one network. It is not bare transaction bytes, the transaction hash, or a serialized signed transaction. A signer integration must show which network it is signing for and must not substitute its own serialization.
+## Prepare, Sign, Save, Submit, Observe
 
-## Account Models
-
-Groundhog supports two account models:
-
-- A **pubkey account** derives its address from one public key and a nonce. It can sign transactions immediately and uses the network's DefaultWallet behavior without deploying a wallet contract.
-- A **source-address account** uses a smart-wallet contract already deployed at its source address. That contract defines authorization and the root invocation shape. DevWallet is one smart wallet used by local development accounts.
-
-The SDK represents both models as account objects that contain the address, authorization claim, and ordered signer entries:
+This example accepts an already discovered provider and a client connected to the application's expected network. Its selection, persistence, and UI callbacks are application code, not SDK options. Build `request.invocation` with your [generated bindings](/tools/typescript-bindings/), and supply its wallet gas limit in `PrepareExecutionRequest`. Error-reporting callbacks must not throw. `onApplicationError` handles session parsing or UI callback failures without letting them escape the event listener.
 
 ```ts
-const pubkeyAccount = createPubkeyAccount({ signer, nonce: 0n });
+import type { CoreGroundhogClient } from "@groundhogchain/client";
+import { fromHex, sha256Hash } from "@groundhogchain/protocol";
+import {
+  parseWalletSession,
+  type SignTransactionResult,
+  type WalletAccount,
+  type WalletProvider,
+  type WalletSession,
+} from "@groundhogchain/client/provider";
+import {
+  createProviderWalletClient,
+  type PrepareExecutionRequest,
+} from "@groundhogchain/client/wallet";
 
-const sourceAccount = createSourceAddressAccount({
-  address: walletAddress,
-  signers: [{ signer, publicKeyId: 0n }],
-  allowedKeys: bitMap(0x01n),
-  requiredWeight: weight(1n),
-});
-```
+type PendingTransaction = SignTransactionResult & {
+  account: WalletAccount;
+  networkHash: string;
+};
 
-## Wallet Clients
+type SendStage =
+  | { stage: "before-submit" }
+  | { stage: "possibly-broadcast"; pending: PendingTransaction };
 
-`createWalletClient()` binds four pieces of state and behavior to an existing client instance:
+class WalletSendError extends Error {
+  constructor(cause: unknown, readonly progress: SendStage) {
+    super("Wallet transaction flow failed", { cause });
+  }
+}
 
-- The account address and authorization claim
-- The account's signers
-- The network identity used in each transaction signature preimage
-- The invocation adapter that wraps application calls through the wallet
-
-A cluster-aware client supplies the network identity learned during its endpoint handshake. When the cluster has a network hash pin, client creation compares the two before returning. Pubkey accounts receive `defaultWalletAdapter` automatically:
-
-```ts
-const client = await createGroundhogClient({ cluster: devnet() });
-const account = createPubkeyAccount({ signer });
-const wallet = createWalletClient({ client, account });
-
-const txHash = await wallet.execute({
-  invocation: applicationInvocation,
-  gasLimit: walletGasLimit,
-});
-```
-
-`devnet()` performs an endpoint identity handshake, but its default descriptor does not pin an expected hash. Pass `networkHash` to `devnet()` when the application must reject a different network at that endpoint.
-
-An unqualified `{ transport }` client skips cluster identity validation. Its wallet binding must receive the trusted network hash explicitly:
-
-```ts
-const wallet = createWalletClient({
-  client: unqualifiedClient,
-  account,
-  networkHash,
-});
-```
-
-Wallet decoration adds account-specific closures to the supplied client. One client instance can bind only one account. Create separate client instances for multiple accounts, even when they share an endpoint.
-
-## Source-Address Wallets
-
-Source-address accounts require an explicit adapter to expose `prepareExecution()` and `execute()`:
-
-```ts
-const wallet = createWalletClient({
-  client,
-  account: sourceAccount,
-  invocationAdapter: devWalletAdapter,
-});
-```
-
-`devWalletAdapter` wraps an application invocation through DevWallet's `doAction` method. `defaultWalletAdapter` wraps it through DefaultWallet's `execute` method. A custom smart wallet can provide its generated binding and define a structural adapter:
-
-```ts
-const customWalletAdapter = defineWalletInvocationAdapter({
-  createRootInvocation(accountAddress, request: CustomWalletRequest) {
-    return CustomWallet.execute.invocation(accountAddress, request.gasLimit, {
-      call: request.invocation,
-      policy: request.policy,
+export async function sendWithWallet(
+  client: CoreGroundhogClient,
+  provider: WalletProvider,
+  expectedNetworkHash: string,
+  request: PrepareExecutionRequest,
+  chooseAccount: (session: WalletSession) => WalletAccount,
+  persistPending: (pending: PendingTransaction) => Promise<void>,
+  onSessionChange: (session: WalletSession) => void,
+  onApplicationError: (error: unknown) => void,
+) {
+  let progress: SendStage = { stage: "before-submit" };
+  let stopChanges: (() => void) | undefined;
+  try {
+    stopChanges = provider.on("change", (value) => {
+      try {
+        onSessionChange(parseWalletSession(value));
+      } catch (error) {
+        onApplicationError(error);
+      }
     });
-  },
-});
+    const session = parseWalletSession(
+      await provider.request({ method: "connect" }),
+    );
+    if (session.accounts.length === 0) throw new Error("No authorized account");
+    if (session.networkHash !== expectedNetworkHash) {
+      throw new Error("Select the application's network in your wallet");
+    }
+    const account = chooseAccount(session);
+    if (!session.accounts.includes(account)) {
+      throw new Error("Select an account from the authorized session");
+    }
+    const wallet = createProviderWalletClient({
+      client, provider, account, networkHash: session.networkHash,
+    });
+    try {
+      const transaction = await wallet.prepareExecution(request);
+      const signed = await wallet.signTransaction(transaction);
+      const pending = { ...signed, account, networkHash: session.networkHash };
+      // Await a durable write. If it fails, do not request broadcast.
+      await persistPending(pending);
+      // Any failure from here onward may occur after broadcast.
+      progress = { stage: "possibly-broadcast", pending };
+      const { hash } = await wallet.submitTransaction(signed);
+      const receipt = await client.waitForTransactionReceipt(
+        sha256Hash(fromHex(hash.slice(2))),
+      );
+      // Inspect receipt.execResult before reporting execution success.
+      return receipt;
+    } finally {
+      wallet.dispose();
+    }
+  } catch (error) {
+    throw new WalletSendError(error, progress);
+  } finally {
+    stopChanges?.();
+  }
+}
+
+// Invoke from the user's Send action, passing a closure that calls sendWithWallet.
+export async function onSendClick(
+  send: () => ReturnType<typeof sendWithWallet>,
+  showReceipt: (receipt: Awaited<ReturnType<typeof sendWithWallet>>) => void,
+  showError: (message: string, error: unknown, pending?: PendingTransaction) => void,
+) {
+  try {
+    const receipt = await send();
+    showReceipt(receipt); // Inspect execResult; a receipt can describe failed execution.
+  } catch (error) {
+    if (error instanceof WalletSendError) {
+      const progress = error.progress;
+      if (progress.stage === "possibly-broadcast") {
+        // Keep the durable record. Offer status lookup on its original network.
+        showError("Broadcast may have occurred. Check the saved transaction.", error, progress.pending);
+      } else {
+        showError("Failed before submission; no broadcast was requested.", error);
+      }
+    } else {
+      showError("Application error. Keep any saved transaction record.", error);
+    }
+  }
+}
 ```
 
-`prepareExecution()` returns the wrapped transaction for inspection. `execute()` prepares, wraps, signs, and submits it. The explicit `prepareTransaction()`, `signTransaction()`, `sendInvocation()`, and `sendTransaction()` methods remain available for wallet-specific root operations such as deployment.
+`prepareExecution()` wraps the application invocation through DefaultWallet and uses the existing transaction nonce and expiry handling. Its random transaction nonce is separate from the account-derivation nonce. `signTransaction()` verifies the exact unsigned bytes, account claim, strict network-bound Ed25519 signature, and canonical transaction hash. It never broadcasts. Signature verification needs Web Crypto, available on HTTPS or localhost in browsers.
 
-See the [TypeScript SDK workflow](/tools/typescript-sdk/#bind-a-wallet-client) for funding, execution, deployment, and receipt examples.
+`persistPending` must finish saving the signed bytes, canonical hash, account, and original network before submission. Keep that record available for recovery even if the wallet disconnects or the page reloads. `submitTransaction()` accepts only this adapter's latest verified approval and checks the returned hash. Its result acknowledges broadcast, not successful execution. Observe the receipt on the original network and inspect `receipt.execResult`.
 
-## Browser Wallet Boundary
+## Handle Changes and Cleanup
 
-The SDK constructs network-bound wallet transactions, but it does not yet define browser-facing behavior for:
+The synchronous adapter factory does not connect or modify the RPC client. It snapshots its configuration, checks `getSession` before preparation, signing, and submission, and checks for changes while work is pending. It permits one in-flight operation; overlapping calls fail with `-32002`.
 
-- Discovering and connecting a wallet
-- Selecting accounts
-- Requesting permissions
-- Presenting transaction approval prompts
-- Creating, recovering, or persisting wallets
-- Communicating between an application and a wallet extension
+Every `change` permanently invalidates the adapter, even if the snapshot looks unchanged. Failed session reads and mismatched sessions also invalidate it. Update your account/network UI, stop offering actions from the old binding, and create a new adapter for a newly authorized session. Do not automatically resume or re-sign interrupted work. A conforming provider delivers changes caused by `connect` before that request resolves, so constructing the adapter after `await connect` is safe.
 
-An application can implement those concerns and expose the selected key through `Signer`. The wallet client then handles Groundhog account authorization, invocation wrapping, transaction preparation, signing input, submission, and receipt polling.
+Call `dispose()` when the binding is no longer needed, and unsubscribe application change listeners and discovery listeners on teardown. Disposal is idempotent and permanent. It neither revokes permission nor cancels pending provider requests; late results cannot reactivate the adapter or cause it to submit. Providers and bridges own request deadlines; the adapter adds no UI timeout. For the user's Disconnect action, call:
+
+```ts
+await provider.request({ method: "disconnect" }); // Resolves to null.
+```
+
+## Recover an Ambiguous Submission
+
+Once submission starts, treat every failure as potentially broadcast, including timeouts, disconnects, network changes, or an invalid response hash. Keep the saved canonical hash and query `getTransactionStatus()`, `getTransactionReceipt()`, or `waitForTransactionReceipt()` on the **original network**. Report the uncertainty to the user rather than declaring the transaction unsent.
+
+Never automatically prepare or sign a replacement, change its nonce, or retry execution. The adapter consumes its approval when submission starts, including on error. Re-sending identical bytes requires an explicit recovery policy and a still-valid provider approval. A failed persistence write before submit means this adapter has not requested broadcast.
+
+Provider errors carry numeric `code` and human-readable `message`. Use `parseWalletProviderError()` across realms rather than relying on `instanceof`. See the [error table](/tools/wallet-provider/#errors) for refusal, authorization, network, transport, and validation failures.
 
 ## Related Documentation
 
-- [TypeScript SDK](/tools/typescript-sdk/) for the complete client and wallet workflow
-- [TypeScript Bindings](/tools/typescript-bindings/) for generated application and wallet descriptors
-- [Authorization](/how-it-works/authorization/) for protocol admission rules
-- [Develop on Devnet](/tutorials/develop-on-devnet/) for the supported CLI workflow
+- [Wallet Provider](/tools/wallet-provider/) for the normative wallet and bridge contract
+- [TypeScript SDK](/tools/typescript-sdk/) for local signers, account models, funding, and wallet construction
+- [TypeScript Bindings](/tools/typescript-bindings/) for typed application invocations
+- [Authorization](/how-it-works/authorization/) for protocol account and signature rules

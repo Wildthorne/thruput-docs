@@ -5,10 +5,6 @@ description: Connect to Groundhog, manage accounts, and execute typed contract c
 
 `@groundhogchain/client` connects to JSON-RPC, performs a network identity handshake, manages wallet accounts, and executes invocations built by generated contract bindings.
 
-:::note[Version checked]
-This page was source-checked against published `@groundhogchain/client` `0.5.1` and `@groundhogchain/protocol` packages `0.10.0` on September 2, 2026. The public client types structurally align with RPC wire `4.0.0`.
-:::
-
 ## Install
 
 The packages require Node.js `22.12.0` or newer and are hosted on GitHub Packages. Add the registry and a token with `read:packages` to your npm configuration:
@@ -18,13 +14,13 @@ The packages require Node.js `22.12.0` or newer and are hosted on GitHub Package
 //npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}
 ```
 
-Install the coordinated package set:
+Install the client and contract packages:
 
 ```bash
 NODE_AUTH_TOKEN="$(gh auth token)" npm install \
-  @groundhogchain/client@0.5.1 \
-  @groundhogchain/protocol@0.10.0 \
-  @groundhogchain/contract-spec@0.10.0
+  @groundhogchain/client \
+  @groundhogchain/protocol \
+  @groundhogchain/contract-spec
 ```
 
 ## Connect to a Cluster
@@ -348,6 +344,17 @@ JSON-RPC error responses throw `JsonRpcError`. HTTP failures, timeouts, invalid 
 | `@groundhogchain/client/signers`     | Signer interface and private-key signer                                   |
 | `@groundhogchain/client/actions`     | Standalone typed actions                                                  |
 
+### Wallet Provider Entry Points
+
+Use these entry points to integrate an external wallet or implement a wallet provider:
+
+| Import | Provider APIs |
+| --- | --- |
+| `@groundhogchain/client/provider` | Wire account/session types, request and result validation, errors, and multiple-provider discovery |
+| `@groundhogchain/client/wallet` | `createProviderWalletClient()` and its explicit prepare/sign/submit lifecycle |
+
+Follow [Wallet Integration](/tools/wallet-integration/) to connect a dapp and save signed transactions before broadcast. Wallet and bridge authors should use the [Wallet Provider contract](/tools/wallet-provider/).
+
 ## Maintained Examples
 
 - [Chain tip](https://github.com/groundhogchain/client-ts/blob/main/examples/chain-tip.ts) connects to Devnet.
@@ -355,4 +362,4 @@ JSON-RPC error responses throw `JsonRpcError`. HTTP failures, timeouts, invalid 
 - [HOG balance](https://github.com/groundhogchain/client-ts/blob/main/examples/view-hog-balance.ts) loads `dev-1` and reads Localnet.
 - [Counter deployment](https://github.com/groundhogchain/client-ts/blob/main/examples/deploy-counter.ts) deploys and calls through DevWallet on Localnet.
 
-See [TypeScript Bindings](/tools/typescript-bindings/) for generated descriptor APIs and [Wallet Integration](/tools/wallet-integration/) for signer and browser-wallet boundaries.
+See [TypeScript Bindings](/tools/typescript-bindings/) for generated descriptor APIs and [Wallet Integration](/tools/wallet-integration/) for the external-wallet workflow.

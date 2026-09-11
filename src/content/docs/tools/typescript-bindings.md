@@ -347,5 +347,5 @@ Generated bindings sit on top of the client runtime:
 - [TypeScript SDK](/tools/typescript-sdk/) for the app-facing client package
 - [Groundhog CLI](/tools/groundhog-cli/) for CLI codegen commands
 - [Contract Spec](/reference/contract-spec/) for the canonical codegen input
-- [Wallet Integration](/tools/wallet-integration/) for account, signer, and browser-wallet boundaries
+- [Wallet Integration](/tools/wallet-integration/) for using generated invocations with an external wallet
 - [JSON-RPC API](/reference/json-rpc-api/) for the underlying gateway surface
