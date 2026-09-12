@@ -21,7 +21,7 @@ Before diving into specific patterns, here are the main differences in emphasis:
 | **DEX execution** | Built-in offers and synchronous path payments | Synchronous contracts or queued intent settlement, chosen by the application |
 | **Multi-operation** | Bundle multiple operations in one transaction | Single root invocation with cross-contract calls |
 
-Payments and token operations map directly to Groundhog's balance deltas. DEX applications can use a synchronous AMM, as shown in [Build a Swap](/tutorials/build-a-swap/), or use an intent queue when they want concurrent submission and later settlement.
+Payments and token operations map directly to Groundhog's balance deltas. DEX applications can use a synchronous AMM, or use a request queue when they want concurrent submission and later settlement, as shown in [Design a Swap](/tutorials/design-a-swap/).
 
 ---
 

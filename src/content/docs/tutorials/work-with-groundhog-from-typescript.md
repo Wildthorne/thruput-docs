@@ -451,4 +451,4 @@ Use this rule of thumb:
 - [Build a Token](/tutorials/build-a-token/) for the Rust implementation behind the standard token interface
 - [Add Events to a Contract](/tutorials/add-events-to-a-contract/) for typed event generation and queries
 - [Wallet Integration](/tools/wallet-integration/) for connecting an external wallet
-- [Understand a Swap Contract](/tutorials/build-a-swap/) for a larger application built from token and cross-contract calls
+- [Design a Swap](/tutorials/design-a-swap/) for a larger application built from token and cross-contract calls

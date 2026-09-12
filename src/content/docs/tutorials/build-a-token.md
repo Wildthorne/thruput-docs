@@ -363,7 +363,7 @@ This is the [merged-delta model](/programming-model/execution/#merged-deltas): t
 
 ## Next Steps
 
-- [Understand a Swap Contract](/tutorials/build-a-swap/) for a source walkthrough of cross-contract token calls
+- [Design a Swap](/tutorials/design-a-swap/) for an application built from cross-contract token calls
 - [Add Events to a Contract](/tutorials/add-events-to-a-contract/) for event testing and queries
 - [Merged Deltas](/programming-model/execution/#merged-deltas) for the snapshot, execution, and exclusion model behind this contract
 - [Storage Types](/programming-model/storage-types/) for checked and lazy `Balance` operations and other state choices
