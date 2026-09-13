@@ -8,7 +8,7 @@ This API is under active development. Method signatures and response formats may
 :::
 
 :::note[Version checked]
-This page was source-checked against `groundhog-rpc` `0.11.1` (client bundle `0.1.26`) and JSON-RPC wire format `5.0.0`.
+This page was source-checked against `groundhog-rpc` `0.17.0` (client bundle `0.1.27`) and JSON-RPC wire format `5.2.0`.
 :::
 
 The Groundhog gateway exposes JSON-RPC 2.0 over HTTP. For its place in the node topology, see [Networking](/how-it-works/networking/).
@@ -28,7 +28,7 @@ Public response fields use camelCase. Addresses, hashes, calldata, event topics,
 
 ## Wire Design
 
-Groundhog returns JSON-native objects with typed fields. Clients need XDR codecs to construct transactions and decode contract payload bytes, not to interpret an entire RPC response.
+Groundhog returns JSON-native objects with typed fields. Transactions use classic XDR; contract arguments and return values use CXS. Clients use the corresponding codecs for those bytes. RPC responses themselves are JSON. See [XDR Protocol](/reference/xdr-protocol/) for the encoding boundary.
 
 Storage reads preserve the protocol value kind:
 
@@ -57,6 +57,8 @@ Submit a signed transaction to the scheduler.
 | `tx_hex` | string | `0x`-prefixed XDR encoding of `SignedTransaction` |
 
 **Returns:** `TxHash`, the `0x`-prefixed hash of the inner transaction.
+
+A successful response acknowledges scheduler admission, not commitment or execution. Authentication rejection returns `TX_REJECTED`; retryable admission pressure returns `OVERLOADED`. After a timeout, query the original hash before preparing a replacement.
 
 Transactions whose `blockExpiryHeight` is at or below the current chain tip are rejected when the tip is available.
 
@@ -190,16 +192,15 @@ Get wire, implementation, build, and packaging-platform versions.
 
 ```json
 {
-  "wireFormat": "5.0.0",
-  "implementation": "0.11.1",
+  "wireFormat": "5.2.0",
+  "implementation": "0.17.0",
   "commitHash": "<commit>",
-  "releaseVersion": "0.1.26",
-  "bundleManifestDigest": "<sha256>",
-  "platformVersion": "0.1.26"
+  "releaseVersion": "0.1.27",
+  "bundleManifestDigest": "sha256:<digest>"
 }
 ```
 
-`releaseVersion` and `bundleManifestDigest` are present only when the serving binary matches an installed release bundle; `platformVersion` is the legacy alias of `releaseVersion` and is omitted when unavailable. `commitHash` may be `null`. Consumers may branch on `wireFormat`. `implementation`, `commitHash`, and the release fields are diagnostic.
+`releaseVersion` and `bundleManifestDigest` are present only when the serving binary matches an installed release bundle; `platformVersion` is an optional legacy build-time field. It is independent of the validated release identity and may be absent even when `releaseVersion` is present. `commitHash` may be `null`. Consumers may branch on `wireFormat`. `implementation`, `commitHash`, and the release fields are diagnostic.
 
 ### `groundhog_view`
 
@@ -259,6 +260,7 @@ Get block information by height.
   "blockHash": "0x...",
   "protocol": 1,
   "networkHash": "0x...",
+  "configHash": "0x...",
   "proposer": "0x...",
   "blockTimepoint": 123,
   "blockHeight": 42,
@@ -318,7 +320,7 @@ Standard JSON-RPC 2.0 errors apply. The gateway also defines:
 | Code | Name | Meaning |
 | --- | --- | --- |
 | `-32602` | Invalid params | Malformed or invalid parameters |
-| `-32000` | TX_INVALID | Transaction bytes could not be decoded or validated |
+| `-32000` | TX_INVALID | Transaction bytes could not be decoded or validated; resource-limit failures include a typed `data.reason` |
 | `-32001` | TX_REJECTED | Scheduler or airdrop backend rejected the transaction |
 | `-32002` | TX_NOT_FOUND | Transaction not found |
 | `-32010` | BLOCK_NOT_FOUND | Block not found at the requested height |

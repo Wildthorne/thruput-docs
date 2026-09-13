@@ -3,7 +3,7 @@ title: Contracts
 description: Contract artifacts, deployment, and address derivation in Groundhog.
 ---
 
-An address in Groundhog can be invoked if there is a contract *deployed* at that address.
+An address normally needs deployed code to receive a contract call. An undeployed pubkey account can use the configured DefaultWallet fallback for its root invocation. See [Authorization](/how-it-works/authorization/#pubkey-accounts).
 The root invocation of a transaction is specified by a contract address, an 8-byte entrypoint ID, and method arguments. Each invocation creates an [invocation frame](/how-it-works/invocation-frames/) that tracks execution state and storage modifications.
 
 The normal user-deployed contract path is RV32, Groundhog's 32-bit RISC-V contract target. The protocol also supports legacy WASM contracts, native precompiled contracts, and local test mocks.
@@ -62,7 +62,7 @@ That export-name convention is not how the default RV32 path dispatches methods.
 
 Native precompiled contracts are implemented directly inside the Groundhog runtime. They are used for trusted system behavior, such as the native token contract, and can have permissions that user-deployed guest contracts do not have.
 
-Users cannot deploy native contracts. They are predeployed at hardcoded addresses and identified by a value from the `HogexecPrecompiledNativeContracts` enum.
+Users cannot deploy native contracts. Network configuration assigns system contract addresses; implementations are identified by values from `HogexecPrecompiledNativeContracts`.
 
 ### Test Mocks
 

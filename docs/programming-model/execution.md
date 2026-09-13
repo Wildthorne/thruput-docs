@@ -4,11 +4,13 @@
 
 All transactions in a block read from the **same frozen snapshot**: the committed state at the end of the previous block.
 
-- No transaction sees another's writes within the block.
-- Reads are stable. The same key returns the same value throughout a transaction.
+- Ordinary storage reads do not see another transaction's writes within the block.
+- Reads include the transaction's own changes and successful child calls, over the stable block snapshot.
 - Each transaction produces **deltas** (how state should change), not final state.
 
-This is identical to Postgres `REPEATABLE READ`. If you understand database snapshot isolation, you understand Groundhog's execution model.
+The shared snapshot is a useful database analogy, but Groundhog uses typed delta reservation rather than SQL isolation and conflict rules.
+
+`RetrocausalQueue` has separate observation rules: a consumer can observe concurrent inserts in the same block. The proposer records these observations for validator replay.
 
 ## Block Lifecycle
 
@@ -32,7 +34,7 @@ Previous block committed state
    [New Committed State]
         |
         +---> Excluded transactions returned to mempool
-              (resubmitted next block, no developer retry logic)
+              (eligible for a later block, subject to scheduling and expiry)
 ```
 
 1. **Snapshot**: block boundary freezes state. All transactions read from this.
@@ -44,7 +46,7 @@ Previous block committed state
 
 From the contract author's perspective, conflicts are exclusions, not retry loops inside your code. A transaction either lands or is excluded by the runtime when its deltas cannot be reserved or merged with other transactions in the block. The excluded transaction is returned to the mempool and can be resubmitted in a later block.
 
-The developer writes no retry logic. The mempool handles resubmission.
+The mempool handles conflict resubmission. Clients should still track confirmation and expiry.
 
 ## Gas: Metering, Not Billing
 
@@ -59,20 +61,20 @@ There is no "pay the maximum, refund the unused gas" path. Actual gas consumed d
 client.with_gas_limit(100_000).transfer(&to, amount);
 ```
 
-The gas infrastructure exists for computational safety, not economic extraction.
+
 
 ## Throughput: Balance-Proportional Scheduling
 
 Your free HOG token balance determines your share of network throughput.
 
-- **Under capacity**: every valid transaction lands in the next block. No competition.
+- **Under capacity**: scheduling contention is lower, but admission, propagation, conflicts, and expiry still affect inclusion.
 - **Under congestion**: throughput is allocated proportionally to free HOG balances. If you hold 2x the HOG, you get roughly 2x the throughput.
 
 The mechanism: HOG cycles between "ready" and "scheduled" states via age-weighted queuing. No tokens are consumed. No tokens are burned.
 
 HOG transferred between accounts enters the recipient's scheduling queue as newly received capacity. It does not carry the sender's accumulated scheduling age. This is why a transaction can transfer HOG from the same balance that scheduled it without creating refund accounting or extra contention.
 
-**Schedule your coins, don't burn them.**
+
 
 ## Storage Costs: Deposits, Not Fees
 
@@ -90,4 +92,4 @@ Writing data to the ledger locks HOG proportional to bytes stored. Deleting data
 - **Use Map for independent entities.** Different keys never interact.
 - **Use Bytestring sparingly.** Concurrent writes conflict. Use it for config or ownership, not hot paths.
 - **Don't write retry logic.** The mempool handles excluded transactions.
-- **Don't optimize for gas cost.** Gas is free. Optimize for correct conflict semantics instead.
+- **Budget gas for execution and scheduling.** Gas has no token fee, but the declared limit consumes scheduling capacity.

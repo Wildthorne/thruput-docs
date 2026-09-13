@@ -5,9 +5,7 @@ description: How a transaction moves from submission to committed state.
 
 This page describes how a transaction moves through the system, from client submission to committed ledger state.
 
-:::note[Version checked]
-This page was source-checked against the current `hogd` executor, authorization service, and coordinator protocol on August 26, 2026.
-:::
+
 
 ## Overview
 
@@ -43,7 +41,7 @@ Selected transactions execute in parallel against a **consistent snapshot** of t
 
 When contract code executes:
 - It reads state values from the snapshot (via syscalls like `BytestringGet`, `NonnegativeIntGet`)
-- It never sees writes from other transactions in the same block
+- Ordinary storage reads do not see writes from other transactions in the block; RCQ consumers can observe concurrent inserts
 - It produces deltas describing how to modify state
 - It runs until termination (return, abort, or fault)
 
@@ -57,7 +55,7 @@ See [Invocation Frames](/how-it-works/invocation-frames/) for detailed execution
 
 When the root frame completes, the runtime checks its status:
 
-- **Return (success)**: the transaction's deltas are included in the block.
+- **Return (success)**: the transaction's deltas are submitted for reservation. They are included only if the transaction remains admissible.
 - **Abort or Fault**: the transaction is **still included in the block**, but with no state changes. The failure is deterministic, so every validator reaches the same result, and the transaction does not need to be re-evaluated. It is not returned to the mempool.
 
 This is distinct from **conflict exclusion** during reservation (Stage 4): the root frame may return successfully, but its completed delta batch can still fail reservation and be returned to the mempool for a future block. Deterministic abort and non-deterministic conflict exclusion are two different failure modes with different on-chain semantics.

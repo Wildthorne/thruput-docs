@@ -46,14 +46,14 @@ const resources = [
 ];
 
 const sections = [
-  { id: 'capabilities', title: 'More room for the idea', cards: features },
-  { id: 'resources', title: 'Start small. Then stretch it.', cards: resources },
+  { id: 'capabilities', title: 'Programming model', cards: features },
+  { id: 'resources', title: 'Development resources', cards: resources },
 ];
 ---
 
 <StarlightPage hasSidebar={true} frontmatter={{
   title: 'Groundhog',
-  description: 'The blockchain built for abundance. Free compute, parallel execution, and irrevocable finality.',
+  description: 'Build Groundhog contracts and applications with the Rust SDK, CLI, and TypeScript client.',
   template: 'splash', pagefind: false, prev: false, next: false,
 }}>
   <div class="home-page not-content">
@@ -66,7 +66,7 @@ const sections = [
     <section id="hero" aria-labelledby="_top">
       <DotField />
       <div class="home-container hero-content">
-        <h1 id="_top">The blockchain built for <br /><span class="abundance">abundance<span class="hero-cursor" aria-hidden="true">_</span></span></h1>
+        <h1 id="_top">Build applications <br /><span class="abundance">on Groundhog<span class="hero-cursor" aria-hidden="true">_</span></span></h1>
         <AgentPrompt />
       </div>
     </section>

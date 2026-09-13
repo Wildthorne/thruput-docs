@@ -4,7 +4,7 @@ description: "Reference for #[contract], #[contract_exception], #[contract_type]
 ---
 
 :::note[Version checked]
-This reference was source-checked against SDK `0.29.0`.
+This reference was source-checked against SDK `0.34.3`.
 :::
 
 Rustdoc shortcuts: [`#[contract]`](https://groundhog.dev/docs/sdk/latest/sdk/attr.contract.html), [`#[contract_exception]`](https://groundhog.dev/docs/sdk/latest/sdk/attr.contract_exception.html), [`#[storage]`](https://groundhog.dev/docs/sdk/latest/sdk/attr.storage.html), [`#[contract_type]`](https://groundhog.dev/docs/sdk/latest/sdk/attr.contract_type.html), [`#[derive(Event)]`](https://groundhog.dev/docs/sdk/latest/sdk/derive.Event.html), [`#[derive(Deletable)]`](https://groundhog.dev/docs/sdk/latest/sdk/derive.Deletable.html), [`#[derive(ContractTypeSpec)]`](https://groundhog.dev/docs/sdk/latest/sdk/derive.ContractTypeSpec.html), and [`declare_mock_contract!`](https://groundhog.dev/docs/sdk/latest/sdk/macro.declare_mock_contract.html). See [Rust API Docs](/tools/rust-api-docs/) for common SDK links.
@@ -63,7 +63,7 @@ The names `new`, `with_gas_limit`, `with_commit_locking`, `with_read_only`, and 
 
 ### Inspecting errors
 
-`try_` methods return the SDK's `CallError` — the same type for every client. A caught exception stays undecoded inside it; `match_exn!` decodes it against the types you name, and `try_as` handles the single-type case:
+`try_` methods return the SDK's `CallError`, the same type for every client. A caught exception stays undecoded inside it; `match_exn!` decodes it against the types you name, and `try_as` handles the single-type case:
 
 ```rust
 match client.try_decrement(10) {
@@ -278,7 +278,7 @@ All fields must be SDK storage types. Plain data must be wrapped in `Value<T>`.
 
 | Type | Description |
 |------|-------------|
-| `Value<T>` | Single XDR-serializable value |
+| `Value<T>` | Single CXS-serializable value |
 | `Balance` | Nonnegative, zero-defaulting balance with checked and lazy adjustments |
 | `NNInt` | Integer storage for signed changes that can [merge across concurrent transactions](/programming-model/execution/#merged-deltas) |
 | `CapacityConstraint` | Commit-time capacity shared across concurrent transactions |
@@ -341,7 +341,7 @@ Structs with named fields.
 |-----------|-------------|
 | `#[topic]` | Marks a field as an indexed topic. Topics are searchable. Fields without `#[topic]` go into the serialized payload. |
 
-Events support at most 3 topics. Topic 0 is always the event signature (see below), so up to 2 fields can be marked `#[topic]`. Topic values that are already 32 bytes wide (`ContractAddress`, `[u8; 32]`) are used directly; other types are XDR-encoded and SHA-256 hashed, which makes them filterable but not recoverable from the event. Data you need to read back belongs in the payload.
+Events support at most 3 topics. Topic 0 is always the event signature (see below), so up to 2 fields can be marked `#[topic]`. Topic values that are already 32 bytes wide (`ContractAddress`, `SHA256Hash`, `[u8; 32]`, `U256`, `I256`) are used directly; other types are CXS-encoded and SHA-256 hashed, which makes them filterable but not recoverable from the event. Data you need to read back belongs in the payload.
 
 ### Container attributes
 
@@ -465,12 +465,13 @@ Annotates a user-defined struct or enum so that the SDK knows how to serialize, 
 
 ### Applies to
 
-Structs (named or unit) and enums.
+Structs (named, tuple, or unit) and enums.
 
 ### Parameters
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
+| `name` | String | Rust type name | Override the name recorded in the contract spec. |
 | `export` | Bool | `false` | When `true` (`#[contract_type(export)]`), forces the type into the contract spec even when nothing references it. |
 
 ### What it generates
@@ -493,8 +494,8 @@ pub struct Config {
 
 #[contract_type]
 pub enum Status {
-    Active,
-    Closed { reason: u32 },
+    Active = 1,
+    Closed { reason: u32 } = 2,
 }
 ```
 

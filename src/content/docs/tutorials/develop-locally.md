@@ -9,7 +9,7 @@ Local development is the fastest way to exercise deployment and RPC behavior. It
 
 ## Prerequisites
 
-Install the complete client bundle using [Getting Started](/start/getting-started/#choose-and-install-a-client-bundle). That page records the rehearsed local preview and the boundary of its validation. You also need `jq` for the structured-output checks below. Keep the generated SDK dependencies and toolchain for your selected CLI.
+Install the complete client bundle using [Getting Started](/start/getting-started/#choose-and-install-a-client-bundle). You also need `jq` for the structured-output checks below. Keep the generated SDK dependencies and toolchain for your selected CLI.
 
 ### Verify the Selected Runtime
 
@@ -51,7 +51,7 @@ groundhog new my-counter
 cd my-counter
 ```
 
-The generated project defines the private registry in `.cargo/config.toml`. Complete [Cargo access setup](/start/getting-started/#configure-cargo-access) from this project directory before the first build. For the native tests below, also supply the [FFI password in the task environment](/start/getting-started/#test-and-build). Credentials saved by `groundhog init` do not reach raw `cargo test`.
+The generated project defines the private registry in `.cargo/config.toml`. Complete [Cargo access setup](/start/getting-started/#configure-cargo-access) from this project directory before the first build. The SDK downloads its test executor from public storage without FFI credentials.
 
 Select the built-in account in the project's local profile:
 

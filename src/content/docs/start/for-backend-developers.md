@@ -3,27 +3,11 @@ title: "For Backend Developers"
 description: Map your Postgres and database experience to Groundhog's programming model.
 ---
 
-*If you've used Postgres, MySQL, or any database with snapshot isolation, you already understand how Groundhog works. This guide maps database concepts you know to blockchain concepts you don't need to fear.*
+Database snapshot isolation is a useful starting point for Groundhog. Transactions share a committed block snapshot, but their writes follow typed storage merge rules rather than SQL conflict rules.
 
----
+## Shared Snapshot
 
-## You Already Know This
-
-Here's how snapshot isolation works in Postgres (REPEATABLE READ or SERIALIZABLE):
-
-1. A transaction begins and sees a **consistent snapshot** of the database
-2. Other concurrent transactions can't see your uncommitted writes
-3. Your reads are stable. You see the same data throughout your transaction
-4. At commit time, the database checks for conflicts
-5. If your writes conflict with another committed transaction, you get a serialization failure and retry
-
-Groundhog applies a related model at block scale.
-
-Every transaction in a block reads from the **same frozen snapshot** (the state at the end of the previous block). No transaction sees another's writes within the block. Each transaction produces typed changes, called **deltas**, instead of final state. The runtime checks whether those changes can coexist, and the deltas from transactions that land form the new state. This is the [merged-delta model](/programming-model/execution/#merged-deltas).
-
-If you understand `REPEATABLE READ`, you understand Groundhog's execution model. The rest is details.
-
----
+Every transaction in a block starts from the previous block's committed state. Ordinary storage reads include its own changes and successful child calls, but not other transactions' writes. `RetrocausalQueue` has separate rules for observing concurrent inserts. Each transaction produces typed changes, called **deltas**. Compatible deltas form the next committed state. See [Merged Deltas](/programming-model/execution/#merged-deltas).
 
 ## Deltas, Not Assignments
 
@@ -47,7 +31,7 @@ That is enough of the model for most contract code. [Merged Deltas](/programming
 
 ## Conflicts and the Mempool
 
-When deltas conflict, Groundhog does what Postgres does at serialization check, with one difference: **you don't write retry loops.** The conflicting transaction is excluded from the block and returned to the mempool. The next block picks it up. Zero retry logic in your code.
+When deltas conflict, the transaction is excluded and returned to the mempool for possible inclusion in a later block. Contract code does not retry the operation. Clients still need to track confirmation and transaction expiry.
 
 The balance constraint works the same way. If two concurrent withdrawals together exceed the available balance, one or more transactions are excluded. This is `CHECK (balance >= 0)` enforced by the storage model rather than application code.
 
@@ -59,7 +43,7 @@ The balance constraint works the same way. If two concurrent withdrawals togethe
 - **No JOINs.** If you need data from two Maps, you read both explicitly.
 - **Deterministic execution.** No `NOW()`, no `RANDOM()`, no HTTP calls.
 - **Write costs are deposits, not fees.** Storing data locks HOG tokens proportional to bytes stored. Delete the data, get the tokens back.
-- **Gas limits exist but cost zero.** Gas meters computation (prevents infinite loops) but no tokens are burned. Your throughput comes from your free HOG balance: schedule your coins, don't burn them.
+- **Gas limits exist but cost zero.** Gas meters computation (prevents infinite loops) but no tokens are burned. Your free HOG balance provides scheduling capacity. The declared gas limit determines how much capacity the transaction uses.
 
 ---
 

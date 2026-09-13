@@ -8,12 +8,12 @@ We're extending the counter from [Build a Counter](/tutorials/build-a-counter/) 
 **Prerequisites:** A working counter contract from [Build a Counter](/tutorials/build-a-counter/).
 
 :::note[Version checked]
-The Rust workflow uses CLI `0.12.0` and its generated SDK `0.27.0` project. The generated TypeScript API was checked against CLI `0.12.0` codegen source and published TypeScript client `0.5.1` on September 2, 2026.
+This workflow targets Groundhog `0.1.27`: CLI `0.17.0`, SDK `0.34.3`, and TypeScript client `0.8.0`.
 :::
 
 ## How Events Work on Groundhog
 
-An event is up to three 32-byte **topics** plus an XDR-serialized **payload** (at most 1 KB in total). Topics are indexed: off-chain consumers filter on them via [`groundhog_getEvents`](/reference/json-rpc-api/#groundhog_getevents). The payload is not indexed; it carries the data you want to read back.
+An event is up to three 32-byte **topics** plus a CXS-serialized **payload** (at most 1 KB in total). Topics are indexed: off-chain consumers filter on them via [`groundhog_getEvents`](/reference/json-rpc-api/#groundhog_getevents). The payload is not indexed; it carries the data you want to read back.
 
 Topic 0 is always the event's **signature**, a hash that identifies the event type, so up to two topics are available for your own fields. There is no `indexed` keyword as in Solidity: you mark struct fields with `#[topic]`.
 
@@ -32,7 +32,7 @@ pub struct CounterIncremented<'a> {
 
 - **`#[derive(Event)]`** generates everything the event needs: a `SIGNATURE` constant, serialization for the payload, and a `CounterIncrementedPayload` companion struct for decoding. See [SDK Macros](/reference/sdk-macros/#deriveevent) or [`#[derive(Event)]` Rustdoc](https://groundhog.dev/docs/sdk/latest/sdk/derive.Event.html).
 - **`#[topic]`** makes `by` an indexed topic (topic 1), so consumers can filter events by address. Fields without the attribute, here `amount`, go into the payload.
-- **The lifetime** lets the topic borrow the address instead of copying it. 32-byte values like `ContractAddress` are used as topics directly; other types are XDR-encoded and hashed, which makes them filterable but not recoverable. Anything you need to _read_ from the event belongs in the payload.
+- **The lifetime** lets the topic borrow the address instead of copying it. `ContractAddress`, `SHA256Hash`, `[u8; 32]`, `U256`, and `I256` are used as topics directly; other types are CXS-encoded and hashed, which makes them filterable but not recoverable. Anything you need to _read_ from the event belongs in the payload.
 
 ## Step 2: Declare and Emit It
 
@@ -154,7 +154,7 @@ groundhog codegen ts target/groundhog/counter.spec.xdr \
 The generated `CounterIncremented` descriptor builds a typed filter, decodes matching events, and extracts events from transaction receipts:
 
 ```ts
-import { CounterIncremented } from "./contracts/counter";
+import { CounterIncremented } from "./contracts/counter.js";
 
 const filter = CounterIncremented.filter({
   contractAddresses: [contract],
@@ -208,7 +208,7 @@ After deploying (see [Develop Locally with the CLI](/tutorials/develop-locally/#
 }
 ```
 
-Each returned event carries its topics (topic 1 is the caller's address, directly comparable) and the XDR payload (`amount`). To filter on a _specific_ caller, put that address in `topic1`. See [`groundhog_getEvents`](/reference/json-rpc-api/#groundhog_getevents) for pagination and filter semantics.
+Each returned event carries its topics (topic 1 is the caller's address, directly comparable) and the CXS payload (`amount`). To filter on a _specific_ caller, put that address in `topic1`. See [`groundhog_getEvents`](/reference/json-rpc-api/#groundhog_getevents) for pagination and filter semantics.
 
 ## Next Steps
 

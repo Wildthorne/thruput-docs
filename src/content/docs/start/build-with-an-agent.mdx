@@ -5,30 +5,33 @@ description: Give your coding agent the right Groundhog instructions, check acce
 
 import guide from '../../../../public/agents/current.json';
 
-Start with a small working contract. Once you can build, test, and call it, expand the idea into the application you want to make.
+Use the installed CLI to give your agent both the docs and its release-specific instructions. This avoids the hosted site's login when the agent can reach your machine's localhost.
 
-The early-access site requires authentication. Your agent may not share your browser’s login. If it cannot open these docs, save this page from your authenticated browser and give it the saved file. You can do the same for linked tutorials or download the plain Markdown reference below. Do not put login credentials in the conversation.
+```bash
+groundhog --version
+groundhog --skill
+groundhog docs
+```
+
+Keep `groundhog docs` running in a terminal. Give your agent the printed URL, normally `http://127.0.0.1:4321`, and ask it to read `groundhog --skill` before writing code. The local server needs no website login. If port `4321` is occupied, use `groundhog docs --port 0` and copy the URL it prints.
+
+An agent running on another machine cannot reach your localhost. In that case, give it saved pages and the `--skill` output. Keep credentials and signing keys out of the conversation.
+
+The bundled site is a snapshot from the CLI build, so it can predate website corrections. CLI `0.17.0` includes an older snapshot; use its own `--skill` output for current agent guidance. See [Local Documentation](/tools/groundhog-cli/#local-documentation) for snapshot identity.
 
 ## Before the CLI is installed
 
 1. Read the project's `AGENTS.md` if you are working in an existing repository. Preserve existing work and configuration.
 2. Check the developer's operating system, architecture, Rust installation, and whether `groundhog` is already available.
-3. Follow [Getting Started](/start/getting-started/#choose-and-install-a-client-bundle) for client-bundle installation and registry setup. Early access still requires private Cargo registry access. Native tests also need access to the SDK's FFI download. Never ask the developer to paste credentials or signing keys into the agent conversation.
+3. Follow [Getting Started](/start/getting-started/#choose-and-install-a-client-bundle) for client-bundle installation and registry setup. Early access still requires private Cargo registry access. The SDK downloads its test executor from public storage without FFI credentials. Never ask the developer to paste credentials or signing keys into the agent conversation.
 4. For a hackathon or shared Devnet, use the CLI/client bundle selected by the organisers. Do not choose a newer prerelease simply because its guide is available here. See [Develop Locally](/tutorials/develop-locally/) for the client-bundle layout and [Develop on Devnet](/tutorials/develop-on-devnet/) for matching the deployed network.
 5. If access or a compatible runtime is missing, report the exact missing requirement and ask the developer to complete the access step. Do not work around authentication or substitute an arbitrary SDK or node version.
 
 The CLI manages Groundhog workflows, but it does not currently remove every installation or access requirement. Do not promise an automatic runtime download unless the installed release supports it.
 
-## Load the installed release's guidance
+## Check the environment
 
-Once the CLI is available, run:
-
-```bash
-groundhog --version
-groundhog --skill
-```
-
-Read the returned guidance before writing code. Use the installed command's `--help` output to confirm syntax. If the installed CLI does not support `--skill`, use an organiser-approved compatible release that does, or continue with its version-matched human documentation. Do not silently apply the preview reference below to an older installation.
+Use the installed command's `--help` output to confirm syntax. If an older CLI does not support `docs` or `--skill`, install the bundle selected for your network before following this workflow.
 
 Read the project’s `groundhog.toml` when present and inspect the environment before starting a node:
 
@@ -58,4 +61,4 @@ For an application interface, follow [Work with Groundhog from TypeScript](/tuto
   <li><a href="/agents/current.json">Source version and checksum</a></li>
 </ul>
 
-The hosted file contains the same guidance as that CLI build's `--skill` output. Once installed, use your CLI's own guidance as the authority for its release. The rest of this site contains dated version notes; check them before copying a command into a different release.
+The hosted file contains the same guidance as that CLI build's `--skill` output. Once installed, use your CLI's own guidance as the authority for its release. Check version notes before copying a command into a different release.

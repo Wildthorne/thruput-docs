@@ -5,18 +5,7 @@ description: Build a contract, generate TypeScript bindings, connect to a local 
 
 This tutorial connects the Groundhog CLI, a Rust contract, generated TypeScript bindings, and `@groundhogchain/client` in one local workflow.
 
-You will:
-
-1. Build and deploy the generated counter with the CLI.
-2. Generate a contract-specific TypeScript binding from its spec.
-3. Connect a TypeScript application to the local node.
-4. Read contract state through a typed view.
-5. Execute a typed state-changing invocation through a pubkey account and the default wallet.
-6. Use the standard ERC-20 bindings and follow a normal token call sequence.
-
-:::note[Version checked]
-This tutorial was source-checked against Groundhog CLI and codegen `0.12.0`, `@groundhogchain/client` `0.5.1`, and protocol packages `0.10.0` on September 2, 2026.
-:::
+Use release `0.1.27`, which includes CLI `0.17.0`, with the [coordinated TypeScript packages](/tools/typescript-sdk/#install).
 
 ## How the Pieces Fit
 
@@ -56,8 +45,7 @@ This split is similar to an EVM ABI plus an application client, but Groundhog bi
 
 Complete [Develop Locally with the CLI](/tutorials/develop-locally/) first. You need:
 
-- Groundhog CLI `0.10.3` or newer
-- A compatible `hog-devnode` with pubkey authorization and the native DefaultWallet fallback
+- The Groundhog `0.1.27` bundle, including its CLI and local runtime
 - Node.js `22.12.0` or newer
 - Access to the Groundhog Cargo and GitHub Packages registries
 
@@ -134,9 +122,9 @@ Configure GitHub Packages as described in [TypeScript SDK installation](/tools/t
 
 ```bash
 npm install \
-  @groundhogchain/client@0.5.1 \
-  @groundhogchain/protocol@0.10.0 \
-  @groundhogchain/contract-spec@0.10.0
+  @groundhogchain/client@0.8.0 \
+  @groundhogchain/protocol@0.11.0 \
+  @groundhogchain/contract-spec@0.11.0
 
 npm install --save-dev typescript tsx @types/node
 ```
@@ -188,7 +176,7 @@ Run it with the address printed by `groundhog deploy`:
 GROUNDHOG_CONTRACT_ADDRESS="0x..." npm run view
 ```
 
-The generated `Counter.get` descriptor knows from the Rust contract spec that `get()` returns `u64`. Its `view()` method decodes the returned bytes into a TypeScript `bigint`. Application code does not need to create an XDR reader or inspect raw `returnData`.
+The generated `Counter.get` descriptor knows from the Rust contract spec that `get()` returns `u64`. Its `view()` method decodes the returned bytes into a TypeScript `bigint`. The binding handles CXS decoding.
 
 Change the contract through the CLI, then run the application again:
 
@@ -217,7 +205,7 @@ The descriptor validates the argument object and encodes its calldata from the c
 
 ## 6. Execute Through the Default Wallet
 
-A generated application invocation is not a signed transaction. A wallet client supplies the account's authorization claim, creates the wallet-root invocation, binds the signature to the connected network, submits the transaction, and polls its receipt.
+A generated application invocation is not a signed transaction. A wallet client supplies the account's authorization claim, creates the wallet-root invocation, binds the signature to the connected network, and submits the transaction. Call `waitForTransactionReceipt()` separately to observe execution.
 
 The simplest account type is a pubkey account. Its address is derived from one Ed25519 public key and an address nonce. An undeployed pubkey-account address resolves to Groundhog's native-compatible DefaultWallet, so creating the account does not require deploying or initializing a wallet contract:
 
@@ -257,7 +245,9 @@ if (!contractHex) {
   throw new Error("Set GROUNDHOG_CONTRACT_ADDRESS to the deployed counter");
 }
 
-const client = await createGroundhogClient({ cluster: localnet() });
+const client = await createGroundhogClient({
+  cluster: localnet({ rpcUrl: process.env.GROUNDHOG_RPC_URL }),
+});
 const account = createPubkeyAccount({
   signer: new PrivateKeySigner(randomBytes(32)),
 });
@@ -310,18 +300,18 @@ GROUNDHOG_CONTRACT_ADDRESS="0x..." npm run write
 
 `createPubkeyAccount()` constructs the protocol's `kPubkeySignature` claim and derives the matching address. `createWalletClient()` selects the DefaultWallet adapter automatically for this account type. Because `localnet()` validates the endpoint's network identity, the wallet can also use the returned network hash when signing.
 
-The account must have HOG before it can pay transaction and storage costs. A committed airdrop can still contain a failed execution result, so the program checks `airdrop.status.result` before submitting the counter transaction.
+HOG funds storage deposits. Gas costs zero tokens. A committed airdrop can still contain a failed execution result, so the program checks `airdrop.status.result` before submitting the counter transaction.
 
 Do not submit `Counter.increment` directly as the transaction root. `wallet.execute()` wraps it in `DefaultWallet.execute` and then signs and submits the root transaction.
 
 :::note[Local bootstrap accounts]
-Accounts loaded by `loadLocalDevAccount()` are existing source-address accounts created by `groundhog node`. To write through one, use `createSourceAddressAccount()` with `devWalletAdapter`. This compatibility path still uses `DevWallet.doAction`; it is different from the no-deploy pubkey-account path above. The maintained [counter deployment example](https://github.com/groundhogchain/client-ts/blob/main/examples/deploy-counter.ts) shows the complete setup.
+Accounts loaded by `loadLocalDevAccount()` are existing source-address accounts created by `groundhog node`. To write through one, use `createSourceAddressAccount()` with `devWalletAdapter`. The adapter wraps calls through `DevWallet.doAction`. The maintained [counter deployment example](https://github.com/groundhogchain/client-ts/blob/v0.8.0/examples/deploy-counter.ts) shows the complete setup.
 :::
 
 For additional implementation references, see the maintained client examples:
 
-- [Transfer native HOG through a pubkey account and DefaultWallet](https://github.com/groundhogchain/client-ts/blob/main/examples/transfer-hog.ts).
-- [Deploy and call a counter](https://github.com/groundhogchain/client-ts/blob/main/examples/deploy-counter.ts)
+- [Transfer native HOG through a pubkey account and DefaultWallet](https://github.com/groundhogchain/client-ts/blob/v0.8.0/examples/transfer-hog.ts).
+- [Deploy and call a counter](https://github.com/groundhogchain/client-ts/blob/v0.8.0/examples/deploy-counter.ts)
 
 To use an installed browser wallet, follow [Connect a Wallet to Your App](/tutorials/connect-a-wallet-to-your-app/). This tutorial uses local signers.
 

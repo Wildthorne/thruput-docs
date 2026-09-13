@@ -1,8 +1,8 @@
 {
-  "version": "0.16.0-rc.1",
-  "status": "preview",
-  "sha256": "00d0d9bda4ce15a9116605eabedcfdce82004788997026cc0fc1feaab9b31576",
+  "version": "0.17.0",
+  "status": "release",
+  "sha256": "c358d633ccd25edd9de3d4c28ff1611a676e8ce06e6625969a822be61e40e9d0",
   "sourceRepository": "groundhogchain/groundhog-rpc",
-  "sourceCommit": "691a21f885bdf3e9fe6c81fca162c4fb9c6b2379",
+  "sourceCommit": "abe5c2f625f8f27df6ef17edaf792ac2d8c50719",
   "sourcePath": "crates/tools/cli/assets/groundhog/knowledge/generated/agent-guide.md"
 }

@@ -8,7 +8,7 @@ This tutorial moves the local development loop onto Devnet. You will use the sig
 Complete [Develop Locally with the CLI](/tutorials/develop-locally/) first if you have not yet built, deployed, and called a contract against `hog-devnode`.
 
 :::note[Hosted version must be discovered]
-An earlier check on August 31, 2026 observed wire format `5.0.0`, implementation `0.11.0`, and packaging release `0.1.25`. Those are historical values, not installation pins. Use the live discovery steps below. The local preview rehearsal described in Getting Started did not qualify the hosted Devnet flow.
+Use the discovery steps below to match the client bundle to the serving release. A local build or test does not verify the hosted Devnet flow.
 :::
 
 ## Before You Start
@@ -47,8 +47,6 @@ groundhog init
 ```
 
 On a fresh setup with no stored keys, accept key generation. Init creates and selects the key named `default`, and creates global `local` and `devnet` profiles. Decline starter-project creation because step 6 creates it explicitly.
-
-Executor credentials are separate from Cargo registry credentials and are not required for this workflow.
 
 ## 2. Configure Devnet Identity
 

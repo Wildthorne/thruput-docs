@@ -30,7 +30,7 @@ The mechanism is exposed differently per storage type:
 
 ```rust
 self.config.set_exclusive(&new_value);            // Value<Config>
-self.counters.at_mut_exclusive(&owner).set(&v);   // Map<_, NNInt>
+self.counters.at_mut_exclusive(&owner).set(v);    // Map<_, NNInt>
 ```
 
 Use exclusive writes only when an operation genuinely needs sole access to a storage location for the duration of a block. Mixing exclusive and non-exclusive writes to the same key in the same block excludes the non-exclusive writers.

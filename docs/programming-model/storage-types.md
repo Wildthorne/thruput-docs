@@ -17,14 +17,14 @@ All four operations record deltas that can merge with concurrent transactions. `
 
 ## NNInt
 
-Integer storage with a two-component (set, add) model and a commit-time floor. Concurrent increments commute. Concurrent absolute writes conflict. Full rules in [nnint.md](./nnint.md).
+Integer storage with a two-component (set, add) model and a commit-time floor. Concurrent increments commute. Absolute writes conflict when their resolved bases differ. Full rules in [nnint.md](./nnint.md).
 
 ```rust
 // Delta operation: commutes with other deltas on the same key
 self.counter.strict_inc(5);
 self.counter.strict_inc(-3);  // pass negative to subtract
 
-// Absolute write: conflicts with any other write to this key
+// Absolute write: conflicts with writes that resolve to a different base
 self.counter.set(100);
 ```
 
@@ -56,7 +56,7 @@ Maps do not enumerate keys and do not implement `Deletable`. Use `at` for read a
 
 ## Value<T>
 
-Typed storage slot for any XDR-serializable value. `Value<T>` serializes to the same underlying primitive as bytes, so its conflict semantics match `Bytestring`: concurrent writes of the same value commute; concurrent writes of different values conflict.
+Typed storage slot for any CXS-serializable value. `Value<T>` serializes to the same underlying primitive as bytes, so its conflict semantics match `Bytestring`: concurrent writes of the same value commute; concurrent writes of different values conflict.
 
 ```rust
 self.config.set(&new_config);
@@ -95,7 +95,7 @@ Different indices are independent and follow the element type's rules. Pushes an
 
 ## RCQ<T> / RetrocausalQueue
 
-FIFO queue. **Inserts commute. Consumes are sequential.**
+Multi-producer queue. Inserts commute; consumption is sequential. Persisted entries are ordered by queue block, then lexicographically within that block. Concurrent observations follow the proposer-recorded order.
 
 ```rust
 // These commute: both add to the queue

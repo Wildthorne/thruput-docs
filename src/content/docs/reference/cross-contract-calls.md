@@ -5,7 +5,7 @@ description: Calling other contracts from your contract.
 
 ## Client Generation
 
-The `#[contract]` macro always generates a client struct, named `{Interface}Client` unless you override it with `client = CustomName`. The client mirrors every public method on the trait or impl block.
+On a trait definition or inherent impl, `#[contract]` generates a client struct, named `{Interface}Client` unless you override it with `client = CustomName`. The client mirrors every public method on the trait or impl block.
 
 For exact macro behavior, see [`#[contract]` Rustdoc](https://groundhog.dev/docs/sdk/latest/sdk/attr.contract.html) or [SDK Macros](/reference/sdk-macros/#contract).
 
@@ -65,10 +65,10 @@ The default gas limit is `u64::MAX` (no effective cap). Gas is metered but free.
 |--------|-----------|-------------|
 | `new(address)` | `fn new(&ContractAddress) -> Self` | Create a client for the given contract address. |
 | `with_gas_limit(gas_limit)` | `fn with_gas_limit(&self, u64) -> Self` | Return a new client with the specified gas limit. |
-| `with_commit_locking()` | `fn with_commit_locking(self) -> Self` | Ask the child frame to acquire its commit locks before returning, so a `try_` call can handle a conflict. |
-| `with_read_only()` | `fn with_read_only(self) -> Self` | Prevent the child frame from modifying state. |
+| `with_commit_locking()` | `fn with_commit_locking(&self) -> Self` | Ask the child frame to acquire its commit locks before returning, so a `try_` call can handle a conflict. |
+| `with_read_only()` | `fn with_read_only(&self) -> Self` | Prevent the child frame from modifying state. |
 
-`with_commit_locking()` and `with_read_only()` consume the client and return the configured value. They can be combined:
+`with_commit_locking()` and `with_read_only()` return a configured copy of the client. They can be combined:
 
 ```rust
 let result = ERC20Client::new(&token_addr)
@@ -95,7 +95,7 @@ client.throw_alpha_not_found();
 
 ### try_ calls (inspect)
 
-Prefixing any method with `try_` returns a `Result` you can match on. The error type is the SDK's `CallError` — the same type for every client.
+Prefixing any method with `try_` returns a `Result` you can match on. The error type is the SDK's `CallError`, the same type for every client.
 
 ```rust
 let client = MultiClient::new(&addr);
@@ -134,8 +134,8 @@ pub enum CallError {
 | `Reentrance` | The target already had a frame open on the invocation stack, so the runtime refused the call as reentrant. See [`Reentrance`](/reference/syscalls/) in the syscall errors. |
 | `DepthExceeded` | Admitting the call would have exceeded the network's cross-invoke depth bound. The same call succeeds from a shallower frame. |
 | `InvokeRejected(SysErr)` | The invoke syscall was refused for another reason, carrying the raw syscall error. |
-| `Exception(RawException)` | The callee threw. Any exception type — declared in `throws` or not, including the SDK's own `LibraryExn`. |
-| `Fault(FaultInfo)` | The callee panicked. `FaultInfo` holds the test harness's panic record — message and location — and is **not** a wire type: it exists only under the `dev` feature. This is unlike `FaultString` (which the other variants and `LibraryExn` carry), where the message is host-only and encodes to zero bytes on every target and feature. |
+| `Exception(RawException)` | The callee threw. Any exception type, declared in `throws` or not, including the SDK's own `LibraryExn`. |
+| `Fault(FaultInfo)` | The callee panicked, trapped, or exhausted gas. Child faults carry no diagnostic message across the call boundary. `FaultInfo` exists on every target and is zero-sized without `dev`; only a native root-frame panic can retain harness diagnostics. |
 | `UnparseableReturn(FaultString)` | The callee committed but its return buffer could not be decoded as the expected type. |
 | `UnparseableAbort(FaultString)` | The callee aborted but the abort payload could not be parsed. |
 | `UnparseableAuthHandles(FaultString)` | The callee committed but the returned auth-token handle list was malformed. |
@@ -163,7 +163,7 @@ match client.try_transfer(&recipient, 100) {
         }
         ERC20PausableError::EnforcedPause => {
             // Declared by an extension the ERC20 interface knows nothing
-            // about — matched here exactly like a declared error
+            // about, matched here exactly like a declared error
         }
         LibraryExn::NonNegativeIntUnderflow => {
             // SDK-level failure inside the callee
@@ -173,7 +173,7 @@ match client.try_transfer(&recipient, 100) {
 }
 ```
 
-Everything structural — `Ok`, `Fault`, `Invalid`, the encode/decode failures — stays an ordinary `match`, with the exhaustiveness checking that comes with it. `match_exn!` only does typed downcasting, and its arms are tried in order, so it requires a final `_` arm.
+Handle `Ok`, `Fault`, `Invalid`, and encode/decode failures with an ordinary `match`. `match_exn!` only does typed downcasting, and its arms are tried in order, so it requires a final `_` arm.
 
 Two rules follow from how the macro infers the type from each arm's pattern:
 
@@ -205,7 +205,7 @@ match client.try_call_something().unwrap_err().try_decode::<SomeKnownError>() {
 }
 ```
 
-This matters more than "a callee sent garbage" suggests. An exception's selector is the first 8 bytes of `sha256(major_version :: crate :: type)` and says nothing about the payload's layout, so a callee that **adds a variant** to an exception enum makes a semver-compatible change that leaves the selector unchanged — and an older caller cannot decode the result. Through `try_as` that is indistinguishable from an error type the caller has never heard of. If confusing the two would change a decision your contract makes, ask `try_decode`.
+This matters more than "a callee sent garbage" suggests. An exception's selector is the first 8 bytes of `sha256(major_version :: crate :: type)` and says nothing about the payload's layout, so a callee that **adds a variant** to an exception enum makes a semver-compatible change that leaves the selector unchanged, and an older caller cannot decode the result. Through `try_as` that is indistinguishable from an error type the caller has never heard of. If confusing the two would change a decision your contract makes, ask `try_decode`.
 
 The reverse direction is not detectable at all: decoding reads a *prefix*, so a callee that **appends a field** to a struct exception is accepted silently by an older caller, which decodes the shorter shape and drops the extra data.
 

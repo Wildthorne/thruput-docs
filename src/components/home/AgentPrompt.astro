@@ -1,5 +1,5 @@
 ---
-const prompt = 'Read https://docs.groundhog.dev/start/build-with-an-agent/ and help me build my first Groundhog app. If you cannot access that page, ask me for a saved copy; never ask me to paste credentials. Check my setup, access, and the actual CLI and runtime paths first, then use the guidance from my installed CLI. Start with a small working contract, run its tests, and help me deploy it. Explain any changes that need my approval.';
+const prompt = 'Help me build my first Groundhog app. Check whether groundhog is installed and verify the CLI and runtime versions. If installed, read groundhog --skill, start groundhog docs, and use its localhost URL for the documentation. Keep that server running while you work. If the CLI is missing, follow https://docs.groundhog.dev/start/getting-started/; if authentication blocks access, ask me for a saved copy. Never ask me to paste credentials or signing keys. Start with a small contract, run its tests, deploy it, and verify the receipt and state.';
 ---
 
 <home-agent-prompt data-local-snapshot={process.env.GROUNDHOG_DOCS_SNAPSHOT ? "true" : undefined} role="group" aria-labelledby="install-label">

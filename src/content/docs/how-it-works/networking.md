@@ -45,9 +45,9 @@ Inter-node communication (consensus, transaction gossip) is managed by the coord
 
 ## Component Registration
 
-Each component connects to the mempool and performs an "intro" RPC handshake, passing a card with its protocol version, process ID, and network addresses. The mempool waits for all required components before accepting work.
+Each component connects to the mempool and performs an "intro" RPC handshake, passing a card with its protocol version, process ID, and network addresses. The mempool waits for the required components before accepting work.
 
-Startup order:
+Registration interfaces:
 
 1. **DB shards** register via `scheddb_intro_shard`. Multiple shards can register (horizontal storage scaling).
 2. **Event server** registers via `schedevent_intro_event`. One per node.
@@ -55,7 +55,7 @@ Startup order:
 4. **Auth server** registers via `mempoolauth_intro_auth`. Handles transaction signature verification.
 5. **Coordinator** registers via `schedulercoord_intro_coord`. Drives consensus and block production.
 
-All internal communication uses XDR-RPC over TCP. Protocol definitions live in `.x` files (XDR IDL) and are compiled to C++ (hogd), Rust (groundhog-rpc), TypeScript, and Go bindings.
+The listed execution-layer interfaces use XDR-RPC over TCP. Protocol definitions live in `.x` files (XDR IDL) and are compiled to C++ (hogd), Rust (groundhog-rpc), TypeScript, and Go bindings.
 
 ## The Mempool as Orchestrator
 

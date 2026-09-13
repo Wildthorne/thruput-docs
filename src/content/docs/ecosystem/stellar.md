@@ -15,7 +15,7 @@ Before diving into specific patterns, here are the main differences in emphasis:
 
 | Aspect | Stellar | Groundhog |
 |--------|---------|-----------|
-| **Execution** | Sequential within ledger | Parallel via snapshot isolation + delta merge |
+| **Execution model here** | Classic Stellar operations | Contract calls with snapshot isolation and delta merge |
 | **State model** | Account-centric (balances, trustlines, offers built in) | Contract-centric (you define storage with typed primitives) |
 | **Error handling** | Transaction result codes | Typed abort with structured errors |
 | **DEX execution** | Built-in offers and synchronous path payments | Synchronous contracts or queued intent settlement, chosen by the application |
@@ -63,14 +63,16 @@ The token contract in [Build a Token](/tutorials/build-a-token/) shows the full 
 
 ### 2. Multi-Operation Transactions
 
+Classic Stellar transactions can bundle operations atomically. Soroban transactions have a single smart-contract operation. See [Stellar operations and transactions](https://developers.stellar.org/docs/learn/fundamentals/transactions/operations-and-transactions).
+
 **Stellar Pattern:**
 ```javascript
 // Stellar: All operations execute atomically, sequentially
-const transaction = new TransactionBuilder(account)
-  .addOperation(Operation.payment({ dest: A, amount: "100" }))
-  .addOperation(Operation.payment({ dest: B, amount: "50" }))
-  .addOperation(Operation.changeTrust({ asset: USD }))
-  .build();
+// Add these to a TransactionBuilder configured for the target network.
+transaction
+  .addOperation(Operation.payment({ destination: A, asset: Asset.native(), amount: "100" }))
+  .addOperation(Operation.payment({ destination: B, asset: Asset.native(), amount: "50" }))
+  .addOperation(Operation.changeTrust({ asset: USD }));
 ```
 
 **Groundhog Pattern:**
@@ -97,7 +99,7 @@ fn batch_payment_and_trust(
 **What This Highlights:**
 - No operation bundling. You write a contract method that does everything you need
 - For cross-contract operations, use [cross-contract calls](/reference/cross-contract-calls/): your method invokes other contracts
-- Groundhog does not require you to declare which state you'll touch upfront. Conflicts are detected at merge time, not submission time
+- Groundhog does not require you to declare which state you'll touch upfront. Ordinary storage conflicts are checked during delta reservation after execution
 - Each contract invocation is atomic: if your method aborts, all state changes are discarded
 
 The main shift is organizational: logic that would be represented as a list of Stellar operations becomes a contract method.
@@ -149,7 +151,7 @@ Operation.pathPaymentStrictReceive({
   path: [EUR]  // Optional intermediate assets
 });
 
-// After submission, you know immediately:
+// After confirmation, inspect the transaction result:
 // - Did it execute?
 // - What was the actual rate?
 // - How much was sent?
@@ -176,7 +178,6 @@ Operation.changeTrust({
 // Configure account
 Operation.setOptions({
   homeDomain: "example.com",
-  inflationDest: "GINFLATION...",
   setFlags: AuthRequiredFlag
 });
 ```
@@ -198,7 +199,7 @@ fn set_options(&mut self, home_domain: &[u8], flags: u32) {
 **What This Highlights:**
 - Explicit key-value storage instead of built-in account abstraction
 - Per-account operations on different accounts are fully parallel (different `Map` keys)
-- Configuration writes to the same account use `Bytestring`, so concurrent config changes conflict (one per block)
+- Different configuration writes to the same account conflict; identical bytestring writes can coexist
 
 ---
 
@@ -212,6 +213,7 @@ If you're already writing Soroban contracts, Groundhog is best read as an adjace
 impl TokenContract {
     pub fn transfer(env: Env, from: Address, to: Address, amount: i128) {
         from.require_auth();
+        assert!(amount >= 0);
         let from_balance: i128 = env.storage().persistent().get(&from).unwrap_or(0);
         let to_balance: i128 = env.storage().persistent().get(&to).unwrap_or(0);
         assert!(from_balance >= amount);

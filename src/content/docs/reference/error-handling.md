@@ -8,7 +8,7 @@ Exported Groundhog contract methods return their declared values and signal fail
 You cannot catch an exception within the same contract. To handle errors from another contract, use `try_*` client methods (see [Cross-Contract Calls](/reference/cross-contract-calls/)).
 
 :::note[Version checked]
-This page was source-checked against SDK `0.29.0`.
+This page was source-checked against SDK `0.34.3`.
 :::
 
 For exact SDK item docs, see [`#[contract_exception]`](https://groundhog.dev/docs/sdk/latest/sdk/attr.contract_exception.html), [`throw`](https://groundhog.dev/docs/sdk/latest/sdk/fn.throw.html), [`ensure`](https://groundhog.dev/docs/sdk/latest/sdk/fn.ensure.html), [`OrThrow`](https://groundhog.dev/docs/sdk/latest/sdk/trait.OrThrow.html), and [Rust API Docs](/tools/rust-api-docs/).
@@ -40,7 +40,7 @@ For contract crates, configure `thiserror` without the default `std` feature:
 thiserror = { version = "2", default-features = false }
 ```
 
-Avoid `anyhow` for contract exception types and public contract method surfaces. `anyhow::Error` is an erased application error type, while contract exceptions need concrete XDR-serializable types that appear in the contract spec. `anyhow` is fine in off-chain tools, build scripts, tests, or CLI code. Inside a contract, private helpers may use `Result` if they immediately convert failures into concrete contract exceptions with `throw`, `ensure`, or `or_throw`.
+Avoid `anyhow` for contract exception types and public contract method surfaces. `anyhow::Error` is an erased application error type, while contract exceptions need concrete CXS-serializable types that appear in the contract spec. `anyhow` is fine in off-chain tools, build scripts, tests, or CLI code. Inside a contract, private helpers may use `Result` if they immediately convert failures into concrete contract exceptions with `throw`, `ensure`, or `or_throw`.
 
 ### Enum errors
 
@@ -188,7 +188,7 @@ match client.try_do_something() {
 
 ## Cross-Contract Errors
 
-A thrown exception travels as `[selector][payload]`, where the selector is derived from the exception *type* — not from the interface that threw it. Callers match on that selector, so what a caller can catch does not depend on what the callee's interface declared.
+A thrown exception travels as `[selector][payload]`, where the selector is derived from the exception *type*, not from the interface that threw it. Callers match on that selector, so what a caller can catch does not depend on what the callee's interface declared.
 
 `throws` declares an interface's error contract: it is published in the contract spec and tells callers what to expect. It does not gate catching.
 
@@ -235,11 +235,11 @@ match client.try_throw_alpha_not_found() {
 }
 ```
 
-Failures that carry no exception — `Fault`, `Invalid`, the encode/decode variants — stay ordinary `match` arms on `CallError`. `match_exn!` handles only the typed part, and its arms are tried in order, so a final `_` arm is required.
+Handle `Fault`, `Invalid`, and encode/decode failures with ordinary `match` arms on `CallError`. `match_exn!` handles only the typed part, and its arms are tried in order, so a final `_` arm is required.
 
 ### Library errors
 
-`LibraryExn` is matched like any other exception type — there is no special wrapper variant:
+`LibraryExn` is matched like any other exception type. There is no special wrapper variant:
 
 ```rust
 match client.try_do_something() {
@@ -259,7 +259,7 @@ Non-try client methods (e.g. `client.do_something()` without the `try_` prefix) 
 
 ### Undeclared errors
 
-An error type absent from `throws` is caught exactly like a declared one — the selector identifies it either way:
+An error type absent from `throws` is caught exactly like a declared one. The selector identifies it either way:
 
 ```rust
 match client.try_throw_undeclared() {
@@ -273,7 +273,7 @@ match client.try_throw_undeclared() {
 }
 ```
 
-This is what lets an extension define errors the base interface does not declare. `ERC20PausableError::EnforcedPause` can come back from `ERC20::transfer`, and an `ERC20Client` caller matches it in the same `match_exn!` as `ERC20Error` — no separate decode step, and no coupling of the base interface to the extension.
+This is what lets an extension define errors the base interface does not declare. `ERC20PausableError::EnforcedPause` can come back from `ERC20::transfer`, and an `ERC20Client` caller matches it in the same `match_exn!` as `ERC20Error`, no separate decode step, and no coupling of the base interface to the extension.
 
 ### Matching a single type
 
@@ -286,6 +286,6 @@ assert_eq!(
 );
 ```
 
-`None` covers all three ways this can miss: no exception, a different type, or a payload that failed to decode. Use `try_decode` when the last of those must be distinguished from the other two — see [Cross-Contract Calls](/reference/cross-contract-calls/#telling-a-corrupt-error-from-an-unknown-one), which also explains why it is reachable through ordinary semver-compatible evolution rather than only through forgery.
+`None` covers all three ways this can miss: no exception, a different type, or a payload that failed to decode. Use `try_decode` when the last of those must be distinguished from the other two. See [Cross-Contract Calls](/reference/cross-contract-calls/#telling-a-corrupt-error-from-an-unknown-one), which also explains why it is reachable through ordinary semver-compatible evolution rather than only through forgery.
 
 See [Cross-Contract Calls](/reference/cross-contract-calls/) for the full calling patterns.

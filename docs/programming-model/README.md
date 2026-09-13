@@ -1,6 +1,6 @@
 # Groundhog Programming Model
 
-Compact reference notes for reasoning about Groundhog contract behavior, conflict semantics, and the economic model. These files are not the final authority. The checked-out SDK, protocol definitions, and engine source are authoritative. If source code and these notes disagree, trust source code and update these notes.
+Compact reference notes for reasoning about Groundhog contract behavior, conflict semantics, and the economic model. These files are not the final authority. For release documentation, the SDK, protocol definitions, and engine source pinned by that release are authoritative. If source code and these notes disagree, trust source code and update these notes.
 
 ## Reading Order
 
@@ -28,6 +28,6 @@ When writing or editing content, verify claims against sibling source repos befo
 - Gas/invoke config: `../sdk_rs/crates/sdk/src/invoke_config.rs`, `../sdk_rs/crates/sdk/src/call/`
 - Error types: `../sdk_rs/crates/sdk/src/exn/`, macros in `../sdk_rs/crates/macros/src/`
 - Protocol storage rules: `../protocol/storage_item.x`, `../protocol/syscalls.yaml`
-- Engine merge/reservation rules: `../hogd/hogd/storage_item/`, `../hogd/hogd/hogexec/runtime/`
+- Engine merge/reservation rules: `../hogd/hogd/storage_item/`, `../hogd/hogd/hog_exec/runtime/`
 - JSON-RPC and TypeScript client behavior: `../groundhog-rpc/`, `../protocol-ts/`, `../client-ts/`
 - Current examples: `../groundhog-examples/`

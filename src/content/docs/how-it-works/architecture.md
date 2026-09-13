@@ -3,52 +3,30 @@ title: Architecture
 description: How Groundhog achieves parallel execution without making you think about parallelism.
 ---
 
-Groundhog executes every transaction in a block simultaneously. Not optimistically, not on separate shards, not with restrictions on what a transaction can do. Every transaction runs in parallel, on full-featured RV32 (32-bit RISC-V) contracts, with no declared access lists.
+Groundhog executes transactions concurrently against a shared block snapshot. Contracts run on RV32 (32-bit RISC-V) and use typed storage whose merge rules determine which changes can land together. Transactions do not declare access lists.
 
-You don't manage any of this. You write contracts using typed storage primitives. The types know how to merge concurrent modifications. Parallelism is a consequence of the type system, not something you orchestrate.
+## Typed Storage
 
-## Types, Not Locks
+Groundhog starts with a storage question: which concurrent changes can safely coexist? Each primitive answers that question for its own data. Contract authors choose a type and write sequential Rust; the runtime checks the resulting changes.
 
-Most parallel systems put the burden on the developer: declare your locks, specify your access lists, hope you didn't miss an edge case. One wrong annotation and you get silent data corruption or deadlocks. Solana requires you to declare every account a transaction will touch before submission. Sui requires owned-vs-shared object reasoning. Even database developers with decades of experience routinely ship locking bugs.
-
-Groundhog takes a different approach. Instead of asking developers to manage concurrency, it provides storage types that guarantee correctness under parallel execution:
-
-- **Balance**: checked and lazy increases and decreases for non-negative balances. Compatible deltas from either form combine cleanly.
-- **NNInt**: lower-level signed changes merge by addition. Use it for counters and other integer state.
-- **Map**: operations on different keys never interact. Operations on the same key follow the value type's rules.
+- **Balance**: checked and lazy adjustments for non-negative balances. Compatible deltas combine within the available bounds.
+- **NNInt**: signed adjustments and explicit bases. Concurrent changes must resolve to the same base.
+- **Map**: different keys use independent storage; changes to the same key follow the value type's rules.
 - **CapacityConstraint**: reserves or releases capacity against a shared limit.
-- **RetrocausalQueue**: multiple producers, always mergeable.
-- **Bytestring**: concurrent writes of different values conflict. Use for data written rarely.
+- **RetrocausalQueue**: supports concurrent producers with queue-specific finalization rules.
+- **Bytestring**: concurrent writes of different values conflict. Identical writes can coexist.
 
-If two transactions both lazily increase a balance, the deltas merge. If two transactions write conflicting values to the same bytestring, one is excluded from the block and returned to the mempool. The contract developer doesn't choose a locking strategy or declare access patterns. The system guarantees correctness: balances never go negative, conflicting writes never silently overwrite each other.
+Two compatible balance increases can merge. Different writes to the same bytestring cannot both land; excluded transactions return to the mempool for possible inclusion in a later block. These rules enforce storage invariants. Contracts still need authorization checks and application-specific constraints.
 
-This is not an optimization bolted onto a sequential design. It is the design. Every layer of Groundhog, from the ledger format to the syscall interface to the SDK, is built around typed, mergeable storage.
+The SDK provides storage abstractions and macros over the raw syscall interface. You can also build your own abstractions using syscalls. See [SDK Surfaces](/start/getting-started/#sdk-surfaces).
 
-The SDK provides convenience layers (`Balance`, `NNInt`, `Map`, `#[storage]` macros) that make common patterns easy, but these are optional. You can work directly with the raw syscall interface and build your own storage abstractions. The SDK is middleware, not a framework. See [Getting Started](/start/getting-started/#sdk-surfaces) for the full layering.
+## Parallelism and Capacity
 
-For the contract-writing rules, see [Merged Deltas](/programming-model/execution/#merged-deltas). For the engine internals, see [Execution Model](/how-it-works/execution-model/). For the full type API, see [Storage Types Reference](/reference/storage-types/).
+Independent storage keys let transactions use shared contracts concurrently. Changes to the same key can also coexist when its merge rules permit them. Conflicting application workflows still need an explicit design, such as a queue for sequencing work.
 
-## What Other Chains Do Instead
+Execution workers and database shards distribute a node's work across hardware. Throughput depends on workload, contention, and available resources. Gas costs zero tokens, but gas limits and scheduling capacity still bound computation.
 
-Other chains achieve parallelism by restricting what you can do or by hoping for the best.
-
-**Optimistic execution** (Solana, Aptos, Sui): run transactions in parallel, detect conflicts after the fact, abort and retry on collision. This works well when contention is low. When contention spikes (a popular mint, a volatile market), throughput collapses to sequential. Worse, a burst of activity on one contract can degrade performance for unrelated contracts sharing the same validator.
-
-**Restricted transaction models** (Bitcoin, Cardano): limit transactions to consuming individual UTXOs. Parallelism is trivial because transactions can't share state. But shared state is what makes contracts useful. Anything that needs coordination (a DEX, a lending pool, a multisig) requires workarounds that approach the complexity of a separate chain.
-
-**Sharding** (Ethereum L2s, Polkadot): split the ledger into independent partitions. Each shard runs sequentially but shards run in parallel. Users on different shards need bridges to interact, introducing latency, trust assumptions, and historical security problems.
-
-Groundhog's typed storage avoids all three tradeoffs. Contention doesn't collapse throughput because conflicts are granular (per storage key, not per contract or per account). Transactions aren't restricted. The ledger isn't split. Every contract lives in one shared state, and parallelism comes from the types, not the topology.
-
-## What This Enables
-
-When execution is parallel and compute costs nothing (you hold HOG for capacity, not pay per operation), entire classes of applications become practical:
-
-**Compute-heavy contracts.** On sequential chains, every microsecond your contract runs is a microsecond no other contract can use. Chains enforce tight compute budgets to keep block times short. On Groundhog, your contract's compute doesn't compete with other contracts. Complex on-chain logic (verification, simulation, analysis) becomes feasible.
-
-**High-throughput shared state.** A DEX orderbook, a lending pool, a game world. These are contracts where thousands of users interact with the same state simultaneously. On Groundhog, independent operations on that state (deposits to different accounts, trades on different pairs) parallelize automatically through the type system.
-
-**Horizontal scaling.** Each Groundhog node is a distributed system that scales by adding hardware. More CPUs means more concurrent transactions. This is an implementation detail that contracts never see, but it means the network's throughput ceiling rises with commodity hardware prices, not with protocol changes.
+For contract-writing rules, see [Merged Deltas](/programming-model/execution/#merged-deltas). For engine internals, see [Execution Model](/how-it-works/execution-model/).
 
 ## How a Transaction Moves Through the System
 
@@ -59,7 +37,7 @@ When execution is parallel and compute costs nothing (you hold HOG for capacity,
 5. After execution, the runtime collects all deltas and checks for conflicts.
 6. Non-conflicting deltas merge into the ledger. Conflicting transactions are excluded and returned to the mempool.
 
-Every transaction in the block runs steps 2-4 simultaneously. Step 5-6 is where the type system's merge rules determine what lands. See [Transaction Lifecycle](/how-it-works/transaction-lifecycle/) for the full breakdown.
+Executor workers run steps 2-4 concurrently. Steps 5-6 apply the storage merge rules to determine what lands. See [Transaction Lifecycle](/how-it-works/transaction-lifecycle/) for the full breakdown.
 
 ## Related Documentation
 

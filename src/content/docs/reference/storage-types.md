@@ -5,6 +5,8 @@ description: API reference for Groundhog storage types.
 
 API reference for the SDK storage types. For conflict semantics, usage guidance, and when to choose each type, see [Programming Model: Storage Types](/programming-model/storage-types/). For generated Rustdoc, see [`sdk::storage`](https://groundhog.dev/docs/sdk/latest/sdk/storage/index.html) or [Rust API Docs](/tools/rust-api-docs/).
 
+The SDK encodes typed storage values and map keys with CXS. Its serialization traits retain the names `ReadXDR` and `WriteXDR`.
+
 Rustdoc shortcuts:
 
 | Area | Links |
@@ -64,7 +66,7 @@ Commit-time capacity for a contract-defined linear constraint. Changes are stage
 | `set_capacity` | `fn set_capacity(&mut self, capacity: i128)` | Set the capacity. Must be the first write in the transaction, except for an idempotent repeat. |
 | `try_set_capacity` | `fn try_set_capacity(&mut self, capacity: i128) -> Result<(), LibraryExn>` | Set capacity and report invalid write ordering instead of aborting. |
 | `flush` | `fn flush(&mut self)` | Merge staged changes into pending storage immediately. |
-| `try_flush` | `fn try_flush(&mut self) -> Result<(), LibraryExn>` | Flush staged changes and report failure instead of aborting. |
+| `try_flush` | `fn try_flush(&mut self) -> Result<(), LibraryExn>` | Flush staged changes and report failure. On error, changes remain staged and drop retries the flush. |
 
 Implements `Deletable`.
 
@@ -139,7 +141,7 @@ Mutable guard returned by `load_mut`. Implements `Deref<Target = T>` and `DerefM
 | Method | Signature | Description |
 |--------|-----------|-------------|
 | `flush` | `fn flush(&mut self)` | Write a dirty value immediately. A clean guard is a no-op. |
-| `try_flush` | `fn try_flush(&mut self) -> Result<(), LibraryExn>` | Flush and report serialization or storage failure instead of aborting. |
+| `try_flush` | `fn try_flush(&mut self) -> Result<(), LibraryExn>` | Flush and report serialization or storage failure. On error, the guard remains dirty and drop retries. |
 
 ## Bytestring
 
@@ -161,14 +163,14 @@ Implements `Deletable`.
 
 ## RCQ\<T\>
 
-Multi-producer queue. Items of type `T` are XDR-encoded on insert and decoded on consume. Inserts commute; consumes are sequential.
+Multi-producer queue. Items of type `T` are CXS-encoded on insert and decoded on consume. Inserts commute; consumes are sequential.
 
 The typed wrapper lives in `sdk::storage`. Lower-level free functions (operating on raw `StorageKey` values) are available in `sdk::sys_exn::rcq` for cases where you want byte-level control.
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
-| `insert` | `fn insert(&mut self, entry: &T)` where `T: WriteXDR` | XDR-encode and insert the entry. |
-| `insert_raw` | `fn insert_raw(&mut self, queue_entry: &[u8])` | Insert raw bytes; bypasses XDR encoding. |
+| `insert` | `fn insert(&mut self, entry: &T)` where `T: WriteXDR` | CXS-encode and insert the entry. |
+| `insert_raw` | `fn insert_raw(&mut self, queue_entry: &[u8])` | Insert raw bytes; bypasses CXS encoding. |
 | `consume` | `fn consume(&mut self) -> T` where `T: ReadXDROwned` | Consume the next entry and decode it. Aborts if the queue is empty or the entry cannot be decoded. |
 | `try_consume` | `fn try_consume(&mut self) -> Result<T, LibraryExn>` where `T: ReadXDROwned` | Consume and decode without aborting. A decode failure leaves the entry in the queue. |
 | `consume_raw` | `fn consume_raw(&mut self) -> Box<[u8]>` | Consume the next entry as raw bytes. Aborts if the queue is empty. |

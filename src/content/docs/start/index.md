@@ -3,7 +3,7 @@ title: Start Here
 description: Pick the right Groundhog guide based on what you already know.
 ---
 
-Groundhog is a blockchain where most operations execute in parallel, safely and deterministically, without you managing the parallelism. No double spends, no negative balances, no dirty reads. No gas fees or contract reentrancy. All without requiring sequential execution.
+Groundhog executes transactions concurrently using typed storage. Storage merge rules determine which changes can land together in a block.
 
 The core concept to learn is mergeable storage. Instead of overwriting a balance with a newly calculated value, [`Balance`](/programming-model/storage-types/#balance) records increases and decreases. [Merged deltas](/programming-model/execution/#merged-deltas) from concurrent transactions can combine when they are safe to apply, while the runtime still prevents total debits from exceeding the available balance. Lower-level [`NNInt`](/programming-model/storage-types/#nnint) storage exposes the same signed-delta model for counters and other integer state. The guides below explain this model from different starting points.
 
@@ -15,7 +15,7 @@ The core concept to learn is mergeable storage. Instead of overwriting a balance
 |---|---|---|
 | **Smart contracts** (EVM, SVM, Move) | Familiar contracts without gas fees, sequential nonces, reentrancy guards, or declared access lists. Commutative paths do not depend on transaction order. | [Guide for Blockchain Developers](/start/for-blockchain-developers/) |
 | **SQL databases** | `UPDATE balance = balance + 5` maps to a `Balance` increase. Concurrent updates can combine while balance constraints still hold. | [Guide for Backend Developers](/start/for-backend-developers/) |
-| **Distributed systems** | Your intuition transfers, but don't worry Groundhog is **not** CRDTs on a blockchain. | [Guide for Distributed Systems Developers](/start/for-distributed-systems-developers/) |
+| **Distributed systems** | Commutative operations combine within a consensus block. | [Guide for Distributed Systems Developers](/start/for-distributed-systems-developers/) |
 
 ---
 

@@ -3,15 +3,17 @@ title: Execution Model
 description: "How your contract runs: snapshot isolation, deltas, block lifecycle, and gas."
 ---
 
-Your contract reads from a frozen snapshot and produces typed storage changes, called deltas. It never sees other transactions' writes. The runtime checks whether each transaction's deltas can coexist with the other changes landing in the block. Deltas that can coexist form the next committed state. Transactions with conflicting deltas are excluded and returned to the mempool.
+Your contract reads from a frozen snapshot and produces typed storage changes, called deltas. Ordinary storage reads do not see other transactions' writes. The runtime checks whether each transaction's deltas can coexist with the other changes landing in the block. Deltas that can coexist form the next committed state. Transactions with conflicting deltas are excluded and returned to the mempool.
 
 This page is the contract-author model. Read it before choosing storage types. It explains the behavior your contract relies on without requiring the engine's lock and reservation implementation.
 
 ## Snapshot Isolation
 
-All transactions in a block read the same committed state from the previous block. No transaction sees another's writes within the block. Reads are stable: the same key returns the same value throughout your transaction.
+All transactions in a block read the same committed state from the previous block. Ordinary storage reads do not see another transaction's writes within the block. Reads include changes made within your transaction, including successful child calls. Other transactions cannot change the snapshot you read.
 
-If you've used Postgres with `REPEATABLE READ` isolation, you already understand this model.
+The shared snapshot is a useful database analogy, but Groundhog has its own typed delta merge rules.
+
+`RetrocausalQueue` has separate observation rules: a consumer can observe concurrent inserts in the same block. The proposer records these observations for validator replay.
 
 ## Merged Deltas
 
@@ -93,20 +95,20 @@ let client = TokenClient::new(&token_address);
 client.with_gas_limit(100_000).transfer(&to, amount);
 ```
 
-Don't optimize for gas cost. There is no gas cost. Optimize for correct conflict semantics instead.
+Gas has no token fee, but lower gas limits use less scheduling capacity. Choose a limit that covers execution and design storage operations to avoid unnecessary conflicts.
 
-On other chains, "gas estimation" is painful because gas *price* fluctuates. On Groundhog, gas price estimation is a non-issue: the price is zero.
+Groundhog needs no gas price estimation because the token price of gas is zero. Gas usage still matters when choosing an execution limit.
 
 ## Throughput
 
 Your free HOG token balance determines your share of network throughput.
 
-- **Under capacity**: every valid transaction lands in the next block. No competition.
+- **Under capacity**: scheduling contention is lower, but admission, propagation, conflicts, and expiry still affect inclusion.
 - **Under congestion**: throughput is allocated proportionally to free HOG balances. Hold 2x the HOG, get roughly 2x the throughput.
 
 HOG transferred between accounts enters the recipient's scheduling queue as newly received capacity. It does not carry the sender's accumulated scheduling age. A transaction can transfer HOG from the same balance that scheduled it without creating refund accounting or extra contention.
 
-No tokens are consumed. No tokens are burned. Schedule your coins, don't burn them.
+Scheduling does not consume tokens.
 
 ## Storage Costs
 

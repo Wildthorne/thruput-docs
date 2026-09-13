@@ -3,13 +3,11 @@ title: TypeScript Bindings
 description: Generate typed TypeScript method and event descriptors for Groundhog contracts.
 ---
 
-TypeScript bindings turn a contract spec into typed method descriptors, event descriptors, declared exceptions, and contract-specific TypeScript types.
+TypeScript bindings turn a contract spec into typed methods, events, and contract types. Contract arguments, returns, exceptions, and event payloads use CXS; the client handles their encoding.
 
 For JSON-RPC transports, transaction helpers, deployment, and package setup, see [TypeScript SDK](/tools/typescript-sdk/).
 
-:::note[Version checked]
-This page was source-checked against published `@groundhogchain/client` `0.5.1`, protocol packages `0.10.0`, and CLI codegen `0.12.0` source on September 2, 2026.
-:::
+Use CLI `0.17.0` from release `0.1.27` with the [coordinated TypeScript packages](/tools/typescript-sdk/#install). Regenerate older bindings after upgrading.
 
 ## What Bindings Provide
 
@@ -190,7 +188,7 @@ if (!childReturn) {
 const childValue = Counter.get.decodeReturn(childReturn);
 ```
 
-This deserialization is generated from the Rust contract specification. It is not necessary to construct an XDR reader or codec manually. The application selects the descriptor because it knows which child calls it submitted; the receipt does not contain enough TypeScript method identity for the client to choose one automatically.
+This deserialization is generated from the Rust contract specification. The application selects the descriptor because it knows which child calls it submitted; the receipt does not contain enough TypeScript method identity for the client to choose one automatically.
 
 ## Generated Exceptions
 
@@ -247,7 +245,7 @@ const match = ChangedEvent.singleFromReceipt(receipt, {
 
 A malformed event with the matching signature throws `ContractDecodeError`.
 
-Named topic filters are generated only for directly represented topics: addresses and fixed 32-byte values. Hashed topic preimages are not available as generated named filters.
+Named topic filters are generated only for directly represented topics: addresses, fixed 32-byte values, and `u256`/`i256` integers. Integer topics decode as `bigint`. Hashed topic preimages are not available as generated named filters.
 
 Filters require one to five contract addresses. A named topic accepts one value or a non-empty `{ oneOf: [...] }` constraint containing at most 16 values.
 
@@ -265,9 +263,10 @@ The TypeScript generator maps contract-spec types as follows:
 
 | Contract type                            | TypeScript representation                          |
 | ---------------------------------------- | -------------------------------------------------- |
+| `SignedToken<T>` | `SignedToken<T>` placeholder |
 | `Void`                                   | `void`                                             |
 | `Bool`                                   | `boolean`                                          |
-| Integer types, including bare `u8`       | `bigint`                                           |
+| Integer types, including `u8`, `u256`, and `i256`       | `bigint`                                           |
 | `String`                                 | `string`                                           |
 | `Address`                                | `ContractAddress`                                  |
 | `Bytes`, `Vec<u8>`                       | `Uint8Array`                                       |
@@ -292,11 +291,11 @@ const values = fixedArray(rawValues, 4);
 
 Encoding and decoding enforce the declared lengths. `fixedBytes()` validates and brands the caller-owned mutable `Uint8Array` without copying it. `fixedArray()` returns a frozen copy.
 
-`SignedToken` exists in the contract-spec schema but is not supported by the current TypeScript generator.
+`SignedToken<T>` occupies no calldata or return bytes. The runtime passes its authorization handle between contracts; off-chain code sees only a placeholder. `signedToken<T>()` constructs that placeholder, not an authorization token.
 
 ## Standard Contract Bindings
 
-Client `0.5.1` ships `DefaultWallet`, `DevWallet`, `ERC20`, and `ERC20Metadata` bindings. The wallet bindings use interface `0.1.0`; the ERC-20 bindings use interface `0.1.9`:
+The client ships `DefaultWallet`, `DevWallet`, `ERC20`, `ERC20Metadata`, and `SignedOp` bindings. The wallet bindings use interface `0.1.0`; the ERC-20 bindings use interface `0.1.9`, and `SignedOp` uses `0.1.22`:
 
 ```ts
 import { ERC20 } from "@groundhogchain/client/contracts";
