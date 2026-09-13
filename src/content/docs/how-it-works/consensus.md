@@ -11,7 +11,7 @@ This page describes the current architecture. Some details may change as the pro
 
 Groundhog uses the Stellar Consensus Protocol (SCP) for agreement. SCP is a federated Byzantine agreement protocol: each validator picks its own **quorum slices** (the sets of validators it trusts), and the network converges on a single value without a fixed committee or rotating leader. Nomination uses a priority function to bias which validator's proposed value is considered first per round, but no validator can unilaterally decide a block; agreement comes from overlapping quorum slices, not from a designated proposer.
 
-The result is **irrevocable finality**. Once a block is confirmed, it cannot be reversed. No reorgs, no probabilistic confirmation, no waiting for additional blocks. A confirmed transaction is final.
+SCP provides finality under its quorum-intersection and fault assumptions. Applications use the finalized block result rather than a probabilistic confirmation count.
 
 ## The Coordinator
 
@@ -26,19 +26,19 @@ It runs a state machine called the **baton** that drives the consensus loop.
 The baton runs a drive loop after every event:
 
 ```
-drive_commit()    →  Commit any externalized block
-drive_nominate()  →  Propose next block if idle
-drive_catchup()   →  Fetch missing blocks from peers
-drive_liveness()  →  Detect stuck consensus
+driveCommit()    →  Commit any externalized block
+driveNominate()  →  Propose next block if idle
+driveCatchup()   →  Fetch missing blocks from peers
+driveLiveness()  →  Detect stuck consensus
 ```
 
 ### Single-Node Flow
 
 On a single validator (e.g. during development):
 
-1. Baton calls `propose_block` on the mempool. The mempool assembles a block from queued transactions.
+1. Baton calls `propose_block` on the mempool. The execution layer runs queued transactions and assembles a proposal.
 2. SCP externalizes immediately (single-node quorum).
-3. Baton calls `commit` on the mempool. The mempool executes transactions, resolves conflicts, and writes state.
+3. Baton calls `commit` on the mempool. The execution layer commits the finalized proposal to storage.
 4. Next drive cycle begins.
 
 ### Multi-Node Flow
@@ -48,7 +48,7 @@ With multiple validators:
 1. **Propose.** A validator asks its mempool for a block proposal. The proposal contains the transactions and metadata.
 2. **Disseminate.** The full consensus value (nomination + metadata) is broadcast to peers via Dogwood (see below). A compact hash reference (the "cue") is sent through SCP.
 3. **Validate.** Receiving validators ask their own mempool: "is this nomination valid against my state?" Validation runs asynchronously and results are cached.
-4. **Converge.** SCP envelope exchange continues until validators agree. The protocol guarantees that all honest validators converge on the same block, even under Byzantine faults (up to the quorum threshold).
+4. **Converge.** SCP envelope exchange continues until validators agree. Agreement depends on quorum intersection and the configured trust assumptions.
 5. **Commit.** Once SCP externalizes a value, each validator commits the block locally via its mempool.
 
 ### Execution During Block Production
@@ -68,7 +68,7 @@ The proposer and validators execute transactions differently.
 | Transaction selection | Discretionary (from local mempool) | Fixed (from nomination) |
 | Output | Nomination: tx hashes + nondeterministic data + block hash | Accept or reject the nomination |
 
-The proposer has discretion over which transactions to include and which conflicting transaction wins. Validators verify the math of the proposed result, not the policy that produced it. This is sufficient for consensus safety: the network cannot fork because validators are replaying, not racing. Proposer fairness is an admission-control concern handled at the gateway layer, not in the consensus protocol.
+The proposer has discretion over which transactions to include and which conflicting transaction wins. Validators verify the math of the proposed result, not the policy that produced it. Deterministic replay makes the proposed result verifiable. It does not establish proposer fairness; scheduling and transaction selection are separate from validating state transitions.
 
 ## Dissemination: Dogwood
 
@@ -86,13 +86,13 @@ Each data type is tagged and demultiplexed on receipt. Transactions are forwarde
 
 ## Finality Model
 
-SCP guarantees **safety over liveness**. If validators cannot reach agreement (e.g. too many are offline), the network halts rather than forking. This is a deliberate design choice: a halted network can recover, but a forked ledger cannot be unforked.
+Under the required quorum assumptions, loss of enough validators can stop progress without invalidating finalized blocks. Incorrect or disjoint trust configurations can violate those assumptions.
 
 Practical implications:
 
 - **No confirmation count.** A confirmed transaction is final. There is no "wait for 6 blocks" or "99.9% probability of finality."
-- **No reorgs.** The chain never reorganizes. Once a block is committed, it stays committed.
-- **Halt recovery.** If the network halts due to quorum loss, it resumes from the last committed block once enough validators return. No state is lost.
+- **Finalized blocks.** Under the consensus safety assumptions, finalized blocks are not replaced by competing blocks.
+- **Halt recovery.** If the network halts due to quorum loss, it resumes from the last committed block once enough validators return. Nodes may need to catch up before participating again.
 
 ## Catchup and Repair
 

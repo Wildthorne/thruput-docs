@@ -8,7 +8,7 @@ This tutorial builds an ERC-20-compatible token with transfers, allowances, mint
 **Prerequisites:** Complete [Build a Counter](/tutorials/build-a-counter/) first.
 
 :::note[Version checked]
-This tutorial starts from CLI `0.14.0`, whose generated project uses SDK `0.29.0`. The matching standard interface crate is `groundhog-erc20-if` `0.1.21`.
+This tutorial starts from CLI `0.17.0`, whose generated project uses SDK `0.34.3`. The matching standard interface crate is `groundhog-erc20-if` `0.1.30`.
 :::
 
 ## 1. Create the Project
@@ -40,7 +40,7 @@ rather than editing either `[target.'cfg(...)']` block:
 
 ```toml
 [dependencies]
-groundhog-erc20-if = { version = "=0.1.21", registry = "groundhog" }
+groundhog-erc20-if = { version = "=0.1.30", registry = "groundhog" }
 ```
 
 Leave the rest of the generated manifest alone. In particular keep the
@@ -53,10 +53,9 @@ The interface crate is the source of truth for:
 - `ERC20` and `ERC20Client`
 - `Amount = u128` and `Difference = i128`
 - `ERC20Error`
-- `TransferEvent`, `ApprovalEvent`, and their logging helpers
-- The zero-address constant used for mint and burn events
+- `TransferEvent`, `ApprovalEvent`, `MintEvent`, `BurnEvent`, and their logging helpers
 
-Its `#[contract]` declaration includes `throws = ERC20Error` and `emits(TransferEvent, ApprovalEvent)`, so implementations and generated clients share the same wire contract.
+Its `#[contract]` declaration includes `throws = ERC20Error` and `emits(TransferEvent, ApprovalEvent, MintEvent, BurnEvent)`, so implementations and generated clients share the same wire contract.
 
 ## 2. Wire the Library
 
@@ -199,7 +198,7 @@ impl TokenContract {
 }
 ```
 
-Three details matter:
+The helpers preserve the interface's error and storage behavior:
 
 1. A missing `Balance` reads as zero, so balance, allowance, and supply getters do not need missing-storage handling.
 2. The standard interface requires overdrafts and overflows to surface as `ERC20Error::TooLarge`. The `try_` methods let the helpers translate SDK library failures into that domain error.
@@ -282,7 +281,7 @@ impl ERC20 for TokenContract {
         // receiver increase cannot overflow an individual balance.
         self.increase_total_supply(amount);
         self.lazy_increase_balance(receiver, amount);
-        log_transfer_event(CONTRACT_ADDR_ZERO, receiver, amount);
+        log_mint_event(receiver, amount);
     }
 
     fn burn(&mut self, owner: &ContractAddress, amount: Amount) {
@@ -293,7 +292,7 @@ impl ERC20 for TokenContract {
 
         self.decrease_balance(owner, amount);
         self.decrease_total_supply(amount);
-        log_transfer_event(owner, CONTRACT_ADDR_ZERO, amount);
+        log_burn_event(owner, amount);
     }
 
     fn total_supply(&self) -> Amount {

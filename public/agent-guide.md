@@ -7,7 +7,7 @@ description: >
   contains Groundhog configuration, SDK dependencies, or generated artifacts.
 ---
 
-<!-- groundhog-cli-version: 0.16.0-rc.1 -->
+<!-- groundhog-cli-version: 0.17.0 -->
 
 # Groundhog
 
@@ -119,11 +119,19 @@ groundhog test
 
 Use `cargo test` for fast native tests. Use `groundhog test` for the generated
 RV32 artifact. They exercise different paths and neither substitutes for the
-other. Use `groundhog test --integration` for RPC tests against an ephemeral
-local node.
+other. The scaffolded SDK downloads its test executor from public storage; no
+FFI download credentials are required. Cargo registry authentication follows
+the early-access setup instructions. Use `groundhog test --integration` for
+RPC tests against an ephemeral local node.
 
 Preserve the scaffold's feature names, RV32 binary wrapper, Cargo overlays, and
 self dev-dependency. They are toolchain contracts, not incidental style.
+
+CLI 0.17 uses SDK 0.34.3, protocol-rs 0.35.2, and XDR 0.10.1. Update
+these dependencies together when migrating an existing Rust project. Despite
+its patch number, SDK 0.34.3 changes public XDR types. Standard interfaces
+`=0.1.30` use this family while preserving the native token contract ABI;
+projects retaining SDK `=0.34.2` should retain interfaces `=0.1.29`.
 
 The normal starter contract is a counter, one of the narrower cases where
 `NNInt` is appropriate. Do not copy this storage choice for token balances or
@@ -166,6 +174,19 @@ public Rustdoc for the SDK version the project actually uses.
 `groundhog build` compiles and lowers the deployable RV32 artifact. A contract
 spec produced by the Rust contract is the canonical interface for generated
 bindings.
+
+The build is offline and checks the artifact against no chain. It reports the
+code and guest data memory sizes, and warns when the code section is over the
+protocol-default 64 KiB. Whether a chain admits the artifact is decided at
+deploy: the RPC endpoint rejects a transaction whose artifact exceeds the
+chain's `max_rv32_code_bytes` or `max_rv32_memory_bytes` before submitting
+it, and `groundhog deploy` reports the violated bound. Guest data memory
+defaults to 64 KiB. A contract that needs more sets `initial_memory_bytes`
+under `[package.metadata.groundhog]` in its `Cargo.toml` (an integer, or a
+string such as `"128K"`); `groundhog build` and `groundhog test` both read
+it, size the linker layout from it, and stamp it into the artifact. Do not
+raise it for a chain that has not raised `max_rv32_memory_bytes`.
+`--stack-size` still adjusts the stack reserve per build.
 
 Generate a TypeScript binding as part of the build:
 

@@ -3,12 +3,6 @@ title: Roadmap
 description: Groundhog development roadmap.
 ---
 
-:::caution[Coming Soon]
-This page is planned but not yet written.
+:::note[Coming soon]
+The public roadmap is being prepared.
 :::
-
-## What Will Go Here
-
-Public roadmap with milestones. What's shipping, what's next, and how to follow progress.
-
-**Depends on:** Public roadmap approval.

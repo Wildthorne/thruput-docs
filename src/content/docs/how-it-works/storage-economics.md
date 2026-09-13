@@ -5,7 +5,7 @@ description: How Groundhog's capital-based economic model works.
 
 Groundhog's economic model is capital-based, not usage-based. You hold HOG tokens to get capacity. You don't pay per operation.
 
-Most chains charge operational costs: gas per transaction, fees per byte stored, per compute unit consumed. Some (Solana, NEAR) use refundable deposits for storage, but still charge per-transaction compute fees. Groundhog extends the capital model to everything: both throughput and storage are backed by held tokens. No tokens are burned. No fees are extracted. You hold capital, and the capital does two jobs.
+Free HOG provides scheduling capacity. HOG held for storage backs the data an address keeps on-chain. Neither execution nor storage burns those tokens.
 
 ## The Two Jobs of HOG
 
@@ -20,7 +20,7 @@ Free HOGs determine how many transactions you can push through the network. Lock
 
 ## Execution: Free, Throughput-Allocated
 
-Running contract code costs nothing. There are no gas fees, no per-operation charges, no token burns for compute.
+Running contract code has no token fee. It still uses finite execution and scheduling capacity.
 
 The protocol defines gas limits on transactions and cross-contract calls, but gas costs zero. The gas infrastructure exists for computational metering (preventing infinite loops, bounding cross-contract calls), not for billing.
 
@@ -30,7 +30,7 @@ That difference matters for parallelism. A refund-based gas model would need to 
 
 ### Balance-Proportional Scheduling
 
-When the network is under capacity, every valid transaction lands in the next block. No scheduling pressure, no competition.
+When demand is below capacity, there is less scheduling contention. Inclusion still depends on admission, propagation, storage conflicts, and transaction expiry; the next block is not guaranteed.
 
 When demand exceeds capacity, the network allocates throughput proportionally to free HOG balances. If account A holds 1,000 free HOGs and account B holds 500, A gets roughly twice the throughput of B during congestion. This is Balance-Proportional Scheduling (BPS).
 
@@ -52,9 +52,7 @@ The goal is to let contracts sponsor execution for their callers: a transaction 
 
 When your contract writes data to the ledger (using [typed storage primitives](/programming-model/storage-types/)), it locks HOG proportional to the size of that data. Delete the data and the HOG is returned. This is a deposit, not a burn.
 
-On Ethereum, you pay gas to write storage, and that cost is gone regardless of whether you later delete the data. The chain accumulates state forever with no incentive to clean it up. On Solana, accounts must hold a rent-exempt balance (conceptually similar to Groundhog's deposit model), but the mechanics differ: Solana accounts are fixed-size and require explicit reallocation to resize, while Groundhog's deposits adjust automatically as stored data grows or shrinks.
-
-Groundhog's deposit model creates a direct incentive to clean up unused state. If your contract no longer needs a piece of data, deleting it frees HOG that you can use for storage elsewhere or that contributes to your throughput share.
+Deleting unused state frees HOG for other storage or scheduling capacity.
 
 ### Cost Accounting
 
@@ -68,35 +66,19 @@ If a contract does not have enough free HOG to cover a storage write, reservatio
 
 Your contract does not calculate storage costs or manage deposits manually. The runtime handles it as part of the normal transaction commit process.
 
-### Dynamic Pricing
+### Configured Costs
 
-:::caution[Under Active Development]
-Dynamic pricing is under active development. The current implementation uses static cost constants. The mechanism described below is the target design.
-:::
-
-The target design makes the deposit amount per unit of storage adjust based on how much state the network is carrying.
-
-The network defines a target state size. When total on-chain storage is below the target, deposit costs stay low. As state grows toward the target, deposits get more expensive, making it progressively costlier to add new data. If state growth slows or contracts delete data, prices come back down.
-
-This creates a self-regulating system. The network does not need to impose hard caps on state size. The price signal does the work: when storage is scarce, the market pays more for it. When storage is abundant, costs are low.
-
-Once dynamic pricing is active, deletion will return HOG based on the current rate.
+Version 0.1.27 uses configured storage cost constants, including per-item and per-byte costs. Dynamic pricing based on total network state is a target design, not a behavior applications can rely on in this release.
 
 ### Sponsoring Users
 
-Contracts can pay storage deposits on behalf of their users. A contract with a sufficient HOG balance absorbs the storage costs for any data its users create, so end users never need to hold HOG or think about deposits.
-
-This is how you build applications with no user-facing fees. The contract operator funds the storage, and users interact with the application for free.
+A contract funds deposits for data stored under its address. Its operator can therefore provide application storage without asking users to fund each item. Users originating transactions still need scheduling capacity; this is separate from the planned execution sponsorship described above.
 
 ## The Native Token
 
-HOG is implemented as a token contract with the same interface as any other token on the network (transfer, balance, allowance). There are no special syscalls for transferring HOG or checking balances. You call the same methods you would call on any token contract.
+HOG is implemented by a native precompiled token contract exposing the standard asset interface, including transfers, balance queries, and allowances. Applications call it through that interface. The runtime also uses its balances for scheduling and storage accounting.
 
-This is a deliberate design choice: minimize special cases. One token interface, one set of methods, whether you are working with HOG or any other asset on the network.
 
-## The Capital Model in One Paragraph
-
-Groundhog replaces per-operation fees with capital requirements. You hold HOG tokens. Free HOGs entitle you to a proportional share of network throughput via age-weighted scheduling. Locked HOGs back your on-chain storage and are returned when you delete the data. No tokens are burned for execution. No tokens are burned for storage. The cost of using Groundhog is the opportunity cost of holding HOG, not the operational cost of spending it.
 
 ## Related Documentation
 

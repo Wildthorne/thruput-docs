@@ -152,7 +152,7 @@ An auth token carries:
 
 - **Minter**: set by the host to the current contract address at mint time.
 - **Consumer**: the contract address allowed to consume the token.
-- **Payload**: XDR-encoded typed data.
+- **Payload**: CXS-encoded typed data from the SDK.
 - **Expiry height**: the token is valid through this block height.
 - **Child nodes**: nested auth tokens that materialize when the parent is consumed.
 

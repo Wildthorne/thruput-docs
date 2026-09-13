@@ -5,17 +5,19 @@ description: How Groundhog executes transactions with snapshots, deltas, and com
 
 ## The Core Idea
 
-Every transaction reads from a consistent snapshot and writes deltas (changes), not final values. That is the whole design.
+Every transaction reads from a consistent snapshot and records typed deltas. The storage type determines how those deltas combine.
 
-You learn one new concept: commutativity (which operations can run in parallel and which conflict). In return, you stop thinking about gas fees, storage expiration, and sequence numbers. Groundhog still enforces resource limits, including gas limits, bounded return values, and a maximum encoded transaction size.
+Commutativity describes operations whose combined result does not depend on their order. Groundhog still enforces resource limits, including gas limits, bounded return values, and a maximum encoded transaction size.
 
 For the contract-writing model, start with [Merged Deltas](/programming-model/execution/#merged-deltas) and [Storage Types](/programming-model/storage-types/). This page is the next layer down. It covers how the engine implements those rules, including delta encodings, concurrent reservation, and conflict selection.
 
 ## Snapshot Isolation
 
-Each transaction sees the ledger as it was at the start of the block. All transactions in a block read from the same snapshot. No dirty reads. No phantom reads. No transaction ever sees another transaction's writes within the same block.
+Each transaction sees the ledger as it was at the start of the block. All transactions in a block read from the same snapshot. Ordinary storage reads do not observe other transactions' writes within that block.
 
-This is the same isolation guarantee as Postgres `REPEATABLE READ`, applied to an entire blockchain block.
+Reads also reflect changes within the current transaction and successful child calls. The database snapshot analogy does not imply identical SQL isolation or conflict rules.
+
+`RetrocausalQueue` also permits observations of concurrent inserts. These are recorded as nondeterministic proposal data and replayed by validators. Its read semantics differ from ordinary snapshot storage.
 
 ## Delta Writes
 
@@ -26,8 +28,7 @@ Instead of "set balance to 50", a transaction says "increment balance by 10." Af
 In Solidity, a transfer looks like this:
 
 ```solidity
-// Ethereum: write final values. Two concurrent transfers to the same
-// account produce a race condition.
+// Solidity: read balances and assign their updated values.
 balances[from] = balances[from] - amount;
 balances[to] = balances[to] + amount;
 ```
@@ -49,9 +50,9 @@ Operations that commute run in parallel. Operations that don't commute cause the
 
 | Operation | Parallel? | Why |
 |-----------|-----------|-----|
-| Two balance changes on the same counter | Yes | Addition is commutative |
+| Two balance changes on the same counter | When compatible | Resolved bases must match and aggregate bounds must hold |
 | Two writes to different Map keys | Yes | Independent keys don't interact |
-| Two writes to the same bytestring | No | Different values conflict; one transaction is excluded |
+| Two writes to the same bytestring | When identical | Different values conflict |
 | Multiple inserts into the same queue | Yes | Entries are sorted; insertion order doesn't matter |
 | Two deletions of the same key | Yes | Same outcome regardless of order |
 | A deletion and a write to the same key | No | Different operation types conflict; one transaction is excluded |
@@ -65,13 +66,11 @@ Your data model determines your throughput.
 - Independent records as separate `Map` keys: user profiles, token metadata, order records.
 - Event streams as `RetrocausalQueue`: multiple producers, entries merge automatically.
 
-**Conflicting** (fine for infrequent operations, one transaction per block wins):
-- A config bytestring that multiple transactions update. Only one writer per block; others are excluded and returned to the mempool.
+**Conflicting writes**:
+- Different updates to a config bytestring cannot both land in a block.
 - Any two transactions writing the same bytestring key with different values.
 
-The rule of thumb: if you'd use a CRDT in a distributed system, it will parallelize on Groundhog. If you'd use a mutex, concurrent writes will conflict and only one will land per block. Internal analysis of 195 million real transactions across six chains found that 82% of operations are natively commutative or easily adaptable.[^commutativity-study]
-
-[^commutativity-study]: This analysis covered Ethereum, Solana, Polygon, Arbitrum, Optimism, and Base. See the Groundhog whitepaper for methodology and per-chain breakdowns.
+Choose storage around the changes your application needs to combine. Mergeable arithmetic still has bounds; absolute writes can coexist when they store identical values.
 
 ## How Conflicts Are Resolved
 
@@ -136,7 +135,7 @@ See [Storage & Scheduling Economics](/how-it-works/storage-economics/) for the f
 |----------|-----------|
 | Gas fees per transaction | No per-operation fees; free HOG balance determines throughput share |
 | `SSTORE` / `SLOAD` for 256-bit slots | Typed key-value store with commutativity rules |
-| Sequential execution within a block | Parallel execution; conflicts detected at merge |
+| Sequential execution within a block | Parallel execution; conflicts checked during delta reservation |
 | State persists forever after one-time gas payment | State persists while refundable HOG deposit is held; delete data, get deposit back |
 | Gas price auction for priority | Age-weighted fair scheduling; no bidding |
 
@@ -148,14 +147,14 @@ See [Storage & Scheduling Economics](/how-it-works/storage-economics/) for the f
 
 | Solana | Groundhog |
 |--------|-----------|
-| Must declare read/write account sets upfront | No upfront declaration; conflicts detected at merge |
+| Must declare read/write account sets upfront | No upfront declaration; conflicts checked during delta reservation |
 | Fixed-size program accounts; `realloc` to resize | Dynamic key-value entries; cost adjusts automatically |
 | Rent-exempt balance required per account | HOG deposit per storage item; conceptually similar |
 | Compute unit budget + priority fees | No per-operation fees; free HOG balance determines throughput share |
 
-**What you can stop doing:** account sizing, `realloc` management, upfront access-list declarations, compute budget tuning.
+**What you can stop doing:** account sizing, `realloc` management, upfront access-list declarations.
 
-**What you need to learn:** commutativity instead of access lists. You get more composability in exchange: no need to know a transaction's full read/write set before submitting it.
+**What you need to learn:** commutativity instead of access lists. Storage access is discovered during execution.
 
 ### vs. Soroban
 

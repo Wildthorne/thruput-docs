@@ -3,13 +3,13 @@ title: "For Blockchain Developers"
 description: Map your Ethereum, Solana, or Move experience to Groundhog's programming model.
 ---
 
-If you've built on Ethereum, Solana, or any smart contract platform, here's what Groundhog looks like: easy things are still easy, whole classes of footguns are gone, the infrastructure tax disappears. 
+Groundhog uses familiar contract calls with a different storage model. Transactions read a shared block snapshot and record typed changes whose merge rules determine which transactions can land together.
 
 The same storage rules that make your code easier to reason about also let compatible transactions execute in parallel without per-operation fees.
 
 ---
 
-## Easy Things Are Still Easy
+## Token Transfers
 
 A token transfer on Solidity:
 
@@ -41,12 +41,12 @@ That is enough of the model for this transfer. [Build a Token](/tutorials/build-
 
 ---
 
-## Whole Classes of Footguns, Gone
+## Reentrancy and Balance Checks
 
 Here's a withdrawal function on the EVM, written safely:
 
 ```solidity
-// Solidity: the ceremony required to avoid reentrancy
+// Solidity: guard against reentrant withdrawal calls
 bool locked;
 modifier nonReentrant() {
     require(!locked);
@@ -63,7 +63,7 @@ function withdraw(uint256 amount) public nonReentrant {
 }
 ```
 
-Reentrancy guard. Checks-effects-interactions ordering. Manual balance check. Get any of it wrong and you lose funds.
+This version checks the balance and guards the external call against reentrant withdrawals.
 
 On Groundhog:
 
@@ -74,23 +74,21 @@ fn withdraw(&mut self, amount: Amount) {
 }
 ```
 
-That's it. No reentrancy guard: the runtime rejects any `invoke` whose target contract address is already on the active call stack with the `Reentrance` syscall error. The check is per-contract-address and applies to both `invoke` and `try_invoke`. Separately, every contract call also reads from a frozen snapshot, so even allowed call patterns cannot observe partial state. No manual balance check: `decrease` rejects balance updates that would go below zero. No ordering discipline: balance changes are recorded as adjustments that concurrent transactions can combine when they are safe to apply.
+The runtime rejects an `invoke` whose target address is already on the active call stack with the `Reentrance` syscall error. This also applies to `try_invoke`, so contracts do not need a reentrancy guard for this call pattern.
 
-This isn't just reentrancy. The delta model removes or narrows several classes of bugs:
+`Balance::decrease` checks the transaction's current balance view. The runtime also checks aggregate bounds when concurrent deltas are reserved. Other application constraints still need explicit checks.
 
-- **Ordering dependence on commutative paths.** All transactions read the same snapshot, and compatible deltas produce the same merged result regardless of execution order. Conflicting transaction selection is still proposer policy, so this is not a blanket claim that all MEV disappears.
-- **The approve() race condition.** ERC-20's `approve(spender, amount)` is an absolute write, creating a race where the spender can extract both the old and new allowance. On Groundhog, allowances are deltas. The race doesn't exist.
-- **Integer underflow.** `Balance` only exposes nonnegative increases and decreases. If merged deltas would drive a balance negative, the transaction is excluded and returned to the mempool. No `require()` needed.
+Compatible deltas produce the same merged result regardless of execution order. Conflicting transaction selection remains proposer policy. Likewise, an allowance API using relative adjustments avoids replacing an allowance with a stale absolute value; the storage type does not choose that API for the application.
 
 ---
 
-## The Infrastructure Tax Disappears
+## Resource and Transaction Rules
 
-Everything on this list exists because other chains execute transactions sequentially and charge for the privilege:
+Groundhog exposes these rules to contract developers:
 
-- **Gas price estimation.** Gas limits exist for metering, but gas costs zero. No fee markets, no priority tips, no congestion spikes. Schedule your coins, don't burn them.
+- **Gas price estimation.** Gas limits exist for metering, but gas costs zero. The declared gas limit still consumes scheduling capacity.
 - **Ordering-sensitive balance updates.** Commutative balance deltas have the same merged outcome in any execution order. Application flows that conflict still need protocol-aware design.
-- **Nonces.** No sequence numbers. No "nonce too low" errors. Submit transactions and they execute.
+- **Nonces.** Replay protection uses a unique expiry-height and nonce pair, without a sequential account counter.
 - **Fee-driven compute tuning.** Gas limits still bound each transaction and child call, but using more gas does not increase a token fee.
 - **Access lists.** Unlike Solana, where every account a transaction touches must be declared up front, Groundhog discovers storage access during execution. (EVM only requires explicit access lists when opting into EIP-2930.)
 - **Storage slot packing.** Typed fields via `#[sdk::storage]`. No manual layout, no packing variables into 256-bit slots.
@@ -104,17 +102,15 @@ Everything on this list exists because other chains execute transactions sequent
 
 Use `Balance` for ordinary balances and allowances. All four adjustment methods produce deltas that can merge with concurrent transactions. The checked `increase` and `decrease` methods first load the snapshot value so overflow or underflow can fail during contract execution. The `lazy_` variants skip that load and defer the bound check until the transaction's deltas are reserved against the proposed block. [`NNInt`](/programming-model/storage-types/#nnint) is the lower-level choice when a state model needs signed adjustments or an absolute `set`. [NNInt In Depth](/programming-model/nnint/) explains the shared `set_add` representation, resolved bases, and commit-time floor.
 
-`Balance` and `NNInt` are not the only storage types. `Bytestring` stores up to 1024 bytes of arbitrary data (config, metadata, serialized structs). For higher-level patterns, `Map<K, V>` gives you per-key independence (like `mapping` in Solidity), and `RetrocausalQueue` handles producer-consumer workflows where inserts commute but consumption needs sequencing.
+`Balance` and `NNInt` are not the only storage types. `Bytestring` stores arbitrary data up to the network-configured limit (1024 bytes by default) (config, metadata, serialized structs). For higher-level patterns, `Map<K, V>` gives you per-key independence (like `mapping` in Solidity), and `RetrocausalQueue` handles producer-consumer workflows where inserts commute but consumption needs sequencing.
 
 Not everything commutes. Order book matching, unique name registration, and some governance operations need sequencing. Groundhog doesn't force you to do acrobatics for these: `Bytestring` and `RetrocausalQueue` give you the tools to handle serialized workflows cleanly. Meanwhile, payments, transfers, and other balance updates fit the merged-delta model directly. For the full treatment, see [Merged Deltas](/programming-model/execution/#merged-deltas).
 
 ---
 
-## Simplicity Is the Performance
+## Storage Choices and Parallelism
 
-On every other chain, correctness and performance are at odds. You optimize gas, pack storage slots, split transactions to fit compute budgets. You fight for performance, and every optimization makes your code harder to audit.
-
-Groundhog's storage rules support both correctness and parallel execution. `increase(5)` and `increase(3)` from different transactions can combine to `+8` without coordination. The runtime does not need contracts to declare locks or dependency graphs. The simpler your storage operations, the more work can run in parallel.
+Groundhog's storage rules support both correctness and parallel execution. `increase(5)` and `increase(3)` from different transactions can combine to `+8` without coordination. The runtime does not need contracts to declare locks or dependency graphs. Compatible operations can share a block, subject to resource limits.
 
 Storage types define which concurrent changes can safely coexist, so the three-line transfer above is both easier to audit and able to run alongside other transfers in the block.
 

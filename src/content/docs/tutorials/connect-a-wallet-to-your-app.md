@@ -3,7 +3,7 @@ title: Connect a Wallet to Your App
 description: Build a small TypeScript dapp that connects an installed wallet and sends a localnet HOG transfer with receipt recovery.
 ---
 
-Build a browser dapp that discovers installed wallets, connects an account, and asks the user to approve a **0.1 HOG** transfer. The wallet holds the keys. Your app builds the call, saves its transaction hash before submission, and checks the receipt.
+Build a browser dapp that discovers installed wallets, connects an account, and asks the user to approve a **0.1 HOG** transfer. The wallet holds the keys. Your app builds the call, saves the signed transaction before submission, and checks the receipt.
 
 ## Before You Start
 
@@ -11,7 +11,7 @@ Build a browser dapp that discovers installed wallets, connects an account, and 
 - Start an isolated local ledger with `groundhog node`. See [Develop Locally](/tutorials/develop-locally/#4-start-the-local-node) for CLI and runtime setup. Keep that process running.
 - In Thruput Wallet, select **Localnet** (`http://127.0.0.1:9545`), unlock a test account, and choose **Request test HOG**. Wait for success. Have a second localnet test account's address ready and fund it too, so the transfer does not need to create an unfunded receiver's balance storage.
 
-Use this app in one tab on that ledger. Restarting the node discards its state. Localnet's fixed network hash does not distinguish separate ledger runs, so a saved hash from an earlier run cannot recover a transaction on the new one.
+Use this app in one tab on that ledger. Restarting a node started without `--data-dir` discards its state. Localnet's fixed network hash does not distinguish separate ledger runs, so a saved hash from an earlier run cannot recover a transaction on the new one.
 
 ## 1. Create the App
 
@@ -26,7 +26,7 @@ npm install
 Configure registry access using [TypeScript SDK installation](/tools/typescript-sdk/#install), then install the SDK packages:
 
 ```bash
-npm install @groundhogchain/client @groundhogchain/protocol
+npm install @groundhogchain/client@0.8.0 @groundhogchain/protocol@0.11.0
 ```
 
 Replace `index.html` with:
@@ -180,7 +180,8 @@ Append this code inside `start()`. `ERC20` is a generated binding shipped with t
       message("Review the 0.1 HOG transfer in your wallet.");
       const signed = await wallet.signTransaction(transaction);
       hash = signed.hash;
-      localStorage.setItem(key, hash); // If this throws, submission never starts.
+      localStorage.setItem(key, JSON.stringify({ ...signed, account, networkHash }));
+      // If storage fails, submission never starts.
       submitting = true;
       await wallet.submitTransaction(signed);
       await observe(key, hash);
@@ -194,7 +195,7 @@ Append this code inside `start()`. `ERC20` is a generated binding shipped with t
   }); };
 ```
 
-The recovery key includes the original network and account. Only the hash is stored because recovery here only reads receipts. A submission acknowledgment is not execution success. Any error after submission starts leaves the record in place.
+The recovery key includes the original network and account. The record includes the signed bytes and hash. Recovery here only reads receipts. A submission acknowledgment is not execution success. Any error after submission starts leaves the record in place.
 
 ## 4. Check Status and Clean Up
 
@@ -203,10 +204,14 @@ Append this final block. It closes `start()` and starts the app:
 ```ts
   check.onclick = () => { void run(async () => {
     const { key } = selection();
-    const hash = localStorage.getItem(key);
-    if (!hash) { message("No saved transaction for this Localnet account."); return; }
-    if (!/^0x[0-9a-f]{64}$/.test(hash)) throw new Error("Invalid saved transaction hash.");
-    await observe(key, hash);
+    const saved = localStorage.getItem(key);
+    if (!saved) { message("No saved transaction for this Localnet account."); return; }
+    const pending: unknown = JSON.parse(saved);
+    if (!pending || typeof pending !== "object" || !("hash" in pending) ||
+        typeof pending.hash !== "string" || !/^0x[0-9a-f]{64}$/.test(pending.hash)) {
+      throw new Error("Invalid saved transaction hash.");
+    }
+    await observe(key, pending.hash);
   }); };
   disconnect.onclick = () => { void run(async () => {
     active?.dispose();

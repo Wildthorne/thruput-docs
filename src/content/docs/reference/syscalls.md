@@ -5,9 +5,9 @@ description: Authoritative reference for the host functions exposed to Groundhog
 
 These are the host functions available to Groundhog guest contracts. Most developers use the SDK rather than calling syscalls directly. See [Programming Model: Storage Types](/programming-model/storage-types/) for the high-level API.
 
-The tables below describe the protocol's logical typed interface. The generated low-level bindings map it to each guest target's ABI. In the legacy wasm32 ABI, all syscalls share one imported function with eight 32-bit argument slots: one syscall number and seven input/output slots. Values that do not fit in a slot are passed indirectly, and variable-length buffers use spans.
+The tables below describe the protocol's logical typed interface. The generated low-level bindings map it to each guest target's ABI. User contracts in `0.1.27` use RV32. Variable-length buffers are passed as spans.
 
-The return value is a `SyscallErrorCode`. Any syscall can return `Fault` (1) if a pointer argument is out of WASM memory bounds, or `NoSyscall` (2) if the syscall number is not supported. Per-syscall error codes are listed with each entry below, and the full enum is at the bottom of this page.
+The return value is a `SyscallErrorCode`. Any syscall can return `Fault` (1) if a pointer argument is out of guest memory bounds, or `NoSyscall` (2) if the syscall number is not supported. Per-syscall error codes are listed with each entry below, and the full enum is at the bottom of this page.
 
 ## Hashing
 
@@ -212,9 +212,9 @@ Returns the contract address of the current call frame.
 | in | `revert_frame` | `bool` |
 | in | `returned_auth_token_ids` | `[u8]` (span, interpreted as `[u32]`) |
 
-Errors: none beyond the universal `Fault` / `NoSyscall`. Does not return to the caller (terminates execution of the current WASM invocation).
+Errors: none beyond the universal `Fault` / `NoSyscall`. Does not return to the caller (terminates execution of the current guest invocation).
 
-Returns data and a set of auth-token ids from the current call frame and optionally marks the frame for revert. The return buffer is made available to the caller via `GetReturnedBuffer`. If the supplied buffer is too large, the entire invocation is reverted with a deterministic error (equivalent to a WASM `unreachable`).
+Returns data and a set of auth-token ids from the current call frame and optionally marks the frame for revert. The return buffer is made available to the caller via `GetReturnedBuffer`. If the supplied buffer is too large, the entire invocation is reverted with a deterministic error.
 
 ### GetReturnedBuffer
 
@@ -245,7 +245,7 @@ No inputs. No outputs. Does not return.
 
 Errors: none beyond the universal `Fault` / `NoSyscall`.
 
-Terminates the current call frame immediately. The frame reverts and the caller sees a deterministic error with no return buffer available. Equivalent to a WASM `unreachable` instruction.
+Terminates the current call frame immediately. The frame reverts and the caller sees a deterministic error with no return buffer available.
 
 ## Storage
 
@@ -646,7 +646,7 @@ The full `SyscallErrorCode` enum, from `protocol/syscall_error.x`:
 | Code | Name | Description |
 |------|------|-------------|
 | 0 | `None` | Success. |
-| 1 | `Fault` | A pointer argument is out of WASM memory bounds. Any syscall can return this. |
+| 1 | `Fault` | A pointer argument is out of guest memory bounds. Any syscall can return this. |
 | 2 | `NoSyscall` | The supplied syscall number is not supported. Any syscall can return this. |
 | 3 | `IsRootTransaction` | Cannot call `GetMsgSender` from a root invocation. |
 | 4 | `Reentrance` | Reentrance guard violation: the invoked address is already on the call stack. |

@@ -14,13 +14,13 @@ The packages require Node.js `22.12.0` or newer and are hosted on GitHub Package
 //npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}
 ```
 
-Install the client and contract packages:
+For release `0.1.27`, use client `0.8.0` with protocol and contract-spec `0.11.0`. The TypeScript packages are published separately from the release bundle. Install these coordinated versions:
 
 ```bash
 NODE_AUTH_TOKEN="$(gh auth token)" npm install \
-  @groundhogchain/client \
-  @groundhogchain/protocol \
-  @groundhogchain/contract-spec
+  @groundhogchain/client@0.8.0 \
+  @groundhogchain/protocol@0.11.0 \
+  @groundhogchain/contract-spec@0.11.0
 ```
 
 ## Connect to a Cluster
@@ -109,7 +109,7 @@ if (airdrop.status.result !== "ok") {
 }
 ```
 
-`requestAirdrop()` generates an idempotency nonce, retries pending attempts, and waits for commitment. Commitment does not imply successful execution, so inspect `status.result`. A timeout or cancellation stops polling but does not prove that the transfer failed. Use `requestAirdropAttempt()` to persist the 1-to-32-byte nonce or control polling yourself.
+`requestAirdrop()` generates an idempotency nonce, retries pending attempts, and waits for commitment. Commitment does not imply successful execution, so inspect `status.result`. A timeout or cancellation stops polling but does not prove that the transfer failed. To recover across restarts, persist a 1-to-32-byte nonce and pass it as `clientNonce`. Use `requestAirdropAttempt()` to control polling yourself.
 
 Generated bindings build typed application invocations. Execute the invocation through the bound wallet adapter:
 
@@ -337,11 +337,12 @@ JSON-RPC error responses throw `JsonRpcError`. HTTP failures, timeouts, invalid 
 | ------------------------------------ | ------------------------------------------------------------------------- |
 | `@groundhogchain/client`             | Clients, clusters, accounts, wallet adapters, actions, and common helpers |
 | `@groundhogchain/client/local-dev`   | Node.js-only local runtime account loading                                |
-| `@groundhogchain/client/contracts`   | `DefaultWallet`, `DevWallet`, ERC-20, and metadata bindings               |
+| `@groundhogchain/client/contracts`   | `DefaultWallet`, `DevWallet`, ERC-20, metadata, and `SignedOp` bindings               |
 | `@groundhogchain/client/transaction` | Low-level transaction construction, serialization, and signing            |
 | `@groundhogchain/client/transport`   | HTTP and mock transports                                                  |
 | `@groundhogchain/client/contract`    | Descriptor runtime and fixed-length helpers                               |
 | `@groundhogchain/client/signers`     | Signer interface and private-key signer                                   |
+| `@groundhogchain/client/signed-op` | Typed off-chain operations and their network-bound signatures |
 | `@groundhogchain/client/actions`     | Standalone typed actions                                                  |
 
 ### Wallet Provider Entry Points
@@ -357,9 +358,9 @@ Follow [Wallet Integration](/tools/wallet-integration/) to connect a dapp and sa
 
 ## Maintained Examples
 
-- [Chain tip](https://github.com/groundhogchain/client-ts/blob/main/examples/chain-tip.ts) connects to Devnet.
-- [HOG transfer](https://github.com/groundhogchain/client-ts/blob/main/examples/transfer-hog.ts) uses Devnet airdrops, pubkey accounts, and DefaultWallet.
-- [HOG balance](https://github.com/groundhogchain/client-ts/blob/main/examples/view-hog-balance.ts) loads `dev-1` and reads Localnet.
-- [Counter deployment](https://github.com/groundhogchain/client-ts/blob/main/examples/deploy-counter.ts) deploys and calls through DevWallet on Localnet.
+- [Chain tip](https://github.com/groundhogchain/client-ts/blob/v0.8.0/examples/chain-tip.ts) connects to Devnet.
+- [HOG transfer](https://github.com/groundhogchain/client-ts/blob/v0.8.0/examples/transfer-hog.ts) uses Devnet airdrops, pubkey accounts, and DefaultWallet.
+- [HOG balance](https://github.com/groundhogchain/client-ts/blob/v0.8.0/examples/view-hog-balance.ts) loads `dev-1` and reads Localnet.
+- [Counter deployment](https://github.com/groundhogchain/client-ts/blob/v0.8.0/examples/deploy-counter.ts) deploys and calls through DevWallet on Localnet.
 
 See [TypeScript Bindings](/tools/typescript-bindings/) for generated descriptor APIs and [Wallet Integration](/tools/wallet-integration/) for the external-wallet workflow.

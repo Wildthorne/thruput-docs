@@ -155,7 +155,7 @@ The frame is removed from the call stack:
 
 ## Example: Nested Contract Calls
 
-This example shows a transaction invoking contract A, which calls contracts B, C, and D. The three different frame termination states (**Fault**, **Return**, **Abort**) are demonstrated.
+This example shows contract A calling B, C, and D. A uses recoverable calls and handles C's abort and D's fault. A throwing SDK client would instead propagate an unhandled child failure.
 
 **1. Root frame - ContractA.method() created**
 
@@ -313,9 +313,9 @@ state_changes: {
 gas_used: 60_000
 ```
 
-**10. Root frame Returns (commits transaction)**
+**10. Root frame Returns (ready for reservation)**
 
-ContractA completes successfully, committing the transaction:
+ContractA completes successfully. Its deltas still need to pass reservation:
 ```
 return_buffer: "done"
 status: Return

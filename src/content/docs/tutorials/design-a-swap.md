@@ -3,13 +3,11 @@ title: Design a Swap
 description: How a constant-product AMM is built on Groundhog, and why the execution model shapes it.
 ---
 
-This page walks through the design of a suite of contracts implementing the
-on-chain parts of a swap application. It ports much of the behavior of
-UniswapV2 (see its [pair operations][UniswapV2Pair] and some [supporting math
-libraries][UniswapV2PeripheryLibraries]), but wraps its core mechanisms with
-unique Groundhog features to provide better chain throughput. The structural
-decisions made here illustrate several aspects of the execution model that will
-expand possibilities for your own contracts.
+This page follows the contracts behind a swap application. The implementation
+adapts Uniswap V2's [pair operations][UniswapV2Pair] and [supporting math
+libraries][UniswapV2PeripheryLibraries] to Groundhog's snapshot execution model.
+Requests enter a queue concurrently, then a separate transaction processes them
+against the pair's reserves.
 
 **Prerequisites:** [Build a Token](/tutorials/build-a-token/). You should be
 able to write a contract, deploy it, and call another contract through a
@@ -36,20 +34,16 @@ self.reserves.set(&(reserve0 + amount_in, reserve1 - amount_out));
 ```
 
 On Groundhog, every transaction in a block reads the same committed snapshot.
-If two transactions attempt an operation against a particular pair in the same
-block, both read the same reserves, both compute from them, and both write a
-whole new value. But those writes cannot merge, as they are setting different
-values to the same location. One transaction commits, and the other is excluded
-from the block and returned to the mempool.
+If two transactions compute different reserve values for the same pair, their
+writes cannot merge. One transaction can land while the other is excluded and
+returned to the mempool. Identical writes can coexist, so the reserve field
+alone does not enforce one operation per pair per block.
 
-That is neither a bug nor a failure. (See [Execution
-Model](/how-it-works/execution-model/) for what exclusion means.) But follow it
-through and the consequence is severe:
-
-> A directly ported pair implementation would execute **one operation per
-> block, for the whole network**, no matter how many users want to trade.
-
-The design decisions below are largely about fixing that.
+A direct port therefore needs to account for both conflicting writes and
+operations that compute identical reserves. Processing requests sequentially
+inside one transaction makes each operation use the preceding operation's
+updated reserves. See [Execution Model](/how-it-works/execution-model/) for the
+storage merge rules.
 
 :::caution[The serial part stays serial]
 Nothing here makes the pair's operations concurrent. They cannot be: each one
@@ -85,9 +79,8 @@ Draining is the other half of the RCQ rule: only one transaction per block may
 consume from a given queue. That is exactly the serialization the pair needs,
 and now it costs one transaction per block instead of one per user.
 
-With this arrangement, the throughput is no longer limited to one operation per
-block; it is bounded instead by however many operations conveniently fit in one
-transaction.
+With this arrangement, a single transaction can process multiple operations
+against updated reserves, bounded by its execution budget.
 
 :::tip[The general lesson]
 When two transactions conflict, the fix is usually to change *what you write*,
@@ -135,8 +128,7 @@ scheduling capacity. (See [Execution](/programming-model/execution/).)
 A crank runs until the queue is empty or the frame's remaining gas is no longer
 sufficient to run another request, so **the caller chooses the batch size by
 choosing a gas limit**. No batch size is fixed inside the contract for
-everyone. Someone who wants their own request served quickly, at small cost,
-asks for a small batch. Someone clearing a backlog asks for a large one. (The
+everyone. A caller can request a small batch, subject to the minimum described below. Someone clearing a backlog asks for a large one. (The
 `batch-driver` helper provides `gas_for_batch` for converting a request count
 into the necessary gas limit.)
 
@@ -150,7 +142,7 @@ turn out is harmless:
 
 | Outcome | What happens |
 |---|---|
-| Another crank won the block | Yours is excluded and returns to the mempool, landing in a later block. |
+| Another crank won the block | Yours is excluded and returns to the mempool. It may be included before its expiry. |
 | The queue was empty at the snapshot | Yours commits having done nothing, writing no delta and conflicting with nobody. |
 | Otherwise | It drains the queue, up to the batch its gas limit allows. |
 
@@ -164,8 +156,8 @@ everyone else's cranks defer harmlessly behind it. If it stops, theirs
 immediately take up the slack.
 
 :::tip[The general lesson]
-Design so that the *losing* case is a no-op. Then contention needs no
-coordination, and a participant who guesses wrong has wasted nothing.
+An excluded crank leaves no committed effects. It can be considered again
+until its expiry, without coordinating with other crank callers.
 :::
 
 ### Minimum batch size

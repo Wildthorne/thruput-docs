@@ -120,7 +120,7 @@ Use Bytestring for config, ownership, or metadata where you accept that concurre
 
 ## RCQ\<T\> / RetrocausalQueue
 
-FIFO queue. Inserts always commute. Consumes are sequential.
+Multi-producer queue. Inserts commute; consumption is sequential. Persisted entries are ordered by queue block, then lexicographically within that block. Concurrent observations follow the proposer-recorded order.
 
 ```rust
 // These two transactions can both land:
@@ -199,7 +199,7 @@ Use Vector for ordered collections where elements are accessed by index. Wrap co
 
 ## Value\<T\>
 
-Typed storage slot. Stores any XDR-serializable value. Conflict semantics are the same as Bytestring: concurrent writes of the same value commute, different values conflict.
+Typed storage slot. Stores any CXS-serializable value. Conflict semantics are the same as Bytestring: concurrent writes of the same value commute, different values conflict.
 
 ```rust
 use sdk::storage::Value;

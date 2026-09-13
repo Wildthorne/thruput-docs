@@ -6,7 +6,7 @@ description: "Reference for the Groundhog contract spec: the machine-readable in
 Every Groundhog contract carries a **spec**: a machine-readable description of its interfaces, the types they use, the events they emit, and the errors they throw. The spec is Groundhog's equivalent of an EVM ABI. It is generated at compile time by the SDK macros and consumed by `groundhog codegen ts`, `groundhog call`, indexers, and any other tool that needs to encode calldata or decode results and events.
 
 :::note[Version checked]
-This page was checked against CLI `0.14.0`, which scaffolds SDK `0.29.0`.
+This page was checked against CLI `0.17.0`, which scaffolds SDK `0.34.3`.
 :::
 
 ## Where the Spec Lives
@@ -131,6 +131,7 @@ Primitive kinds:
 | `bool` | `bool` |
 | `u8` | `u8` |
 | `u32`, `i32`, `u64`, `i64`, `u128`, `i128` | the corresponding integer |
+| `u256`, `i256` | `U256`, `I256` |
 | `string` | `String` |
 | `bytes` | variable-length byte string |
 | `address` | `ContractAddress` |
@@ -259,7 +260,7 @@ Each entry in `events` describes one event the contract declares. Inclusion work
 | `name` | The Rust type name of the `#[derive(Event)]` struct. |
 | `signature` | The 32-byte event signature, hex-encoded without a `0x` prefix. Every emitted instance carries it as topic 0. |
 | `topics` | The `#[topic]` fields in declaration order. These occupy the topic slots after the signature (at most two). |
-| `fields` | The remaining fields, XDR-serialized into the event's data payload. |
+| `fields` | The remaining fields, CXS-serialized into the event's data payload. |
 
 The signature is computed as:
 
@@ -267,11 +268,11 @@ The signature is computed as:
 signature = sha256(MAJOR_VERSION ++ "::" ++ CRATE_NAME ++ "::" ++ TYPE_NAME)
 ```
 
-where `CRATE_NAME` is the crate that defines the event type and `MAJOR_VERSION` is its major version. For `TransferEvent` defined in `groundhog-erc20-if` (currently `0.1.21`): `sha256("0.1::groundhog-erc20-if::TransferEvent")` = `5ff62377…` above. Only the major component enters the hash, so patch releases of the interface crate keep the same signature.
+where `CRATE_NAME` is the crate that defines the event type and `MAJOR_VERSION` is its major version. For `TransferEvent` defined in `groundhog-erc20-if` (currently `0.1.30`): `sha256("0.1::groundhog-erc20-if::TransferEvent")` = `5ff62377…` above. The compatibility version is `0.1` here, so patch releases of this interface keep the same signature. For `0.0.x` types, the patch component is part of the compatibility version and changes the signature.
 
 To find instances of an event on chain, query [`groundhog_getEvents`](/reference/json-rpc-api/#groundhog_getevents) with the contract's address and `topic0 = "0x" + signature` (filters always require a contract address).
 
-Topic *values* that are not already 32 bytes wide (integers, strings) are XDR-encoded and SHA-256 hashed when emitted, so they can be filtered on but not recovered from the event. Data you need to read back belongs in `fields`.
+Topic values other than addresses, hashes, `[u8; 32]`, `U256`, and `I256` are CXS-encoded and SHA-256 hashed when emitted, so they can be filtered on but not recovered from the event. Data you need to read back belongs in `fields`.
 
 ## Errors
 

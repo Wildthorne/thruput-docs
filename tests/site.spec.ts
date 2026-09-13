@@ -2,7 +2,7 @@ import { test as base, expect, type Page } from '@playwright/test';
 
 const origin = 'http://127.0.0.1:4322';
 const docs = '/start/build-with-an-agent/';
-const prompt = 'Read https://docs.groundhog.dev/start/build-with-an-agent/ and help me build my first Groundhog app. If you cannot access that page, ask me for a saved copy; never ask me to paste credentials. Check my setup, access, and the actual CLI and runtime paths first, then use the guidance from my installed CLI. Start with a small working contract, run its tests, and help me deploy it. Explain any changes that need my approval.';
+const prompt = 'Help me build my first Groundhog app. Check whether groundhog is installed and verify the CLI and runtime versions. If installed, read groundhog --skill, start groundhog docs, and use its localhost URL for the documentation. Keep that server running while you work. If the CLI is missing, follow https://docs.groundhog.dev/start/getting-started/; if authentication blocks access, ask me for a saved copy. Never ask me to paste credentials or signing keys. Start with a small contract, run its tests, deploy it, and verify the receipt and state.';
 const test = base.extend({
   page: async ({ page }, use) => {
     const errors: string[] = [];
@@ -60,9 +60,9 @@ for (const width of [320, 375, 701, 800, 1024, 1280, 1920]) {
     await page.goto(origin);
     await page.evaluate(() => document.fonts.ready);
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
-    await expect(page.locator('h1')).toContainText('The blockchain built for');
+    await expect(page.locator('h1')).toContainText('Build applications');
     await expect(page.locator('[id="_top"]')).toHaveCount(1);
-    for (const title of ['More room for the idea', 'Start small. Then stretch it.']) {
+    for (const title of ['Programming model', 'Development resources']) {
       await expect(page.getByRole('heading', { name: title, level: 2 })).toHaveCSS('text-align', 'center');
     }
     await expect(page.locator('.feature-card')).toHaveCount(6);

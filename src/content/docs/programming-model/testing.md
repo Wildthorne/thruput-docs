@@ -5,10 +5,10 @@ description: "How to test Groundhog contracts: native logic tests, RV32 integrat
 
 ## Test Modes
 
-Groundhog contracts have three useful test paths:
+Choose a test path based on the boundary you need to exercise:
 
 :::note[Version checked]
-The published CLI, `0.14.0`, scaffolds SDK `0.29.0` and `groundhog-json-rpc-client` `0.13.0`.
+The published CLI, `0.17.0`, scaffolds SDK `0.34.3` and `groundhog-json-rpc-client` `0.17.0`.
 :::
 
 | Command | What it covers | Use for |
@@ -44,11 +44,11 @@ The generated Cargo entries keep RPC and Tokio dependencies out of RV32 guest bu
 groundhog-integration-test = ["dep:groundhog-json-rpc-client", "dep:tokio"]
 
 [target.'cfg(not(target_arch = "riscv32"))'.dependencies]
-sdk = { version = "0.29.0", registry = "groundhog", features = ["std"] }
+sdk = { version = "=0.34.3", registry = "groundhog", features = ["std"] }
 tokio = { version = "1", features = ["macros", "rt-multi-thread"], optional = true }
 
 [target.'cfg(not(target_arch = "riscv32"))'.dependencies.groundhog-json-rpc-client]
-version = "0.13.0"
+version = "0.17.0"
 registry = "groundhog"
 optional = true
 ```

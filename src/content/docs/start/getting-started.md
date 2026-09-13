@@ -3,7 +3,7 @@ title: Getting Started
 description: Set up the Groundhog CLI and build your first RV32 contract.
 ---
 
-Working with a coding agent? Start with [Build with an Agent](/start/build-with-an-agent/) to check access and load the instructions for your CLI release.
+Working with a coding agent? Once the CLI is installed, run `groundhog docs`, give the agent its localhost URL, and have it read `groundhog --skill`. See [Build with an Agent](/start/build-with-an-agent/) for the handoff and access setup.
 
 ## How to Start
 
@@ -18,17 +18,23 @@ The CLI is just a consumer of the SDK. It generates the same Rust crate you'd wr
 
 ## Choose and Install a Client Bundle
 
-Use one complete Groundhog client bundle so the CLI, local node, runtime libraries, and contract artifacts come from a compatible release. For the first installation, obtain the release selection from the hackathon organisers or your onboarding contact. Do not select a newer prerelease just because its agent guide is available.
+Use the [Groundhog 0.1.27 client bundle](https://github.com/groundhogchain/packaging/releases/tag/v0.1.27). Keep the CLI, local node, runtime libraries, and contract artifacts together in the extracted directory.
 
-After installing that initial bundle and running `groundhog init`, hosted Devnet users should follow [Devnet version discovery](/tutorials/develop-on-devnet/#2-configure-devnet-identity). Check the serving release and switch to its matching client bundle before creating a wallet or submitting transactions. Discovery uses the installed CLI’s profile; it is not a prerequisite for the first installation.
+| Component | Version in 0.1.27 |
+| --- | --- |
+| CLI and JSON-RPC gateway | `0.17.0` |
+| Rust SDK used by the CLI scaffold | `0.34.3` |
+| Rust JSON-RPC client used by the scaffold | `0.17.0` |
+| Standard contract interfaces | `=0.1.30` |
+| Local node | `0.1.27-rc.7` |
 
-:::note[Rehearsed local preview]
-On September 9, 2026, the local counter loop passed on macOS ARM64 and in a fresh Ubuntu 26.04 x86-64 container under ARM64 emulation with client bundle `0.1.27-rc.4`, CLI `0.16.0-rc.1`, and `hog-devnode` `0.1.27-rc.4`. Its scaffold declares SDK `0.32.0`, JSON-RPC client `0.13.0`, and toolchain `nightly-2026-07-01`. The Linux run needed system libraries and separately supplied registry and FFI credentials. These checks do not qualify credential-free installation or the current hosted Devnet.
-:::
+The node's RC version is the artifact selected by the final bundle. The [release manifest](https://github.com/groundhogchain/packaging/blob/v0.1.27/release-manifest.toml) records its exact source commit. The scaffold uses `nightly-2026-07-01`.
 
-Before starting, obtain access to the [packaging releases](https://github.com/groundhogchain/packaging/releases), the private Groundhog Cargo registry, and the SDK's native-test FFI download. Install Rust and Cargo through [rustup](https://rustup.rs/) if needed. Keep tokens and passwords out of agent conversations.
+These docs are checked against those sources. Source review does not establish that every tutorial has been run against the hosted network. Before creating a Devnet wallet or submitting transactions, follow [Devnet version discovery](/tutorials/develop-on-devnet/#2-configure-devnet-identity) and select the bundle matching the serving release.
 
-Download the selected release's client archive for your platform. The rehearsed Apple Silicon archive is `groundhog-client-macos-arm64.tar.gz`; the Linux x86-64 archive is `groundhog-client-linux-x86_64.tar.gz`. Extract the complete archive and keep its directory layout intact.
+Before starting, obtain access to the [packaging releases](https://github.com/groundhogchain/packaging/releases) and the private Groundhog Cargo registry. Install Rust and Cargo through [rustup](https://rustup.rs/) if needed. Keep tokens and passwords out of agent conversations.
+
+Download the selected release's client archive for your platform. The Apple Silicon archive is `groundhog-client-macos-arm64.tar.gz`; the Linux x86-64 archive is `groundhog-client-linux-x86_64.tar.gz`. Extract the complete archive and keep its directory layout intact.
 
 On Ubuntu 26.04, install the build tools and Linux node's system libraries before checking the binaries:
 
@@ -49,9 +55,17 @@ groundhog --version
 "$GROUNDHOG_CLIENT_HOME/bin/hog-devnode" --version
 ```
 
-Confirm these are the versions in the selected release. An older `groundhog` elsewhere on your machine may lack `--skill` or use different commands. Native tests still need FFI access, and the CLI does not manage Cargo registry credentials.
+Confirm these are the versions in the selected release. An older `groundhog` elsewhere on your machine may lack `--skill` or use different commands. The CLI does not manage Cargo registry credentials.
 
 The local tutorial includes a [runtime selection check](/tutorials/develop-locally/#verify-the-selected-runtime). An inherited `GROUNDHOG_DEVNODE_BINARY` can override the adjacent bundled node, even after you change `PATH`.
+
+## Read the Docs Locally
+
+```bash
+groundhog docs
+```
+
+Keep this terminal running and open the printed URL. You and a coding agent on the same machine can read the bundled site without the hosted site's login. In another terminal, run `groundhog --skill` for the installed release's agent instructions. See [Build with an Agent](/start/build-with-an-agent/) for snapshot version notes and agents running on another machine.
 
 ## Initialize the CLI
 
@@ -109,7 +123,7 @@ If you already use a credential manager for this registry, keep its provider ins
 
 ### Test and Build
 
-Native tests currently also require `HOGD_FFI_PASSWORD` supplied through your environment during onboarding. Keep it available in the shell running `cargo test`. Credentials saved by `groundhog init` are used by CLI-managed subprocesses; raw Cargo does not read the CLI's credential file. `groundhog status --json` reports credential availability to the CLI, not whether raw Cargo can access the download.
+SDK `0.34.3` downloads its test executor from public storage. No FFI download credentials are required. Cargo registry access is still required.
 
 ```bash
 cargo test
@@ -211,12 +225,12 @@ For a line-by-line walkthrough of this code, see [Build a Counter](/tutorials/bu
 
 The CLI generates code using the macro layer (`#[sdk::storage]`, `#[contract]`). This is the fastest path to a working contract, but it's not the only way to build on Groundhog.
 
-The SDK exposes three complementary surfaces. They can be mixed: a contract can use the `#[contract]` macro while accessing storage through typed handles or raw syscall wrappers.
+The SDK surfaces can be mixed: a contract can use the `#[contract]` macro while accessing storage through typed handles or raw syscall wrappers.
 
 | Layer                     | What it provides                                                                                                                                                                                                              | When to use                                                       |
 | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
 | **Macros**                | `#[storage]`, `#[contract]`, `#[contract_exception]`. Generates storage wiring, contract entrypoints, and client stubs.                                                                                                       | Default. Start here.                                              |
-| **Typed storage handles** | `Balance`, `NNInt`, `CapacityConstraint`, `Map<K, V>`, `Value<T>`, `Bytestring`, `RCQ<T>`, `Vector<T>`. `Value`, map keys, and typed RCQ entries use XDR; integer and bytestring types expose specialized storage operations. | Default storage access without writing raw syscalls.              |
+| **Typed storage handles** | `Balance`, `NNInt`, `CapacityConstraint`, `Map<K, V>`, `Value<T>`, `Bytestring`, `RCQ<T>`, `Vector<T>`. `Value`, map keys, and typed RCQ entries use CXS; integer and bytestring types expose specialized storage operations. | Default storage access without writing raw syscalls.              |
 | **Raw syscalls**          | Direct `bytestring_set()`, `non_negative_int_strict_inc()` calls.                                                                                                                                                             | When you need full control or are building your own abstractions. |
 
 The SDK's `erc20_low_level/` example implements ERC-20 storage through raw bytestring and NNInt syscall wrappers instead of typed storage handles. It still uses `#[contract]`, generated clients, events, and SDK error helpers. Compare it with `erc20/`, which implements the same interface with `Value`, `Map`, and `Balance`.

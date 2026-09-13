@@ -6,7 +6,7 @@ description: How Groundhog CLI commands fit into RV32 builds, local nodes, tests
 Run normal Rust loops with `cargo`. Run Groundhog-specific work with `groundhog`: scaffolds, RV32 artifacts, local nodes, deployments, RPC calls, state inspection, keys, wallets, and generated bindings. RV32 is Groundhog's 32-bit RISC-V contract target.
 
 :::note[Version checked]
-This page was source-checked against Groundhog CLI `0.14.0`. Its generated project declares SDK `0.29.0` and `groundhog-json-rpc-client` `0.13.0`.
+This page was source-checked against Groundhog CLI `0.17.0`, included in bundle `0.1.27`. Its generated project declares SDK `0.34.3` and `groundhog-json-rpc-client` `0.17.0`.
 :::
 
 ## Foundry Mental Model
@@ -95,7 +95,18 @@ groundhog init
 
 Init creates global `local` and `devnet` profiles. The Devnet profile includes its RPC and faucet settings. On a fresh configuration with no stored keys or configured global default, init offers to create and select the key named `default`. Existing profile values, keys, and key selections are preserved; use `groundhog keys use <name>` to repair or change the global selection.
 
-`groundhog new <name>` creates a project from the `counter` or `stub` template. `groundhog status` checks toolchain, devnode, key, executor-auth, and project-config state. `groundhog completion <shell>` prints shell completions.
+`groundhog new <name>` creates a project from the `counter` or `stub` template. `groundhog status` checks toolchain, devnode, key, and project-config state. `groundhog completion <shell>` prints shell completions.
+
+## Local Documentation
+
+```bash
+groundhog docs
+groundhog docs --port 0
+```
+
+This serves the bundled documentation on loopback, using port `4321` by default or an available port with `--port 0`. Keep the command running while reading. It does not require the hosted site's login.
+
+The snapshot is fixed when the CLI is built. CLI `0.17.0` bundles an earlier docs snapshot with the `0.16.0-rc.1` agent guide; it does not include subsequent website corrections. Use `groundhog --skill` for the installed CLI's own guidance. `groundhog docs --json` reports the snapshot identity and `guideMatchesCli` at startup.
 
 ## Configuration
 
@@ -284,6 +295,8 @@ Use `groundhog test --integration` when you want disposable state per test run.
 ## Deploy and Interact
 
 Build before deploying. `groundhog deploy` auto-detects the selected artifact (`.rv32a` by default), signs a deploy transaction with the active key, submits it to the selected profile, and saves a contract alias in `groundhog.toml` when deploy succeeds. If source files are newer than the artifact, it warns so you can rebuild before submitting stale code.
+
+`deploy` and `call` prompt before submitting. In a non-interactive terminal, or with `--json` or `--quiet`, pass `--force` to confirm an intended submission. `--dry-run` prepares the transaction without broadcasting it and does not need that confirmation.
 
 Use `groundhog call` for signed state changes and `groundhog view` for read-only simulation. Add `--from dev-1` to simulate a normal local caller. `groundhog storage` reads one raw committed storage item; prefer contract methods and `groundhog view` when you want typed behavior. `groundhog balance`, `groundhog transfer`, and `groundhog airdrop` cover native HOG account work.
 

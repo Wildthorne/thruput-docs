@@ -3,7 +3,7 @@ title: EVM & Solidity
 description: Groundhog concepts for Solidity and EVM developers.
 ---
 
-This guide is for developers who know Solidity and the EVM. It uses familiar EVM concepts to explain how Groundhog works, what changes, and what disappears entirely.
+This guide is for developers who know Solidity and the EVM. It uses familiar EVM concepts to compare Groundhog's storage and execution rules.
 
 For the foundational concepts (delta operations, commutativity, storage types), see [For Blockchain Developers](/start/for-blockchain-developers/). This page builds on that with concrete patterns and a worked example.
 
@@ -16,6 +16,9 @@ If you've deployed and called contracts on Ethereum, the Groundhog lifecycle wil
 Groundhog contracts are written in Rust and compiled to RV32 artifacts by default, not EVM bytecode. RV32 is Groundhog's 32-bit RISC-V contract target. The SDK provides optional convenience macros, but you can also work directly with raw syscalls. A minimal contract looks like this:
 
 ```rust
+use sdk::*;
+use sdk::storage::NNInt;
+
 #[contract_exception]
 pub enum Error {
     NotAuthorized = 1,
@@ -29,16 +32,12 @@ pub struct MyContract {
 
 #[contract(throws = Error)]
 impl MyContract {
-    pub fn initialize(&mut self, starting_value: u64) {
-        self.value.strict_inc(starting_value as i128);
-    }
-
     pub fn increment(&mut self, amount: u64) {
         self.value.strict_inc(amount as i128);
     }
 
-    pub fn get(&self) -> u64 {
-        self.value.try_get().unwrap_or(0) as u64
+    pub fn get(&self) -> i128 {
+        self.value.try_get().none_if_missing().unwrap_or(0)
     }
 }
 ```
@@ -68,7 +67,7 @@ The same contract artifact can be instantiated multiple times at different addre
 
 ### Calling
 
-On Ethereum, you send a transaction specifying a contract address, a function selector (4-byte hash), and ABI-encoded arguments. On Groundhog, a transaction specifies a contract address, an entrypoint ID (8-byte identifier), and XDR-encoded arguments.
+On Ethereum, you send a transaction specifying a contract address, a function selector (4-byte hash), and ABI-encoded arguments. On Groundhog, a transaction specifies a contract address, an entrypoint ID (8-byte identifier), and CXS-encoded arguments.
 
 The SDK generates entrypoint IDs from method names and the `#[contract]` macro handles encoding. From a developer's perspective, calling a contract looks like this:
 
@@ -84,16 +83,16 @@ The generated client handles serialization. You don't construct raw calldata.
 
 On Ethereum, you call `view` functions or read storage slots directly via `eth_getStorageAt`. On Groundhog, typed reads normally use `&self` methods through `groundhog_view`. The gateway also exposes `groundhog_getStorageAt` for low-level reads of a specific 32-byte contract-data key.
 
-The key difference: every read within a block sees the same snapshot. Two transactions in the same block that call `get()` will see the same value, regardless of what other transactions are doing. This is snapshot isolation, and it's what makes parallel execution safe.
+Transactions in a block share a starting snapshot. Ordinary storage reads can reflect earlier writes within the same transaction, but not writes from concurrent transactions. `RetrocausalQueue` has separate rules for observing concurrent inserts.
 
 ## Mental Model Shifts
 
 | Solidity / EVM | Groundhog | Why |
 |----------------|-----------|-----|
-| `balance = newValue` | `balance.increase(amount)` or `decrease(amount)` | Deltas merge in parallel. Absolute writes conflict. |
-| `mapping(address => uint256)` | `Map<Address, Balance>` | Same concept. The value type enforces non-negativity and enables parallel execution. |
+| `balance = newValue` | `balance.increase(amount)` or `decrease(amount)` | Deltas merge in parallel. Different absolute writes conflict. |
+| `mapping(address => uint256)` | `Map<ContractAddress, Balance>` | Same concept. The value type enforces non-negativity and enables parallel execution. |
 | Gas per operation | Gas exists for metering but costs zero. HOG deposit for storage capacity. | Gas limits bound computation, but no tokens are burned. |
-| Sequential execution | Parallel by default | Every transaction in a block runs simultaneously against the same snapshot. |
+| Sequential execution | Parallel by default | Transactions execute concurrently against the same block snapshot. |
 | `require(condition, "message")` | `ensure(condition, Error::Variant)` | Typed errors instead of string messages. |
 | `revert()` / `require()` | `throw(error)` | Aborts the transaction. Cannot be caught within the same contract. |
 | Solidity + EVM bytecode | Rust + RV32 artifact | Different VM and artifact format. Attached Groundhog contract blobs are capped at 256 KiB. |
@@ -103,19 +102,21 @@ The key difference: every read within a block sees the same snapshot. Two transa
 | `public` / `external` / `internal` / `private` | `pub` / not pub | Rust visibility. Public methods become contract entrypoints. |
 | OpenZeppelin inheritance | Trait implementations | Rust uses traits and composition, not inheritance. |
 
-## What Disappears
+## Execution Differences
 
-These are real problems EVM developers deal with daily. They don't exist on Groundhog.
+The runtime and storage model change how these patterns are implemented.
 
 ### Reentrancy
+
+See [Solidity's contract-call semantics](https://docs.soliditylang.org/en/latest/control-structures.html#external-function-calls) for the EVM side of this comparison.
 
 On the EVM, calling an external contract hands over execution control. That contract can call back into yours before your state updates are complete. Entire categories of exploits (DAO hack, read-only reentrancy) exist because of this.
 
 Groundhog bans reentrancy at the runtime level. A contract cannot be called while it is already on the call stack. The runtime enforces this: if contract A calls contract B, and B tries to call back into A, the call fails. This is not a convention or a guard you add. It is a protocol-level guarantee.
 
-Beyond the ban, the snapshot/delta model means there is no partial state to observe even if reentrancy were allowed. Every contract reads from the same frozen snapshot and writes deltas. Deltas merge after all execution completes.
+Within a transaction, reads can observe earlier writes and successful child calls. Snapshot isolation separates concurrent transactions; the explicit runtime check prevents reentrancy.
 
-You don't need reentrancy guards, checks-effects-interactions ordering, or `nonReentrant` modifiers.
+You do not need a `nonReentrant` guard for contract calls. Application logic and error handling still depend on call order.
 
 ### Ordering and MEV
 
@@ -123,9 +124,9 @@ On Ethereum, pending transactions are visible in the mempool. Searchers can inse
 
 On Groundhog, commutative operations produce the same merged result regardless of execution order. Two compatible credits to the same account therefore produce the same final balance whichever executes first. Operations that conflict do not both land: one is excluded and returned to the mempool. The proposer still controls transaction selection and which contender wins a conflict, so Groundhog does not make a blanket claim that every application is MEV-free.
 
-### Gas Estimation and Out-of-Gas Failures
+### Gas Limits and Gas Price Estimation
 
-EVM developers spend significant effort estimating gas, setting gas limits, and handling out-of-gas reverts. Groundhog has gas limits for metering (bounding computation, preventing infinite loops), but gas costs zero tokens. You hold HOG tokens for capacity (compute throughput and storage). There are no gas fees to estimate and no fee-related reverts to handle.
+EVM developers spend significant effort estimating gas, setting gas limits, and handling out-of-gas reverts. Groundhog has gas limits for metering (bounding computation, preventing infinite loops), but gas costs zero tokens. You hold HOG tokens for capacity (compute throughput and storage). There is no gas price to estimate. Exceeding the declared gas limit still faults the transaction, and the declared limit determines its scheduling cost.
 
 ### Nonce Management
 
@@ -208,7 +209,7 @@ fn mint(&mut self, receiver: &ContractAddress, amount: Amount) {
 }
 ```
 
-**What changes:** No modifier system. Rust doesn't have decorators. Use `ensure(condition, error)` at the top of the method. The pattern is the same (check authorization, then act), just expressed differently. For contracts with multiple roles, store a `Map<ContractAddress, Role>` and check against it.
+**What changes:** No modifier system. Rust doesn't have decorators. Use `ensure(condition, error)` at the top of the method. The pattern is the same (check authorization, then act), just expressed differently. For contracts with multiple roles, store a `Map<ContractAddress, Value<Role>>` and check against it.
 
 ### Constructor and Initialization
 
@@ -230,19 +231,41 @@ contract Token {
 **Groundhog:**
 
 ```rust
-#[contract(throws = Error)]
+use sdk::*;
+use sdk::storage::{Balance, Map, Value};
+use groundhog_erc20_if::{Amount, MintEvent, log_mint_event};
+
+#[contract_exception]
+pub enum Error {
+    AlreadyInitialized = 1,
+}
+
+#[sdk::storage]
+pub struct Token {
+    contract_owner: Value<ContractAddress>,
+    total_supply: Balance,
+    balances: Map<ContractAddress, Balance>,
+}
+
+#[contract(throws = Error, emits(MintEvent))]
 impl Token {
     pub fn initialize(&mut self, initial_supply: Amount) {
+        ensure(
+            self.contract_owner.try_get().none_if_missing().is_none(),
+            Error::AlreadyInitialized,
+        );
         let caller = get_caller();
-        self.contract_owner.set(&caller);
+        self.contract_owner.set_exclusive(&caller);
         self.total_supply.increase(initial_supply);
         self.balances.at_mut(&caller).lazy_increase(initial_supply);
-        log_transfer_event(CONTRACT_ADDR_ZERO, &caller, initial_supply);
+        log_mint_event(&caller, initial_supply);
     }
 }
 ```
 
-**What changes:** Groundhog has no special constructor syntax. Call `initialize` after deployment, or have an application-specific deployer invoke it in the same parent transaction. The runtime does not provide once-only constructor semantics, so store and check an initialized flag when repeated calls must fail. State initialization uses the same storage operations as everything else.
+The `groundhog_erc20_if` dependency provides the amount type and mint event helpers. See [Build a Token](/tutorials/build-a-token/) for dependency setup and a complete token contract.
+
+**What changes:** Groundhog has no special constructor syntax. Call `initialize` after deployment, or have an application-specific deployer invoke it in the same parent transaction. The runtime does not provide once-only constructor semantics. This example uses the owner field as its initialization marker. The exclusive write prevents concurrent initializations from both landing, even for the same caller. State initialization uses the same storage operations as everything else.
 
 ### Events
 
@@ -352,7 +375,7 @@ impl ERC20 for TokenContract {
 **Key differences:**
 
 - **No explicit balance checks.** `Balance::decrease` aborts if the result would be negative. The check is built into the type.
-- **`adjust_allowance` instead of `approve`.** Deltas instead of absolute writes. No race condition. Concurrent approvals merge correctly.
+- **`adjust_allowance` instead of `approve`.** Deltas instead of absolute writes. Compatible relative adjustments merge. The application must choose this API explicitly.
 - **No success boolean.** These ERC-20 methods return unit on success and abort on failure, instead of returning `bool`. Other Groundhog methods can return typed values.
 - **No `require` guards.** `Balance` enforces non-negativity. You only need `ensure()` for business logic checks (authorization, etc.), not arithmetic safety.
 - **Parallel execution.** Two transfers debiting the same account both run against the snapshot. If the account has enough balance for both, both succeed and their deltas merge. If not, one is excluded and returned to the mempool.
