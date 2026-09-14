@@ -235,7 +235,7 @@ The SDK surfaces can be mixed: a contract can use the `#[contract]` macro while 
 
 The SDK's `erc20_low_level/` example implements ERC-20 storage through raw bytestring and NNInt syscall wrappers instead of typed storage handles. It still uses `#[contract]`, generated clients, events, and SDK error helpers. Compare it with `erc20/`, which implements the same interface with `Value`, `Map`, and `Balance`.
 
-If the provided storage types don't fit your use case, drop down a layer. The syscall interface is documented in the [Syscalls Reference](/reference/syscalls/). Generated Rustdoc for exact SDK signatures lives at [groundhog.dev/docs/](https://groundhog.dev/docs/); see [Rust API Docs](/tools/rust-api-docs/) for common links.
+If the provided storage types don't fit your use case, drop down a layer. The syscall interface is documented in the [Syscalls Reference](/reference/syscalls/). Generated Rustdoc for exact SDK signatures lives at [crates.thruput.network](https://crates.thruput.network); see [Rust API Docs](/tools/rust-api-docs/) for common links.
 
 ## Deployment
 

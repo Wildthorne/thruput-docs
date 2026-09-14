@@ -3,7 +3,7 @@ title: Storage Types
 description: API reference for Groundhog storage types.
 ---
 
-API reference for the SDK storage types. For conflict semantics, usage guidance, and when to choose each type, see [Programming Model: Storage Types](/programming-model/storage-types/). For generated Rustdoc, see [`sdk::storage`](https://groundhog.dev/docs/sdk/latest/sdk/storage/index.html) or [Rust API Docs](/tools/rust-api-docs/).
+API reference for the SDK storage types. For conflict semantics, usage guidance, and when to choose each type, see [Programming Model: Storage Types](/programming-model/storage-types/). For generated Rustdoc, see [`sdk::storage`](https://crates.thruput.network/docs/sdk/0.34.3/doc/sdk/storage/index.html) or [Rust API Docs](/tools/rust-api-docs/).
 
 The SDK encodes typed storage values and map keys with CXS. Its serialization traits retain the names `ReadXDR` and `WriteXDR`.
 
@@ -11,9 +11,9 @@ Rustdoc shortcuts:
 
 | Area | Links |
 |------|-------|
-| Storage types | [`Balance`](https://groundhog.dev/docs/sdk/latest/sdk/storage/balance/struct.Balance.html), [`NNInt`](https://groundhog.dev/docs/sdk/latest/sdk/storage/nnint/struct.NNInt.html), [`CapacityConstraint`](https://groundhog.dev/docs/sdk/latest/sdk/storage/capacity_constraint/struct.CapacityConstraint.html), [`Map`](https://groundhog.dev/docs/sdk/latest/sdk/storage/map/struct.Map.html), [`Vector`](https://groundhog.dev/docs/sdk/latest/sdk/storage/vector/struct.Vector.html), [`Value`](https://groundhog.dev/docs/sdk/latest/sdk/storage/value/struct.Value.html), [`Bytestring`](https://groundhog.dev/docs/sdk/latest/sdk/storage/bytestring/struct.Bytestring.html), [`RCQ`](https://groundhog.dev/docs/sdk/latest/sdk/storage/rcq/struct.RCQ.html), [`Node`](https://groundhog.dev/docs/sdk/latest/sdk/storage/node/struct.Node.html) |
-| Borrow guards | [`SlotRef`](https://groundhog.dev/docs/sdk/latest/sdk/storage/slot/struct.SlotRef.html), [`SlotMut`](https://groundhog.dev/docs/sdk/latest/sdk/storage/slot/struct.SlotMut.html), [`DisjointMut`](https://groundhog.dev/docs/sdk/latest/sdk/storage/map/struct.DisjointMut.html) |
-| Traits and paths | [`Deletable`](https://groundhog.dev/docs/sdk/latest/sdk/storage/deletable/trait.Deletable.html), [`StorageType`](https://groundhog.dev/docs/sdk/latest/sdk/storage/node/trait.StorageType.html), [`Keypath`](https://groundhog.dev/docs/sdk/latest/sdk/storage/keypath/struct.Keypath.html) |
+| Storage types | [`Balance`](https://crates.thruput.network/docs/sdk/0.34.3/doc/sdk/storage/balance/struct.Balance.html), [`NNInt`](https://crates.thruput.network/docs/sdk/0.34.3/doc/sdk/storage/nnint/struct.NNInt.html), [`CapacityConstraint`](https://crates.thruput.network/docs/sdk/0.34.3/doc/sdk/storage/capacity_constraint/struct.CapacityConstraint.html), [`Map`](https://crates.thruput.network/docs/sdk/0.34.3/doc/sdk/storage/map/struct.Map.html), [`Vector`](https://crates.thruput.network/docs/sdk/0.34.3/doc/sdk/storage/vector/struct.Vector.html), [`Value`](https://crates.thruput.network/docs/sdk/0.34.3/doc/sdk/storage/value/struct.Value.html), [`Bytestring`](https://crates.thruput.network/docs/sdk/0.34.3/doc/sdk/storage/bytestring/struct.Bytestring.html), [`RCQ`](https://crates.thruput.network/docs/sdk/0.34.3/doc/sdk/storage/rcq/struct.RCQ.html), [`Node`](https://crates.thruput.network/docs/sdk/0.34.3/doc/sdk/storage/node/struct.Node.html) |
+| Borrow guards | [`SlotRef`](https://crates.thruput.network/docs/sdk/0.34.3/doc/sdk/storage/slot/struct.SlotRef.html), [`SlotMut`](https://crates.thruput.network/docs/sdk/0.34.3/doc/sdk/storage/slot/struct.SlotMut.html), [`DisjointMut`](https://crates.thruput.network/docs/sdk/0.34.3/doc/sdk/storage/map/struct.DisjointMut.html) |
+| Traits and paths | [`Deletable`](https://crates.thruput.network/docs/sdk/0.34.3/doc/sdk/storage/deletable/trait.Deletable.html), [`StorageType`](https://crates.thruput.network/docs/sdk/0.34.3/doc/sdk/storage/node/trait.StorageType.html), [`Keypath`](https://crates.thruput.network/docs/sdk/0.34.3/doc/sdk/storage/keypath/struct.Keypath.html) |
 
 ## NNInt
 

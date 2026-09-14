@@ -30,7 +30,7 @@ pub struct CounterIncremented<'a> {
 }
 ```
 
-- **`#[derive(Event)]`** generates everything the event needs: a `SIGNATURE` constant, serialization for the payload, and a `CounterIncrementedPayload` companion struct for decoding. See [SDK Macros](/reference/sdk-macros/#deriveevent) or [`#[derive(Event)]` Rustdoc](https://groundhog.dev/docs/sdk/latest/sdk/derive.Event.html).
+- **`#[derive(Event)]`** generates everything the event needs: a `SIGNATURE` constant, serialization for the payload, and a `CounterIncrementedPayload` companion struct for decoding. See [SDK Macros](/reference/sdk-macros/#deriveevent) or [`#[derive(Event)]` Rustdoc](https://crates.thruput.network/docs/sdk/0.34.3/doc/sdk/derive.Event.html).
 - **`#[topic]`** makes `by` an indexed topic (topic 1), so consumers can filter events by address. Fields without the attribute, here `amount`, go into the payload.
 - **The lifetime** lets the topic borrow the address instead of copying it. `ContractAddress`, `SHA256Hash`, `[u8; 32]`, `U256`, and `I256` are used as topics directly; other types are CXS-encoded and hashed, which makes them filterable but not recoverable. Anything you need to _read_ from the event belongs in the payload.
 
@@ -65,7 +65,7 @@ pub use implementation::CounterIncremented;
 ```
 
 - **`emits(CounterIncremented)`** declares the event as part of the contract's interface, which records it in the [contract spec](/reference/contract-spec/#events) so codegen and indexers can decode it. Like `throws`, `emits` belongs on the interface: the trait definition or inherent impl, never a trait impl.
-- **[`log_event`](https://groundhog.dev/docs/sdk/latest/sdk/event/fn.log_event.html)** serializes the topics and payload and emits the event via the `LogEvent` syscall. Events become part of the block's event trie; they are not readable by contracts.
+- **[`log_event`](https://crates.thruput.network/docs/sdk/0.34.3/doc/sdk/event/fn.log_event.html)** serializes the topics and payload and emits the event via the `LogEvent` syscall. Events become part of the block's event trie; they are not readable by contracts.
 - **`get_caller()`** returns the address of the immediate caller, which becomes the event's indexed topic.
 
 ## Step 3: Test It

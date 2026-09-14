@@ -297,13 +297,13 @@ Unlike event signatures, selectors are rendered with a `0x` prefix. When a contr
 
 | In your code | In the spec |
 |--------------|-------------|
-| [`#[contract]`](https://groundhog.dev/docs/sdk/latest/sdk/attr.contract.html) on a trait or inherent impl | An `interfaces` entry with one method per exported fn |
-| `throws = E` / `throws(E1, E2)` on [`#[contract]`](https://groundhog.dev/docs/sdk/latest/sdk/attr.contract.html) | The interface's `throws` array |
-| `emits(E1, E2)` on [`#[contract]`](https://groundhog.dev/docs/sdk/latest/sdk/attr.contract.html) | `events` entries |
-| [`#[contract_exception]`](https://groundhog.dev/docs/sdk/latest/sdk/attr.contract_exception.html) type named in `throws` | A `type_defs` entry plus the `throws` selector |
-| [`#[contract_type]`](https://groundhog.dev/docs/sdk/latest/sdk/attr.contract_type.html) struct or enum reachable from an interface | A `type_defs` entry |
+| [`#[contract]`](https://crates.thruput.network/docs/sdk/0.34.3/doc/sdk/attr.contract.html) on a trait or inherent impl | An `interfaces` entry with one method per exported fn |
+| `throws = E` / `throws(E1, E2)` on [`#[contract]`](https://crates.thruput.network/docs/sdk/0.34.3/doc/sdk/attr.contract.html) | The interface's `throws` array |
+| `emits(E1, E2)` on [`#[contract]`](https://crates.thruput.network/docs/sdk/0.34.3/doc/sdk/attr.contract.html) | `events` entries |
+| [`#[contract_exception]`](https://crates.thruput.network/docs/sdk/0.34.3/doc/sdk/attr.contract_exception.html) type named in `throws` | A `type_defs` entry plus the `throws` selector |
+| [`#[contract_type]`](https://crates.thruput.network/docs/sdk/0.34.3/doc/sdk/attr.contract_type.html) struct or enum reachable from an interface | A `type_defs` entry |
 | `#[contract_type(export)]` | A `type_defs` entry, even when nothing references the type |
-| [`#[derive(Event)]`](https://groundhog.dev/docs/sdk/latest/sdk/derive.Event.html) + `#[event_spec(export)]` | An `events` entry, even with no `emits(...)` declaration |
+| [`#[derive(Event)]`](https://crates.thruput.network/docs/sdk/0.34.3/doc/sdk/derive.Event.html) + `#[event_spec(export)]` | An `events` entry, even with no `emits(...)` declaration |
 
 See [SDK Macros](/reference/sdk-macros/) for the full macro reference and [Add Events to a Contract](/tutorials/add-events-to-a-contract/) for an end-to-end walkthrough.
 
