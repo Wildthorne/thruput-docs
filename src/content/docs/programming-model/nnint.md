@@ -7,7 +7,7 @@ description: The set_add primitive underneath NNInt and why concurrent transacti
 
 Most contracts should use `Balance` for balances, allowances, and supply. Read this page when you need signed changes, an explicit integer base, or the exact representation that makes checked and lazy balance deltas compatible.
 
-For exact SDK method signatures, see [`NNInt` Rustdoc](https://groundhog.dev/docs/sdk/latest/sdk/storage/nnint/struct.NNInt.html) or [Storage Types Reference](/reference/storage-types/#nnint).
+For exact SDK method signatures, see [`NNInt` Rustdoc](https://crates.thruput.network/docs/sdk/0.34.3/doc/sdk/storage/nnint/struct.NNInt.html) or [Storage Types Reference](/reference/storage-types/#nnint).
 
 ## The set_add Primitive
 

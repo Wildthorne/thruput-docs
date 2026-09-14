@@ -81,7 +81,7 @@ hogd checks:
 
 The threshold is `max(address.required_weight, claim.required_weight)`. This lets the address set a standing minimum while each transaction can require an equal or higher threshold.
 
-Contracts can inspect the root transaction's auth claim with [`get_auth_claim()`](https://groundhog.dev/docs/sdk/latest/sdk/auth_claim/fn.get_auth_claim.html), but admission has already happened by the time contract code runs.
+Contracts can inspect the root transaction's auth claim with [`get_auth_claim()`](https://crates.thruput.network/docs/sdk/0.34.3/doc/sdk/auth_claim/fn.get_auth_claim.html), but admission has already happened by the time contract code runs.
 
 ## Address Auth Data
 
@@ -120,7 +120,7 @@ Use these for source-address accounts, wallet contracts, and contracts that are 
 
 ## Caller Identity
 
-Inside a contract, [`get_caller()`](https://groundhog.dev/docs/sdk/latest/sdk/contract_op/fn.get_caller.html) returns the direct caller of the current invocation frame:
+Inside a contract, [`get_caller()`](https://crates.thruput.network/docs/sdk/0.34.3/doc/sdk/contract_op/fn.get_caller.html) returns the direct caller of the current invocation frame:
 
 ```rust
 use sdk::get_caller;
@@ -130,11 +130,11 @@ let caller = get_caller();
 
 This is Groundhog's equivalent of `msg.sender`: immediate caller identity. It is not a signer set and it does not tell you which key signed the root transaction. A root frame has no caller, so the underlying syscall errors there.
 
-Use [`get_current_address()`](https://groundhog.dev/docs/sdk/latest/sdk/contract_op/fn.get_current_address.html) when a contract needs its own address.
+Use [`get_current_address()`](https://crates.thruput.network/docs/sdk/0.34.3/doc/sdk/contract_op/fn.get_current_address.html) when a contract needs its own address.
 
 ## Contract Signature Checks
 
-Contracts can verify arbitrary messages with [`verify_signature_ed25519()`](https://groundhog.dev/docs/sdk/latest/sdk/crypto/fn.verify_signature_ed25519.html):
+Contracts can verify arbitrary messages with [`verify_signature_ed25519()`](https://crates.thruput.network/docs/sdk/0.34.3/doc/sdk/crypto/fn.verify_signature_ed25519.html):
 
 ```rust
 use sdk::verify_signature_ed25519;
@@ -146,7 +146,7 @@ This is runtime logic, separate from transaction admission. A wallet contract ca
 
 ## Auth Tokens and `Signed<T>`
 
-The SDK's [`Signed<T>`](https://groundhog.dev/docs/sdk/latest/sdk/signer/struct.Signed.html) is a typed runtime auth-token handle. It is not a cryptographic signature and it is not a durable bearer token.
+The SDK's [`Signed<T>`](https://crates.thruput.network/docs/sdk/0.34.3/doc/sdk/signer/struct.Signed.html) is a typed runtime auth-token handle. It is not a cryptographic signature and it is not a durable bearer token.
 
 An auth token carries:
 
@@ -170,7 +170,7 @@ pub struct TransferAuth {
 }
 ```
 
-Mint with [`mint_auth_token()`](https://groundhog.dev/docs/sdk/latest/sdk/signer/fn.mint_auth_token.html):
+Mint with [`mint_auth_token()`](https://crates.thruput.network/docs/sdk/0.34.3/doc/sdk/signer/fn.mint_auth_token.html):
 
 ```rust
 use sdk::*;

@@ -11,7 +11,7 @@ You cannot catch an exception within the same contract. To handle errors from an
 This page was source-checked against SDK `0.34.3`.
 :::
 
-For exact SDK item docs, see [`#[contract_exception]`](https://groundhog.dev/docs/sdk/latest/sdk/attr.contract_exception.html), [`throw`](https://groundhog.dev/docs/sdk/latest/sdk/fn.throw.html), [`ensure`](https://groundhog.dev/docs/sdk/latest/sdk/fn.ensure.html), [`OrThrow`](https://groundhog.dev/docs/sdk/latest/sdk/trait.OrThrow.html), and [Rust API Docs](/tools/rust-api-docs/).
+For exact SDK item docs, see [`#[contract_exception]`](https://crates.thruput.network/docs/sdk/0.34.3/doc/sdk/attr.contract_exception.html), [`throw`](https://crates.thruput.network/docs/sdk/0.34.3/doc/sdk/fn.throw.html), [`ensure`](https://crates.thruput.network/docs/sdk/0.34.3/doc/sdk/fn.ensure.html), [`OrThrow`](https://crates.thruput.network/docs/sdk/0.34.3/doc/sdk/trait.OrThrow.html), and [Rust API Docs](/tools/rust-api-docs/).
 
 ## Defining Errors
 

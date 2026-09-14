@@ -7,7 +7,7 @@ description: Calling other contracts from your contract.
 
 On a trait definition or inherent impl, `#[contract]` generates a client struct, named `{Interface}Client` unless you override it with `client = CustomName`. The client mirrors every public method on the trait or impl block.
 
-For exact macro behavior, see [`#[contract]` Rustdoc](https://groundhog.dev/docs/sdk/latest/sdk/attr.contract.html) or [SDK Macros](/reference/sdk-macros/#contract).
+For exact macro behavior, see [`#[contract]` Rustdoc](https://crates.thruput.network/docs/sdk/0.34.3/doc/sdk/attr.contract.html) or [SDK Macros](/reference/sdk-macros/#contract).
 
 Single error type:
 

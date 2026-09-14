@@ -5,7 +5,7 @@ description: "SDK storage types, their conflict semantics, and how to choose bet
 
 The SDK storage layer exposes the types you use to model contract state. The type you choose determines whether concurrent writes merge, conflict, or ignore each other. At the protocol level, the primitives are `NNInt`, `Bytestring`, and `RetrocausalQueue`. `Balance` and `CapacityConstraint` provide narrower APIs over the integer primitive. `Map`, `Value`, `Vector`, and `Node` provide typed composition.
 
-This page explains behavior and tradeoffs. For exact method signatures, see [Storage Types Reference](/reference/storage-types/) or [`sdk::storage` Rustdoc](https://groundhog.dev/docs/sdk/latest/sdk/storage/index.html).
+This page explains behavior and tradeoffs. For exact method signatures, see [Storage Types Reference](/reference/storage-types/) or [`sdk::storage` Rustdoc](https://crates.thruput.network/docs/sdk/0.34.3/doc/sdk/storage/index.html).
 
 ## NNInt
 
