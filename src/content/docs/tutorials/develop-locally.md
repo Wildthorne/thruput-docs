@@ -3,9 +3,9 @@ title: Develop Locally with the CLI
 description: Build, deploy, call, and inspect a Groundhog contract against a local hog-devnode.
 ---
 
-This tutorial walks through the complete local CLI loop. You will build and test a counter, start an ephemeral Groundhog node, deploy with the built-in `dev-1` local user, submit calls, and inspect committed state. The node reserves `dev-0` for its faucet.
+This tutorial walks through the complete local CLI loop. You will build and test a counter, start an ephemeral Groundhog node, create and fund a wallet for your signing key, deploy, submit calls, and inspect committed state.
 
-Local development is the fastest way to exercise deployment and RPC behavior. It does not require a hosted faucet, a hosted endpoint, or a persistent signing key.
+Local development is the fastest way to exercise deployment and RPC behavior. The node provides its own local faucet and RPC endpoint.
 
 ## Prerequisites
 
@@ -40,7 +40,7 @@ Run the guided environment check if this is your first Groundhog project:
 groundhog init
 ```
 
-Init creates global `local` and `devnet` profiles. Decline starter-project creation because the next step creates it explicitly. The local flow below selects `dev-1`, the first ordinary local user, in project configuration. A stored global key therefore cannot replace the runtime account used by this tutorial.
+Accept signing-key generation to create the stored key named `default`. Decline starter-project creation because the next step creates it explicitly. Init also creates global `local` and `devnet` profiles.
 
 ## 2. Create a Counter Project
 
@@ -51,18 +51,18 @@ groundhog new my-counter
 cd my-counter
 ```
 
+The generated `groundhog.toml` sets `default_profile = "local"`, so commands run from this project use the local profile automatically. Only `config set` requires an explicit `--profile local`; the other commands below use the project default. If you previously set `GROUNDHOG_PROFILE`, unset it first because it overrides that default.
+
 The generated project defines the private registry in `.cargo/config.toml`. Complete [Cargo access setup](/start/getting-started/#configure-cargo-access) from this project directory before the first build. The SDK downloads its test executor from public storage without FFI credentials.
 
-Select the built-in account in the project's local profile:
+Check the stored key and select it explicitly for this project's local profile:
 
 ```bash
-groundhog config set default-key dev-1 \
-  --profile local \
-  --project
-groundhog config get local --sources
+groundhog keys ls
+groundhog config set default-key default --profile local --project
 ```
 
-The project override prevents a stored global key from replacing `dev-1` in this tutorial. Runtime accounts are not stored in your key directory. The CLI derives the development signer and wallet address from the active node's runtime manifest.
+You should see `default` in the key list. If you skipped key generation during init, run `groundhog keys generate default` first. If you already use a differently named key, substitute its name in the key-selection command above and in `--key default` in step 5. The wallet created in step 5 will still be named `default`.
 
 ## 3. Build and Test Locally
 
@@ -70,8 +70,8 @@ Run the fast native tests, then the executor-backed RV32 test:
 
 ```bash
 cargo test
-groundhog build --profile local
-groundhog test --profile local
+groundhog build
+groundhog test
 ```
 
 These commands do not require a running JSON-RPC node:
@@ -109,50 +109,58 @@ The command starts one supervised `hog-devnode`, exposes JSON-RPC on `http://127
 
 The node is ephemeral. Deployments and calls share state while this process runs, but stopping it discards chain state and clears the active-runtime record.
 
-## 5. Check the Active Local Profile
+## 5. Create and Fund Your Local Wallet
 
-Return to the project terminal:
-
-```bash
-groundhog status --profile local
-groundhog balance dev-1 --profile local
-```
-
-The profile should resolve the active node endpoint, runtime manifest, and `dev-1` account. If no endpoint appears, confirm that `groundhog node` is still running and both terminals use the same user configuration. `status` can still report unrelated setup warnings; inspect the local profile fields rather than treating every warning as a node failure.
-
-The node starts `dev-1+` local users with development funds. If you create a saved wallet for a generated key instead, wallet creation prefunds only the creation transaction. Fund that wallet before its first application deployment:
+Return to the project terminal and check the active node:
 
 ```bash
-groundhog keys generate local-app
-groundhog wallet create --key local-app --name local-app --profile local
-groundhog config set default-key local-app --profile local --project
-groundhog wallet use local-app --profile local
-groundhog airdrop local-app --profile local
+groundhog status
 ```
+
+The profile should show `default` as the key and `http://127.0.0.1:9545` as the RPC URL. If no endpoint appears, confirm that `groundhog node` is still running and both terminals use the same user configuration.
+
+Create a wallet owned by your stored key, then select it for this project:
+
+```bash
+groundhog wallet create --key default --name default
+groundhog wallet use default
+groundhog wallet ls
+```
+
+Confirm wallet creation when prompted. The key signs transactions; the wallet has the on-chain address and holds HOG. `wallet ls` should show `default` as selected. Its address differs from the address printed by `keys ls`.
+
+Wallet creation prefunds the creation transaction. Request 100 local HOG to cover deployment and the subsequent calls:
+
+```bash
+groundhog airdrop default --amount 100
+groundhog balance default
+```
+
+Confirm the airdrop when prompted. The CLI uses the node's local faucet automatically. Keep this node running for the remaining steps.
 
 ## 6. Dry-Run and Deploy
 
 Prepare a signed deployment without broadcasting it:
 
 ```bash
-groundhog deploy --profile local --dry-run
+groundhog deploy --dry-run
 ```
 
-Then deploy the RV32 artifact:
+Then deploy the RV32 artifact and confirm when prompted:
 
 ```bash
-groundhog deploy --profile local
+groundhog deploy
 ```
 
 The CLI prints the contract address and saves `my-counter` as an alias under `[profile.local.contracts]` in `groundhog.toml`.
 
 ## 7. Initialize and Call the Counter
 
-Deployment and initialization are separate operations. Initialize the counter once:
+Deployment and initialization are separate operations. Initialize the counter once, confirming the call when prompted:
 
 ```bash
-groundhog call my-counter initialize 10 --profile local
-groundhog view my-counter get --profile local
+groundhog call my-counter initialize 10
+groundhog view my-counter get
 ```
 
 The first view should return `10`.
@@ -160,8 +168,8 @@ The first view should return `10`.
 Submit another state change:
 
 ```bash
-groundhog call my-counter increment 5 --profile local
-groundhog view my-counter get --profile local
+groundhog call my-counter increment 5
+groundhog view my-counter get
 ```
 
 The counter should now return `15`.
@@ -169,7 +177,7 @@ The counter should now return `15`.
 Use JSON mode when testing scripts or automation:
 
 ```bash
-groundhog --json view my-counter get --profile local \
+groundhog --json view my-counter get \
   | jq -e '.ok == true and .data.schemaVersion == 1 and .data.returnValue == 15'
 ```
 
@@ -178,8 +186,8 @@ groundhog --json view my-counter get --profile local \
 Prepare a call without broadcasting it:
 
 ```bash
-groundhog call my-counter increment 100 --profile local --dry-run
-groundhog view my-counter get --profile local
+groundhog call my-counter increment 100 --dry-run
+groundhog view my-counter get
 ```
 
 The value should remain `15`.
@@ -203,16 +211,6 @@ The starter uses `groundhog-json-rpc-client` to connect directly to the node.
 Use `GROUNDHOG_RPC_URL` and `GROUNDHOG_CONTRACT_ADDRESS` for your own RPC
 assertions.
 
-Node.js applications can load the same first `local_user`, normally `dev-1`, from the active runtime without copying deterministic keys:
-
-```ts
-import { loadLocalDevAccount } from "@groundhogchain/client/local-dev";
-
-const local = await loadLocalDevAccount();
-```
-
-`roleOffset` selects later `local_user` accounts in derivation-index order. This helper is for local development only. See the [TypeScript SDK](/tools/typescript-sdk/) for client and wallet setup.
-
 Use this integration mode for automated RPC tests. For interactive development
 across several commands, use the long-running `groundhog node` flow above.
 
@@ -222,13 +220,20 @@ across several commands, use the long-running `groundhog node` flow above.
 
 Use the `groundhog` and `hog-devnode` binaries from the same Groundhog client bundle, preserve the extracted directory layout, and add its `bin` directory to `PATH`. For a custom location, set `GROUNDHOG_DEVNODE_BINARY` to that bundle's `hog-devnode` executable.
 
-### `dev-1` is unavailable
+### The wrong key or wallet is selected
 
-`dev-1` only exists while commands can load the active local runtime manifest. Keep `groundhog node` running and make sure `[profile.local]` has `network = "local"`. `dev-0` is present too, but it is reserved for local faucet transactions.
+From the project directory, repeat the explicit selections:
 
-### A stored key is selected instead
+```bash
+groundhog config set default-key default --profile local --project
+groundhog wallet use default
+```
 
-Run `groundhog config set default-key dev-1 --profile local --project`. The project profile takes precedence over the global key selected by `groundhog keys use`.
+If the wallet has not been created yet, complete step 5 first. Use your actual key name if it differs from `default`.
+
+### The node was restarted
+
+Stopping the ephemeral node discards its wallets, funds, and deployed contracts. Your stored key and project configuration remain. Repeat wallet creation, funding, deployment, and initialization against the new node before continuing.
 
 ### Protocol mismatch
 
