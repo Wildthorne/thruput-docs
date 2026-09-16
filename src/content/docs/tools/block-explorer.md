@@ -3,11 +3,11 @@ title: Block Explorer
 description: Use the devnet explorer to look up transactions, inspect receipts and events, and check address activity.
 ---
 
-Use the [devnet explorer](https://explorer-production-c351.up.railway.app) to look up transactions, inspect receipts and events, and check address balances and recent activity.
+Use the [devnet explorer](https://explorer.thruput.network/) to look up transactions, inspect receipts and events, and check address balances and recent activity.
 
 ## Look Up a Transaction or Address
 
-1. Open the [devnet explorer](https://explorer-production-c351.up.railway.app).
+1. Open the [devnet explorer](https://explorer.thruput.network/).
 2. Paste a transaction hash or address into the search field. Use the full `0x`-prefixed, 32-byte value (64 hexadecimal characters after `0x`).
 3. Select **Search**.
 
@@ -34,8 +34,8 @@ Address transaction history combines transactions whose root invocation targets 
 Copy the page URL to share a transaction or address:
 
 ```text
-https://explorer-production-c351.up.railway.app/tx/<transaction-hash>
-https://explorer-production-c351.up.railway.app/address/<address>
+https://explorer.thruput.network/tx/<transaction-hash>
+https://explorer.thruput.network/address/<address>
 ```
 
 ## Inspect State Without an Explorer
