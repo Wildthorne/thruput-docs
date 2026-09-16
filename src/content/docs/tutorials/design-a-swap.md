@@ -16,7 +16,7 @@ generated client.
 [UniswapV2Pair]: https://github.com/Uniswap/v2-core/blob/master/contracts/UniswapV2Pair.sol
 [UniswapV2PeripheryLibraries]: https://github.com/Uniswap/v2-periphery/tree/master/contracts/libraries/
 
-:::note[Naming]
+:::note[Sources]
 For your reference while following along, the example swap application
 currently lives in the `groundhog-examples` repository.
 :::
@@ -71,7 +71,7 @@ queue is processed later, in a transaction of its own.
   └──────────┘
 ```
 
-The queue is an `RCQ`, a "retro-causal queue" provided by the SDK. Inserts
+The queue is a Groundhog primitive called `RCQ` ("retro-causal queue"). Inserts
 **commute**: two transactions inserting in the same block do not conflict. Many
 requests can be accepted together.
 
@@ -127,8 +127,8 @@ scheduling capacity. (See [Execution](/programming-model/execution/).)
 
 A crank runs until the queue is empty or the frame's remaining gas is no longer
 sufficient to run another request, so **the caller chooses the batch size by
-choosing a gas limit**. No batch size is fixed inside the contract for
-everyone. A caller can request a small batch, subject to the minimum described below. Someone clearing a backlog asks for a large one. (The
+choosing a gas limit**. A caller can request a small batch, subject to the
+minimum described below. Someone clearing a backlog asks for a large one. (The
 `batch-driver` helper provides `gas_for_batch` for converting a request count
 into the necessary gas limit.)
 
