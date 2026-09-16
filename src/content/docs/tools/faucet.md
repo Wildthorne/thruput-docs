@@ -3,6 +3,10 @@ title: Faucet
 description: Create a Devnet wallet and request HOG through the hosted faucet.
 ---
 
+Use the [hosted faucet](https://thruput-faucet.up.railway.app) to request Devnet HOG in your browser.
+
+## CLI
+
 Use the faucet to create a Devnet wallet and fund it before deploying an application. The hosted service supports two CLI workflows:
 
 - `groundhog wallet create` prefunds a future address, deploys its wallet contract, and initializes it for your signing key.
