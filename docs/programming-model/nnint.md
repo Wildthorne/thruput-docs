@@ -15,7 +15,7 @@ Every NNInt storage location maintains two pending values during a transaction:
 - **set**: `i128` -- absolute base value
 - **add**: `i128` -- accumulated delta
 
-The low-level operation is `set_add(set_value, add_value, flags)`. It replaces both pending values. The final value is `set + add`, subject to overflow, reservation, and floor checks.
+The low-level operation is `set_add(set_value, add_value)`. It replaces both pending values. The final value is `set + add`, subject to overflow, reservation, and floor checks.
 
 Despite the protocol name `NonnegativeInt`, current source allows an explicit negative `set`. The invariant is not simply `value >= 0`; it is:
 
