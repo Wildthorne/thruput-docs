@@ -78,7 +78,7 @@ Key-value map. `K` must implement `WriteXDR`. `V` must implement `StorageType`.
 |--------|-----------|-------------|
 | `at` | `fn at(&self, entry_key: &K) -> SlotRef<'_, Self, V>` | Read-only borrow of the value at `entry_key`. Returns a `SlotRef` that derefs to `V`. |
 | `at_mut` | `fn at_mut(&mut self, entry_key: &K) -> SlotMut<'_, Self, V>` | Mutable borrow of the value at `entry_key`. Returns a `SlotMut` that derefs to `V`. |
-| `at_mut_exclusive` | `fn at_mut_exclusive(&mut self, entry_key: &K) -> SlotMut<'_, Self, V>` | Mutable borrow with an exclusive lock. One writer per key per block. |
+| `at_mut_exclusive` | `fn at_mut_exclusive(&mut self, entry_key: &K) -> SlotMut<'_, Self, V>` | Mutable borrow with an exclusive lock. One writer per key per block. Later writes to the entry in the same transaction keep the lock request. |
 | `at_disjoint_mut` | `fn at_disjoint_mut<const N: usize>(&mut self, keys: [&K; N]) -> DisjointMut<'_, Self, V, N>` | Mutably borrow N elements at once. Panics if any keys are equal. |
 | `at_disjoint_unchecked_mut` | `unsafe fn at_disjoint_unchecked_mut<const N: usize>(&mut self, keys: [&K; N]) -> DisjointMut<'_, Self, V, N>` | Mutably borrow N elements without duplicate checking. Caller must ensure all keys are disjoint. |
 | `keypath` | `fn keypath(&self) -> &Keypath` | Reference to the map's root keypath. |
@@ -231,6 +231,26 @@ Trait for storage types whose data can be fully deleted. Leaf types (`Balance`, 
 |--------|-----------|-------------|
 | `delete` | `fn delete(&mut self)` | Delete using the keypath's own locking semantics. |
 | `delete_exclusive` | `fn delete_exclusive(&mut self)` | Delete with an exclusive lock, regardless of keypath flag. |
+
+## Flaggable Trait
+
+Reads and changes the storage flags the current transaction requests for a leaf handle's key. Implemented by `Value`, `NNInt`, `Balance`, and `Bytestring`. `StorageFlags` is an alias of `StorageDeltaFlags`. `ExclusiveLock` is the only flag.
+
+| Method | Signature | Description |
+|--------|-----------|-------------|
+| `flags` | `fn flags(&self) -> StorageFlags` | The key's flags as seen by the current call frame. `None` if the key has no pending write. |
+| `set_flags` | `fn set_flags(&mut self, flags: StorageFlags)` | Add `flags` (bitwise OR). Throws unless a write to the key is pending in the current call frame. |
+| `clear_flags` | `fn clear_flags(&mut self)` | Remove every flag. Does nothing if the key has no pending write. |
+
+The same operations on a raw `StorageKey`, re-exported at the crate root from `sdk::sys_exn::flags`:
+
+| Function | Signature | Description |
+|----------|-----------|-------------|
+| `storage_flags` | `fn storage_flags(key: &StorageKey) -> StorageDeltaFlags` | Read the key's flags. |
+| `set_storage_flags` | `fn set_storage_flags(key: &StorageKey, flags: StorageDeltaFlags)` | Add flags. Throws if no write is pending or a flag is unknown. |
+| `clear_storage_flags` | `fn clear_storage_flags(key: &StorageKey)` | Remove every flag. |
+
+`sdk::sys_result::flags` has non-throwing versions that return `Result`. See [Advanced Patterns: Lock Requests](/programming-model/advanced/#lock-requests) for usage.
 
 ---
 

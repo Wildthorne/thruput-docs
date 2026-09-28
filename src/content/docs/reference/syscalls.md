@@ -357,9 +357,9 @@ Deletes the object at `key`. Leaves the key's [storage flags](#storage-flags) un
 
 ## Storage Flags
 
-A transaction keeps one `StorageDeltaFlagSet` per storage key, separate from its writes. Every change the transaction commits on a key carries that key's flags. `ExclusiveLock` (`0x1`) is the only flag: it gives the key's change an exclusive lock, so no concurrent transaction's change to the key merges with it.
+A transaction keeps one `StorageDeltaFlagSet` per storage key, separate from its writes. Every change the transaction commits on a key carries that key's flags. `ExclusiveLock` (`0x1`) is the only flag: it gives the key's change an exclusive lock for the whole block, so no concurrent transaction in the block can modify the key.
 
-Writes never change a key's flags. A lock requested after one write stays through later writes to the key in the same transaction, including writes from other call frames, until `ClearStorageFlags`. Flag changes follow call frames like writes do: a successful frame passes them to its caller, and a reverted frame or failed `try_invoke` discards them.
+Writes never change a key's flags. A lock requested after one write stays on the key through later writes in the same transaction, including writes from other call frames, until `ClearStorageFlags` withdraws it. Flag changes follow call frames like writes do: a successful frame passes them to its caller, and a reverted frame or failed `try_invoke` discards them.
 
 Each flag syscall costs the same storage access gas as a write and does not read the ledger.
 
