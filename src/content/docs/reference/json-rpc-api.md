@@ -274,7 +274,7 @@ Get block information by height.
 ```
 
 :::caution[Not Yet Implemented]
-The current gateway returns `-32052` for this method.
+The hosted gateway (`hog-gateway`) has no block query backend yet and returns `-32052` for this method.
 :::
 
 ### `groundhog_pendingTransactionCount`
@@ -285,8 +285,8 @@ Get the number of transactions in the scheduler.
 
 **Returns:** nonnegative integer.
 
-:::caution[Not Yet Implemented]
-The current gateway returns `-32052` for this method.
+:::caution[Gateway Only]
+The hosted gateway (`hog-gateway`) returns `-32052` for this method. `groundhog node` serves it for the local chain.
 :::
 
 ### `groundhog_getEvents`

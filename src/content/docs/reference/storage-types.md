@@ -131,6 +131,7 @@ A typed storage slot for serialized values. All operations are immediate syscall
 | `set_exclusive` | `fn set_exclusive(&mut self, value: &T)` | Serialize and store the value with an exclusive lock, regardless of keypath flag. |
 | `try_set_exclusive` | `fn try_set_exclusive(&mut self, value: &T) -> Result<(), LibraryExn>` | Exclusive store that reports failure instead of aborting. |
 | `load_mut` | `fn load_mut(&mut self) -> ValueMut<'_, T>` | Load the value and return a mutable guard. Flushes back to storage on drop. Requires `T: WriteXDR + ReadXDR`. |
+| `key` | `fn key(&self) -> &StorageKey` | Reference to the value's resolved storage key. |
 
 Implements `Deletable`.
 
@@ -183,7 +184,6 @@ The typed wrapper lives in `sdk::storage`. Lower-level free functions (operating
 | `try_peek_raw` | `fn try_peek_raw(&self) -> Result<Box<[u8]>, LibraryExn>` | Raw-bytes peek without aborting. |
 | `peek_sized` | `fn peek_sized<const N: usize>(&self) -> [u8; N]` | Fixed-size peek. Aborts on size mismatch. |
 | `try_peek_sized` | `fn try_peek_sized<const N: usize>(&self) -> Result<[u8; N], LibraryExn>` | Fixed-size peek without aborting. |
-| `keypath` | `fn keypath(&self) -> &Keypath` | Reference to the queue's root keypath. |
 | `key` | `fn key(&self) -> &StorageKey` | Reference to the queue's resolved storage key. |
 
 Implements `StorageType` and `Deletable`.

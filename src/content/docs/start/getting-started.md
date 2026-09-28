@@ -200,6 +200,7 @@ The starter test confirms that the node is live and the contract was deployed. A
 ```
 my-counter/
   Cargo.toml              # SDK dependency, RV32 bin wrapper, dev feature toggle
+  AGENTS.md               # Groundhog instructions for coding agents working in this project
   build.rs                # Activates the RPC test during integration runs
   groundhog.toml          # project profile overlays, selection, and contract aliases
   rust-toolchain.toml     # Rust toolchain and targets

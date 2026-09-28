@@ -160,7 +160,7 @@ static NONCE: SHA256Hash = sdk::sha256_static!("COUNTER_NONCE");
 fn setup() -> (TestEnvironmentHandle, SHA256Hash) {
     let env = TestEnvironment::no_cost();
     let test_contract = register_mock_contract(&env);
-    let contract_hash = test_contract.as_hash().clone();
+    let contract_hash = *test_contract.as_hash();
     (env, contract_hash)
 }
 

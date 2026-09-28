@@ -207,9 +207,10 @@ Scripts should check `ok` and the command-specific `data.schemaVersion` before r
 | `wallet.create` |                    4 |
 | `new`           |                    1 |
 | `build`         |                    1 |
-| `status`        |                    1 |
+| `status`        |                    2 |
 | `balance`       |                    1 |
 | `storage`       |                    1 |
+| `view`          |                    1 |
 | `keys.export`   |                    1 |
 
 ## Build and Test
