@@ -392,7 +392,7 @@ These EVM features have no Groundhog equivalent. Set your expectations:
 | `delegatecall` / proxy patterns | Does not exist | Contracts are immutable. Deploy new versions at new addresses. |
 | `selfdestruct` | Does not exist | Contracts are permanent |
 | `receive()` / `fallback()` | Does not exist | All methods must be explicitly defined |
-| `block.timestamp` / `block.number` | Block height is exposed; block timestamp is not currently an SDK contract API | Use `get_block_height()` when height-based logic is appropriate |
+| `block.timestamp` / `block.number` | `get_block_timepoint()` / `get_block_height()` | The timepoint is coarse consensus time chosen by the proposer, not a per-transaction clock |
 | `gasleft()` | `stats::gas_remaining()` | Available for execution control, but gas costs zero tokens |
 | Contract inheritance | Does not exist | Use Rust traits and composition |
 | 24KB EVM runtime-code limit | Different limit | Attached Groundhog contract blobs are capped at 256 KiB |

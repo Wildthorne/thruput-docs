@@ -87,7 +87,7 @@ Markdown files live in `src/content/docs/`, organized by section. The sidebar is
 | How It Works | `how-it-works/` | Architecture, execution model, contracts |
 | Programming Model | `programming-model/` | Working model for contract authors: execution, storage types, NNInt, testing |
 | Reference | `reference/` | Storage types, syscalls, SDK macros, error handling |
-| Migration Guides | `migration/` | Stellar, EVM, Solana migration paths |
+| Ecosystem Guides | `ecosystem/` | EVM, Solana, and Stellar comparison guides |
 | Community | `community/` | Contributing, security, roadmap |
 
 ## Adding a Page
