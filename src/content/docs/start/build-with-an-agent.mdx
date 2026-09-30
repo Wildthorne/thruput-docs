@@ -17,13 +17,13 @@ Keep `groundhog docs` running in a terminal. Give your agent the printed URL, no
 
 An agent running on another machine cannot reach your localhost. In that case, give it saved pages and the `--skill` output. Keep credentials and signing keys out of the conversation.
 
-The bundled site is a snapshot from the CLI build, so it can predate website corrections. CLI `0.17.0` includes an older snapshot; use its own `--skill` output for current agent guidance. See [Local Documentation](/tools/groundhog-cli/#local-documentation) for snapshot identity.
+The bundled site is fixed at CLI build time and can predate website corrections. CLI `0.19.0` embeds an older site with guide `0.17.0`; its own `--skill` output is the authority for that installation. See [Local Documentation](/tools/groundhog-cli/#local-documentation) for snapshot identity.
 
 ## Before the CLI is installed
 
 1. Read the project's `AGENTS.md` if you are working in an existing repository. Preserve existing work and configuration.
 2. Check the developer's operating system, architecture, Rust installation, and whether `groundhog` is already available.
-3. Follow [Getting Started](/start/getting-started/#choose-and-install-a-client-bundle) for client-bundle installation and registry setup. Early access still requires private Cargo registry access. The SDK downloads its test executor from public storage without FFI credentials. Never ask the developer to paste credentials or signing keys into the agent conversation.
+3. Follow [Getting Started](/start/getting-started/#choose-and-install-the-cli) for CLI/runtime installation and registry setup. Early access requires private Cargo registry access. The SDK downloads its test executor from public storage without FFI credentials. Never ask the developer to paste credentials or signing keys into the agent conversation.
 4. For a hackathon or shared Devnet, use the CLI/client bundle selected by the organisers. Do not choose a newer prerelease simply because its guide is available here. See [Develop Locally](/tutorials/develop-locally/) for the client-bundle layout and [Develop on Devnet](/tutorials/develop-on-devnet/) for matching the deployed network.
 5. If access or a compatible runtime is missing, report the exact missing requirement and ask the developer to complete the access step. Do not work around authentication or substitute an arbitrary SDK or node version.
 

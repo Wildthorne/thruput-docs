@@ -34,7 +34,7 @@ Devnet may be reset. A reset changes its network hash and removes existing walle
 
 ## 1. Initialize the CLI
 
-Use the Groundhog client bundle installed in the local-development tutorial and confirm the CLI version:
+Start with the CLI installed in the local tutorial, then check it against the hosted deployment below:
 
 ```bash
 groundhog --version
@@ -66,11 +66,11 @@ DEVNET_VERSION_JSON=$(curl -fsS -H 'content-type: application/json' \
 echo "$DEVNET_VERSION_JSON" \
   | jq -e '.result | {wireFormat, implementation, releaseVersion}'
 DEVNET_RELEASE_VERSION=$(echo "$DEVNET_VERSION_JSON" \
-  | jq -er '.result.releaseVersion | select(type == "string" and length > 0)')
-printf 'Use Groundhog client bundle v%s\n' "$DEVNET_RELEASE_VERSION"
+  | jq -r '.result.releaseVersion // "unavailable"')
+printf 'Reported packaging release: %s\n' "$DEVNET_RELEASE_VERSION"
 ```
 
-`releaseVersion` identifies the matching [Groundhog packaging release](https://github.com/groundhogchain/packaging/releases). Before continuing, download that release's client archive for your platform, even if a newer packaging release exists. Versioned extracted directories can coexist; point `GROUNDHOG_CLIENT_HOME` and `PATH` at the matching directory as shown in the local-development tutorial, then rerun `groundhog --version`.
+When present, `releaseVersion` identifies a validated [packaging release](https://github.com/groundhogchain/packaging/releases). It and `bundleManifestDigest` are diagnostics and may be absent. Use `wireFormat` for RPC compatibility, and confirm the deployed contract/interface family before using generated bindings. If deployment identity is unavailable, confirm it with the operator rather than guessing a bundle. The local 0.19.0 test recipe does not prove that Devnet has upgraded. Select any required older client/runtime explicitly and keep its generated bindings coordinated.
 
 Hosted transaction signatures also require the live network hash. Read it from the node, validate its format, remove the RPC's `0x` prefix, and save it in the Devnet profile:
 

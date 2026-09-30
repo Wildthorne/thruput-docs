@@ -1,366 +1,306 @@
 ---
 title: TypeScript SDK
-description: Connect to Groundhog, manage accounts, and execute typed contract calls with TypeScript.
+description: Connect to Groundhog, read typed contract data, and execute and observe wallet transactions.
 ---
 
-`@groundhogchain/client` connects to JSON-RPC, performs a network identity handshake, manages wallet accounts, and executes invocations built by generated contract bindings.
+`@groundhogchain/client` provides RPC actions, accounts, wallet execution, and the runtime used by generated contract bindings.
+
+This page shows individual operations. For a complete runnable app, follow
+[Work with Groundhog from TypeScript](/tutorials/work-with-groundhog-from-typescript/).
 
 ## Install
 
-The packages require Node.js `22.12.0` or newer and are hosted on GitHub Packages. Add the registry and a token with `read:packages` to your npm configuration:
+Use Node.js 22.12.0 or newer. The packages are hosted on GitHub Packages; configure a token with `read:packages`:
 
 ```ini
 @groundhogchain:registry=https://npm.pkg.github.com
 //npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}
 ```
 
-For release `0.1.27`, use client `0.8.0` with protocol and contract-spec `0.11.0`. The TypeScript packages are published separately from the release bundle. Install these coordinated versions:
+This guide targets client 0.12.0 with CLI 0.19.0 codegen.
+
+If using `gh auth token`, first grant that login package-read access once with
+`gh auth refresh -h github.com -s read:packages`. A GitHub login that can read
+repositories does not necessarily have permission to download packages.
+
+Install the coordinated packages:
 
 ```bash
 NODE_AUTH_TOKEN="$(gh auth token)" npm install \
-  @groundhogchain/client@0.8.0 \
-  @groundhogchain/protocol@0.11.0 \
-  @groundhogchain/contract-spec@0.11.0
+  @groundhogchain/client@0.12.0 \
+  @groundhogchain/protocol@0.12.0 \
+  @groundhogchain/contract-spec@0.12.0
 ```
 
-## Connect to a Cluster
+The CLI uses SDK 0.41.1 and standard interfaces 0.1.41. Its managed local node is 0.1.29-rc.4. These are component versions, not a new packaging-bundle version. Check [Devnet identity](/tutorials/develop-on-devnet/#2-configure-devnet-identity) before using a hosted endpoint.
 
-Client creation is asynchronous. A cluster-aware client calls `groundhog_networkInfo` before it returns:
+## Connect to a Cluster
 
 ```ts
 import { createGroundhogClient, devnet, toHex0x } from "@groundhogchain/client";
 
-const client = await createGroundhogClient({
-  cluster: devnet(),
-});
-
-const [network, tip, version] = await Promise.all([
-  client.getNetworkInfo(),
-  client.getChainTip(),
-  client.getVersion(),
-]);
-
-console.log(toHex0x(network.networkHash), tip.height, version.wireFormat);
+const client = await createGroundhogClient({ cluster: devnet() });
+const [tip, version] = await Promise.all([client.getChainTip(), client.getVersion()]);
+console.log(toHex0x(client.network.networkHash), tip.height, version.wireFormat);
+console.log(version.releaseVersion, version.bundleManifestDigest);
 ```
 
-The predefined helpers are `devnet()`, `localnet()`, and `mainnet()`. `mainnet()` declares the cluster name only; there is no mainnet endpoint yet. Use `defineCluster()` for a reusable custom cluster. `devnet()` supplies a default endpoint and declares airdrop support, but it does not pin a network hash. It completes the identity handshake and uses the identity returned by that endpoint for signing.
+Client creation is asynchronous. A cluster-aware client fetches `groundhog_networkInfo` and compares it with a configured hash pin. `devnet()` supplies an endpoint and airdrop capability but no hash pin. Use `devnet({ networkHash: expectedNetworkHash })` when you must reject a different network.
 
-Pin the identity when the application must reject an endpoint for a different network:
+`localnet()` supplies the local endpoint and shared local hash; pair URL overrides with that node's runtime manifest. `mainnet()` has no default endpoint. `defineCluster()` creates a reusable custom descriptor. Declared cluster capabilities are expectations, not server capability discovery.
 
-```ts
-const client = await createGroundhogClient({
-  cluster: devnet({ networkHash: expectedNetworkHash }),
-});
-```
-
-`localnet()` has a default endpoint and the shared local network hash. Separate local runtimes can use that same hash, so an RPC URL override alone does not identify one runtime. Pair it with the runtime manifest for that node.
-
-Cluster capabilities are declared expectations. They are not server capability discovery. An unqualified client skips the connection-time identity comparison and requires an explicit network hash when bound to a wallet:
+Release fields can be `null`. They identify an installation for diagnosis; use `wireFormat` for RPC compatibility. An unqualified client skips identity validation and needs an explicit `networkHash` when bound to a wallet:
 
 ```ts
-import { createGroundhogClient, HttpTransport } from "@groundhogchain/client";
-
+import { HttpTransport } from "@groundhogchain/client";
 const client = await createGroundhogClient({
   transport: new HttpTransport("https://rpc.example.com"),
 });
 ```
 
+## Exact Amounts and Common Types
+
+Common types and constructors such as `ContractAddress`, `gasAmount`, hashes, and entrypoint IDs are exported by the client. Protocol-only symbols such as `HOG_ADDRESS`, `bitMap`, and `weight` remain in `@groundhogchain/protocol`.
+
+```ts
+import { parseUnits, formatUnits } from "@groundhogchain/client";
+
+const amount = parseUnits("12.05", 2); // 1205n
+console.log(formatUnits(amount, 2)); // "12.05"
+```
+
+Both functions accept 0–255 decimals and signed amounts. Parsing rejects whitespace, exponents, and excess precision without rounding. `ParseUnitsError.code` is `malformed` or `precision`; invalid decimal counts throw `RangeError`. Applications check positivity, ABI bounds, and display rounding separately. HOG uses seven decimal places.
+
 ## Choose an Account Model
 
-Groundhog supports two account models:
+- A **pubkey account** derives an address from a public key and nonce. It uses native-compatible DefaultWallet behavior without deploying a wallet.
+- A **source-address account** is an existing smart-wallet contract. Local bootstrap accounts use DevWallet.
 
-- A **pubkey account** derives its address from one public key and a nonce. It can sign transactions immediately and uses the network's DefaultWallet behavior without deploying a wallet contract.
-- A **source-address account** is an existing smart-wallet contract at its source address. Its contract defines how application invocations are wrapped and authorized. DevWallet is the smart wallet used by local development accounts.
-
-Create an ephemeral pubkey account:
+### Bind a Wallet Client
 
 ```ts
 import { randomBytes } from "node:crypto";
-import { PrivateKeySigner, createPubkeyAccount } from "@groundhogchain/client";
+import { PrivateKeySigner, createPubkeyAccount, createWalletClient } from "@groundhogchain/client";
 
-const account = createPubkeyAccount({
-  signer: new PrivateKeySigner(randomBytes(32)),
-});
-```
-
-Persist keys through an application-appropriate secret store. Do not print or commit them.
-
-## Bind a Wallet Client
-
-`createWalletClient()` binds the account, its signers, the signing network, and the wallet invocation adapter to one client instance. A cluster-aware client supplies the network identity learned during its handshake. When the cluster has a network hash pin, client creation compares the two before returning. Pubkey accounts receive `defaultWalletAdapter` automatically:
-
-```ts
-import { createWalletClient } from "@groundhogchain/client";
-
+const account = createPubkeyAccount({ signer: new PrivateKeySigner(randomBytes(32)) });
 const wallet = createWalletClient({ client, account });
 ```
 
-Each client instance can be bound once because wallet actions close over account-specific state. Create another client instance for another account.
+This example's key is ephemeral. Applications need appropriate secret storage. Wallet binding creates an independent object without changing the public client; multiple accounts can share that client.
 
 ## Fund and Execute a Call
 
-Development clusters expose a typed airdrop action. The wallet form defaults the recipient to its bound account:
-
 ```ts
+import { gasAmount, parseUnits } from "@groundhogchain/client";
+import { HOG_ADDRESS } from "@groundhogchain/protocol";
+import { ERC20 } from "@groundhogchain/client/contracts";
+
 const airdrop = await wallet.requestAirdrop();
+if (airdrop.status.result !== "ok") throw new Error("Airdrop execution failed");
 
-if (airdrop.status.result !== "ok") {
-  throw new Error(`Airdrop execution failed: ${airdrop.status.result}`);
-}
+const invocation = ERC20.v0_1.transfer.invocation(HOG_ADDRESS, gasAmount(500_000n), {
+  receiver, // an already funded recipient in this small-transfer example
+  amount: parseUnits("0.0001", 7),
+});
+const { txHash, receipt } = await wallet.executeAndWait({
+  invocation,
+  gasLimit: gasAmount(1_000_000n),
+});
+console.log(txHash, receipt.gasUsed);
 ```
 
-`requestAirdrop()` generates an idempotency nonce, retries pending attempts, and waits for commitment. Commitment does not imply successful execution, so inspect `status.result`. A timeout or cancellation stops polling but does not prove that the transfer failed. To recover across restarts, persist a 1-to-32-byte nonce and pass it as `clientNonce`. Use `requestAirdropAttempt()` to control polling yourself.
+Gas is not burned, but declared root gas reserves scheduling capacity against the sender's free HOG. Storage deposits are separate and charged at the address that owns the data. These transfer budgets are workload-specific, not universal defaults. `gasUsed` reports consumed gas, not a token fee or unused-gas refund.
 
-Generated bindings build typed application invocations. Execute the invocation through the bound wallet adapter:
+A sufficient first HOG credit can fund a new recipient's balance-item deposit. A small first credit can fail; a prior airdrop is not universally required. Deposit amounts depend on runtime configuration. See [Storage Economics](/how-it-works/storage-economics/).
+
+`executeAndWait()` requires successful committed execution. `execute()` returns a submitted hash; `waitForTransactionReceipt()` only waits for a receipt, so inspect its execution result. `prepareExecution()` exposes the wrapped transaction before signing. Expiry defaults to 100 blocks after the tip and the transaction nonce is random. Explicit overrides remain available.
+
+`requestAirdrop()` retains one idempotency nonce while polling pending attempts. Preserve `clientNonce` to recover across restarts; use `requestAirdropAttempt()` for application-controlled polling. A timeout does not prove the funding failed.
+
+## Typed Calls and Observation Recovery
+
+DefaultWallet preserves child return buffers. Retain their generated decoders with `call()`:
 
 ```ts
-import { HOG_ADDRESS, gasAmount } from "@groundhogchain/protocol";
-import { DefaultWallet, ERC20 } from "@groundhogchain/client/contracts";
-
-const receiver = createPubkeyAccount({
-  signer: new PrivateKeySigner(randomBytes(32)),
-}).address;
-const receiverAirdrop = await client.requestAirdrop({ recipient: receiver });
-if (receiverAirdrop.status.result !== "ok") {
-  throw new Error(`Receiver airdrop failed: ${receiverAirdrop.status.result}`);
-}
-const transfer = ERC20.transfer.invocation(HOG_ADDRESS, gasAmount(500_000n), {
-  receiver,
-  amount: 1_000n,
+const call = ERC20.v0_1.transfer.call({
+  contract: tokenAddress,
+  gasLimit: gasAmount(500_000n),
+  args: { receiver, amount: 1_000n },
 });
-
-const transferTxHash = await wallet.execute({
-  invocation: transfer,
-  gasLimit: gasAmount(10_000_000n),
+const execution = await wallet.executeCallsAndWait({
+  calls: [call],
+  gasLimit: gasAmount(1_000_000n),
 });
 ```
 
-`execute()` prepares a fresh transaction, wraps the application invocation through DefaultWallet, signs for the connected network, and submits it. Use `prepareExecution()` to inspect the wrapped transaction before signing. Both accept `nonce`, `blockExpiryHeight`, `expiryBlocks`, and `contractsToDeploy` overrides.
+The returned `values` retain call order and types. `TransactionExecutionError` contains a failed committed receipt. `ExecutionDecodeError` contains a successful receipt whose return data could not be decoded. Neither warrants resubmission. DevWallet discards child returns, so use successful execution plus a view or events with that wallet.
 
-Without overrides, `prepareTransaction()` uses a cryptographically random unsigned 64-bit nonce and expires 100 blocks after the current chain tip. Pass either `blockExpiryHeight` or `expiryBlocks`, not both.
+If `TransactionObservationError` is thrown, keep its `txHash` and causes. Query that hash on the original network instead of automatically creating a replacement transaction. A receipt proves commitment, while its execution result determines success; `recentFailure` is advisory and `unknown` is inconclusive.
+
+External-wallet helpers require an `onSigned` callback that durably saves signed evidence before broadcast. See [Wallet Integration](/tools/wallet-integration/) for that flow and the explicit prepare/sign/persist/submit path.
 
 ## Use a Local DevWallet
 
-Node.js applications can load an account created by `groundhog node`:
+Use a client connected to the same local node as the account's runtime manifest:
 
 ```ts
 import { bitMap, weight } from "@groundhogchain/protocol";
-import {
-  createGroundhogClient,
-  createSourceAddressAccount,
-  createWalletClient,
-  devWalletAdapter,
-  localnet,
-} from "@groundhogchain/client";
+import { createSourceAddressAccount, createWalletClient, devWalletAdapter } from "@groundhogchain/client";
 import { loadLocalDevAccount } from "@groundhogchain/client/local-dev";
 
 const local = await loadLocalDevAccount();
-const client = await createGroundhogClient({
-  cluster: localnet({ networkHash: local.networkHash }),
-});
 const account = createSourceAddressAccount({
   address: local.address,
   signers: [{ signer: local.signer, publicKeyId: 0n }],
   allowedKeys: bitMap(0x01n),
   requiredWeight: weight(1n),
 });
-const wallet = createWalletClient({
-  client,
-  account,
-  invocationAdapter: devWalletAdapter,
-});
+const wallet = createWalletClient({ client, account, invocationAdapter: devWalletAdapter });
 ```
 
-The loader selects the first `local_user` by default, normally `dev-1`. `roleOffset` selects another account after sorting by derivation index. It reads `GROUNDHOG_RUNTIME_MANIFEST` or the active runtime from Groundhog config and returns the address, signer, role, index, key name, and network hash.
+The loader selects the first `local_user`, normally `dev-1`, from `GROUNDHOG_RUNTIME_MANIFEST` or active config. A Localnet URL override must identify the same node as the manifest. These deterministic keys are for local testing only.
 
-:::caution[Local keys]
-Local development signers are deterministic. Never use them on production networks or with funds of value.
-:::
-
-Source-address accounts need an explicit invocation adapter before they expose `prepareExecution()` and `execute()`. `devWalletAdapter` wraps ordinary application calls through DevWallet. Custom wallet contracts can use `defineWalletInvocationAdapter()`.
-
-### Deploy Through DevWallet
-
-Deployment is a wallet-specific root operation. Build the generated DevWallet deployment invocation, then use the wallet client's explicit root path:
+### Deploy Through a Wallet
 
 ```ts
-import { readFile } from "node:fs/promises";
-import {
-  ContractType,
-  gasAmount,
-  sha256Hash,
-  type Contract,
-} from "@groundhogchain/protocol";
-import {
-  deriveContractAddress,
-  fixedBytes,
-  hashContract,
-} from "@groundhogchain/client";
-import { DevWallet } from "@groundhogchain/client/contracts";
+import { prepareContractDeployment } from "@groundhogchain/client";
 
-const artifact = await readFile("target/groundhog/counter.rv32a");
-const contract: Contract = {
-  contract_type: ContractType.kRv32,
-  rv32_contract: { data: artifact },
-};
-const deploymentNonce = sha256Hash(crypto.getRandomValues(new Uint8Array(32)));
-const contractHash = hashContract(contract);
-const contractAddress = deriveContractAddress(
-  account.address,
-  deploymentNonce,
-  contractHash,
-);
-const invocation = DevWallet.deploy.invocation(
-  account.address,
-  gasAmount(10_000_000n),
-  {
-    nonce: fixedBytes(deploymentNonce, 32),
-    contractHash: fixedBytes(contractHash, 32),
-  },
-);
-
-const txHash = await wallet.sendInvocation({
-  invocation,
-  contractsToDeploy: [contract],
-});
-const deployed = DevWallet.deploy.decodeReceipt(
-  await wallet.waitForTransactionReceipt(txHash),
-);
+const planned = prepareContractDeployment({ deployer: account.address, contract: artifact });
+const deployed = await wallet.deployContractAndWait(planned, rootGas);
+console.log(deployed.address, deployed.txHash);
 ```
 
-`contractsToDeploy` makes the artifact available to the transaction. DevWallet's `deploy` method performs the deployment. Normal calls to the deployed application use `wallet.execute()` and `devWalletAdapter`.
+`artifact` is the RV32 file's bytes or a protocol `Contract`. Preparation predicts the address without creating an expiring transaction. The wallet attaches code, executes its deploy method, waits for success, and verifies the returned address.
+
+- **DefaultWallet** accepts `funding` and an optional `initializer` targeting the
+  predicted address. These steps share one transaction; failure rolls them back.
+  The initializer's caller is the wallet, and root gas must cover its execution.
+- **Local DevWallet** transfers 10 HOG during deploy as wallet policy. It accepts
+  neither option and requires a separate initialization call. That amount is not
+  a universal storage price.
+
+See the [deployment example](https://github.com/groundhogchain/client-ts/blob/v0.12.0/examples/deploy-counter.ts).
 
 ## Typed Views
 
-Generated method descriptors call `client.view()` and decode the result:
-
 ```ts
-const result = await Counter.get.view({
-  client,
-  contract,
-  caller,
-});
-
-console.log(result.value, result.height, result.events);
-```
-
-Methods with arguments take a generated `args` object:
-
-```ts
+import { getContract } from "@groundhogchain/client";
 import { ERC20 } from "@groundhogchain/client/contracts";
 
-const balance = await ERC20.getBalanceOf.view({
-  client,
-  contract: token,
-  caller,
-  args: { addr: caller },
-});
+const token = getContract({ binding: ERC20.v0_1, address: tokenAddress, client });
+const balance = await token.getBalanceOf.view({ args: { addr: owner }, signal });
 ```
 
-`view()` throws `ContractViewError` when the contract aborts or faults. Use `viewOutcome()` to handle each outcome directly:
+Views return `value`, `height`, and `events`. Independent views can use different committed snapshots or lag a recent receipt. `view()` throws `ContractViewError` on abort/fault; `viewOutcome()` returns `return`, `abort`, or `fault`. Malformed contract data throws `ContractDecodeError`.
+
+For argument inspection and output decoding with a known method, see
+[method descriptors](/tools/typescript-bindings/#method-descriptors).
+
+## Cancellation and Read Errors
 
 ```ts
-const outcome = await Counter.get.viewOutcome({ client, contract, caller });
+import { classifyReadError } from "@groundhogchain/client";
 
-switch (outcome.kind) {
-  case "return":
-    console.log(outcome.value);
-    break;
-  case "abort":
-    console.error(outcome.exception);
-    break;
-  case "fault":
-    console.error("Contract execution faulted");
+const controller = new AbortController();
+const { signal } = controller;
+try {
+  await client.getBalance(owner, { signal });
+} catch (error) {
+  console.error(classifyReadError(error, { signal }), error);
 }
+// The application's cleanup handler calls controller.abort().
 ```
 
-Transport and JSON-RPC errors pass through unchanged. Malformed return or abort data throws `ContractDecodeError`.
+Actions take request options; generated/bound views take `signal` inside their options object. One cancellation does not cancel other reads. Canceling observation does not cancel on-chain execution.
+
+Classification returns `transient`, `permanent`, `cancelled`, or `unknown` without replacing the original error. Pass the same signal to distinguish caller cancellation from timeout. A bare `TypeError` is not proof of a network error; custom transports should use `HttpRequestError`. Contract/decoding errors are not classified as infrastructure retries. Applications own retry budgets and preserve transaction-not-found handling specific to the operation.
+
+## HTTP Batching
+
+```ts
+const client = await createGroundhogClient({
+  transport: new HttpTransport("https://rpc.example.com", {
+    batch: { maxSize: 100, waitMs: 0 },
+    timeoutMs: 10_000,
+  }),
+});
+const [tip, version] = await Promise.all([client.getChainTip(), client.getVersion()]);
+```
+
+Batching is off by default; `batch: true` uses the defaults shown. Concurrent
+requests are grouped and split at `maxSize`.
+
+- Responses match by ID, not array position. Per-call RPC errors stay separate;
+  shared network, HTTP, or malformed-batch failures reject affected calls.
+- Timeout covers the dispatched exchange, including its response body.
+- Canceling one caller leaves neighbors running. Canceling all dispatched callers
+  cancels shared network work.
+- There is no automatic retry or deduplication, and no shared-state, execution-order,
+  or atomicity guarantee. Await dependent calls separately.
+
+The server's [array and byte limits](/reference/json-rpc-api/#json-rpc-arrays) still apply.
+
+## Event Pages
+
+```ts
+import { groundhog_erc20_if } from "@groundhogchain/client/contracts";
+const { TransferEvent } = groundhog_erc20_if.v0_1.events;
+const page = await client.getContractEvents({
+  event: TransferEvent,
+  contractAddresses: [tokenAddress],
+  topics: { to: owner },
+  limit: 20,
+}, { signal });
+```
+
+One request returns typed topics/fields, emitter, transaction hash, block height, event sequence number, cursor, and indexer bounds. `iterateEventPages(query, { signal })` yields raw pages on demand. It follows empty pages with continuation cursors, rejects repeated cursors, and propagates errors. It does not prefetch, retry, poll, subscribe, or persist.
+
+An empty returned cursor ends one historical walk. New blocks require a new walk. Applications own checkpoints, deduplication, and retention checks; `latestBlock` is not proof of consumed history. Follow [Resume Without Missing Events](/tutorials/add-events-to-a-contract/#resume-without-missing-events).
 
 ## Receipt Decoding
 
-Decode a receipt with the descriptor for the transaction's root method:
-
-```ts
-const receipt = await client.waitForTransactionReceipt(transferTxHash);
-const outcome = DefaultWallet.execute.decodeReceiptOutcome(receipt);
-
-if (outcome.kind === "return") {
-  console.log(outcome.height, outcome.events);
-}
-```
-
-`decodeReceipt()` returns the typed value with `txHash`, `height`, and `events`. It throws `ContractReceiptError` for an abort, execution failure, or missing return data from a non-void method. `decodeReceiptOutcome()` returns a discriminated `return`, `abort`, or `failure` result.
-
-A receipt does not identify the root method well enough for the descriptor to verify it. Root receipt decoders do not search nested application calls inside a wallet invocation. Read application state with a typed view or decode application events from the receipt.
+`DefaultWallet.v0_1.execute.decodeReceiptOutcome(receipt)` decodes the known wallet
+root. It returns typed `return`, `abort`, or `failure` outcomes. The throwing
+`decodeReceipt` variant returns the root value, height, hash, and events on success.
+Use retained child descriptors for ordered child return buffers. Root errors do
+not identify a child ABI. See [manual receipt decoding](/tools/typescript-bindings/#execute-and-decode).
 
 ## Low-Level Signing
 
-Custom signer integrations can use the transaction helpers directly. `signTransaction()` sends each signer the domain-separated, network-bound transaction signature preimage, not bare transaction bytes:
+Custom signers can use `prepareTransaction`, `signTransaction`, and
+`sendTransaction` directly. The signing helper signs a domain-separated,
+network-bound preimage, not raw transaction bytes:
 
 ```ts
 import { signTransaction } from "@groundhogchain/client/transaction";
-
-const signed = await signTransaction(
-  transaction,
-  [{ signer, publicKeyId: 0n }],
-  networkHash,
-);
+const signed = await signTransaction(transaction, [{ signer, publicKeyId: 0n }], networkHash);
 const txHash = await client.sendTransaction(signed);
 ```
 
-The network hash prevents replay of the same signature on another Groundhog network. The transaction hash identifies the inner transaction and is distinct from both the signature preimage and the signed wrapper.
-
-## Transport Errors
-
-```ts
-import { HttpTransport, JsonRpcError } from "@groundhogchain/client";
-
-const transport = new HttpTransport("https://rpc.example.com", {
-  timeoutMs: 10_000,
-  headers: { Authorization: "Bearer <token>" },
-});
-
-try {
-  await transport.request("groundhog_chainTip");
-} catch (error) {
-  if (error instanceof JsonRpcError) {
-    console.error(error.code, error.method, error.message);
-  }
-}
-```
-
-JSON-RPC error responses throw `JsonRpcError`. HTTP failures, timeouts, invalid JSON, and malformed envelopes throw other exceptions. Typed actions validate the response shapes they consume.
+The transaction hash identifies the inner transaction and differs from the
+signature preimage and signed wrapper. Preserve the original hash for recovery.
 
 ## Public Entry Points
 
-| Import                               | Use for                                                                   |
-| ------------------------------------ | ------------------------------------------------------------------------- |
-| `@groundhogchain/client`             | Clients, clusters, accounts, wallet adapters, actions, and common helpers |
-| `@groundhogchain/client/local-dev`   | Node.js-only local runtime account loading                                |
-| `@groundhogchain/client/contracts`   | `DefaultWallet`, `DevWallet`, ERC-20, metadata, and `SignedOp` bindings               |
-| `@groundhogchain/client/transaction` | Low-level transaction construction, serialization, and signing            |
-| `@groundhogchain/client/transport`   | HTTP and mock transports                                                  |
-| `@groundhogchain/client/contract`    | Descriptor runtime and fixed-length helpers                               |
-| `@groundhogchain/client/signers`     | Signer interface and private-key signer                                   |
-| `@groundhogchain/client/signed-op` | Typed off-chain operations and their network-bound signatures |
-| `@groundhogchain/client/actions`     | Standalone typed actions                                                  |
-
-### Wallet Provider Entry Points
-
-Use these entry points to integrate an external wallet or implement a wallet provider:
-
-| Import | Provider APIs |
+| Import | Use for |
 | --- | --- |
-| `@groundhogchain/client/provider` | Wire account/session types, request and result validation, errors, and multiple-provider discovery |
-| `@groundhogchain/client/wallet` | `createProviderWalletClient()` and its explicit prepare/sign/submit lifecycle |
-
-Follow [Wallet Integration](/tools/wallet-integration/) to connect a dapp and save signed transactions before broadcast. Wallet and bridge authors should use the [Wallet Provider contract](/tools/wallet-provider/).
+| `@groundhogchain/client` | Clients, clusters, accounts, actions, amounts, common primitives, and helpers |
+| `@groundhogchain/client/contracts` | Versioned standard contract and event descriptors |
+| `@groundhogchain/client/contract` | Descriptor runtime, codecs, and fixed-length helpers |
+| `@groundhogchain/client/transport` | HTTP/mock transports and infrastructure errors |
+| `@groundhogchain/client/actions` | Standalone typed actions |
+| `@groundhogchain/client/wallet` | Wallet execution and provider adapters |
+| `@groundhogchain/client/provider` | Provider wire types, validation, and discovery |
+| `@groundhogchain/client/local-dev` | Node-only local runtime account loading |
+| `@groundhogchain/client/transaction` | Low-level construction, signing, and serialization |
+| `@groundhogchain/client/signers` | Signer interface and private-key signer |
+| `@groundhogchain/client/signed-op` | Network-bound off-chain signed operations |
 
 ## Maintained Examples
 
-- [Chain tip](https://github.com/groundhogchain/client-ts/blob/v0.8.0/examples/chain-tip.ts) connects to Devnet.
-- [HOG transfer](https://github.com/groundhogchain/client-ts/blob/v0.8.0/examples/transfer-hog.ts) uses Devnet airdrops, pubkey accounts, and DefaultWallet.
-- [HOG balance](https://github.com/groundhogchain/client-ts/blob/v0.8.0/examples/view-hog-balance.ts) loads `dev-1` and reads Localnet.
-- [Counter deployment](https://github.com/groundhogchain/client-ts/blob/v0.8.0/examples/deploy-counter.ts) deploys and calls through DevWallet on Localnet.
+- [Chain and release identity](https://github.com/groundhogchain/client-ts/blob/v0.12.0/examples/chain-tip.ts)
+- [HOG transfer](https://github.com/groundhogchain/client-ts/blob/v0.12.0/examples/transfer-hog.ts)
+- [Local HOG view](https://github.com/groundhogchain/client-ts/blob/v0.12.0/examples/view-hog-balance.ts)
+- [Counter deployment](https://github.com/groundhogchain/client-ts/blob/v0.12.0/examples/deploy-counter.ts)
 
-See [TypeScript Bindings](/tools/typescript-bindings/) for generated descriptor APIs and [Wallet Integration](/tools/wallet-integration/) for the external-wallet workflow.
+For raw requests, see [JSON-RPC API](/reference/json-rpc-api/).

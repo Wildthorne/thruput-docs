@@ -26,7 +26,7 @@ npm install
 Configure registry access using [TypeScript SDK installation](/tools/typescript-sdk/#install), then install the SDK packages:
 
 ```bash
-npm install @groundhogchain/client@0.8.0 @groundhogchain/protocol@0.11.0
+npm install @groundhogchain/client@0.12.0 @groundhogchain/protocol@0.12.0
 ```
 
 Replace `index.html` with:

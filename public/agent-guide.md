@@ -7,7 +7,7 @@ description: >
   contains Groundhog configuration, SDK dependencies, or generated artifacts.
 ---
 
-<!-- groundhog-cli-version: 0.17.0 -->
+<!-- groundhog-cli-version: 0.19.0 -->
 
 # Groundhog
 
@@ -119,19 +119,28 @@ groundhog test
 
 Use `cargo test` for fast native tests. Use `groundhog test` for the generated
 RV32 artifact. They exercise different paths and neither substitutes for the
-other. The scaffolded SDK downloads its test executor from public storage; no
-FFI download credentials are required. Cargo registry authentication follows
-the early-access setup instructions. Use `groundhog test --integration` for
-RPC tests against an ephemeral local node.
+other. The scaffolded SDK downloads its test executor from public storage.
+Building a scaffold needs Cargo credentials for the Groundhog registry; the
+Getting Started guide covers that setup. Use `groundhog test --integration` for
+RPC tests against an ephemeral local node. In a multi-contract Cargo workspace,
+`groundhog test --workspace` runs the RV32 tests of every member that has a
+`tests/test_rv32.rs` target and reports them together.
 
 Preserve the scaffold's feature names, RV32 binary wrapper, Cargo overlays, and
 self dev-dependency. They are toolchain contracts, not incidental style.
 
-CLI 0.17 uses SDK 0.34.3, protocol-rs 0.35.2, and XDR 0.10.1. Update
-these dependencies together when migrating an existing Rust project. Despite
-its patch number, SDK 0.34.3 changes public XDR types. Standard interfaces
-`=0.1.30` use this family while preserving the native token contract ABI;
-projects retaining SDK `=0.34.2` should retain interfaces `=0.1.29`.
+That self dev-dependency puts the project name in the extern prelude of every
+test target, so `groundhog new` refuses names that would shadow something the
+generated project needs: Rust's built-in crates (`test`, `core`, `std`,
+`alloc`, `proc-macro`), Rust keywords, the scaffold's own dependencies (`sdk`,
+`tokio`, `groundhog-json-rpc-client`), Cargo's build directory names (`build`,
+`deps`, `examples`, `incremental`), and reserved Windows device names. The
+error names the collision; pick another name rather than patching the
+generated manifest.
+
+This CLI uses SDK 0.41.1, standard interfaces 0.1.41, protocol-rs 0.42.0,
+and XDR 0.10.1. Update the SDK and interface dependencies together when
+migrating an existing Rust project.
 
 The normal starter contract is a counter, one of the narrower cases where
 `NNInt` is appropriate. Do not copy this storage choice for token balances or
@@ -204,19 +213,49 @@ Run the installed commands with `--help` for current paths and options. Re-run
 codegen after changing exported methods, events, exceptions, or contract types.
 Do not hand-maintain a TypeScript ABI beside the Rust contract spec.
 
-Generated method descriptors provide typed operations such as:
+A plain `groundhog build` warns when codegen would refuse the contract's spec,
+naming the declarations to rename; with `--bindings ts` the build fails instead.
+
+Generated method descriptors sit under their interface's name and major, as in
+`ERC20.v0_1.transfer`, beside their `ERC20.v0_1.TransferArgs` and
+`ERC20.v0_1.TransferResult` types and the interface's `DeclaredException` and
+`Exception` types. They provide typed operations such as:
 
 - `invocation(...)` to encode an application call;
+- `call(...)` in the client DX runtime to retain typed result/exception decoders;
 - `view(...)` and `viewOutcome(...)` for read-only execution;
 - `decodeReturn(...)` and `decodeException(...)` for raw call data;
 - `decodeReceipt(...)` and `decodeReceiptOutcome(...)` for a receipt whose root
   method is known.
 
-Generated event descriptors such as `PingEvent` provide `decode(...)`,
-`filter(...)`, `allFromReceipt(...)`, and `singleFromReceipt(...)`.
+Generated event descriptors such as `my_token.v1.events.Transfer` provide
+`decode(...)`, `filter(...)`, `allFromReceipt(...)`, and
+`singleFromReceipt(...)`.
+
+Declared types, enums and events sit under their spec id's path: crate, major,
+then module, as in `my_token.v1.errors.TokenError`. The same path names the
+type and the value: types live in namespaces, and enum values and event
+descriptors in one object per crate, so a binding is erasable TypeScript that
+Node's type stripping runs without a build step. A path segment that is a
+TypeScript reserved word or `globalThis`, and a crate or interface named
+`spec` or `decodeEvent`, take a leading `$`, as in
+`my_token.v1.$default.Config`.
 
 Use those generated codecs. Do not create a low-level XDR reader when a binding
 already knows the method or event type.
+
+Bindings emit canonical interface/version and ABI/public method names for runtime
+diagnostics. They require a client runtime accepting this method metadata. The
+client DX runtime implements typed calls, execution and receipt observation;
+codegen does not embed wallet or transport behavior. Hashed event topics contain
+only the digest, not the original value; generated comments describe their
+filtering restriction. Regenerate bindings together with the reviewed client
+runtime before adopting the new descriptors.
+
+`u32`, `u64`, `u128`, `i32`, `i64`, `i128`, `U256`, `I256` and `bool` topics are
+directly decoded and filterable. Integer topics are fixed 32-byte big-endian
+values with zero/sign extension, not compact XDR scalar encodings. Strings and
+byte slices remain hash-only.
 
 ## TypeScript Application Path
 
@@ -232,6 +271,19 @@ The application flow is:
 5. Execute the invocation through the wallet.
 6. Wait for the receipt.
 7. Decode the wallet root outcome, then decode child return data when needed.
+
+Generated methods sit under their interface's major, which the app selects once:
+
+```ts
+import { Counter as CounterVersions } from "./counter";
+import { DefaultWallet as DefaultWalletVersions } from "@groundhogchain/client/contracts";
+
+const Counter = CounterVersions.v0_1;
+const DefaultWallet = DefaultWalletVersions.v0_1;
+```
+
+These constants hold only values, so name generated types by their full path,
+as in `CounterVersions.v0_1.GetResult`.
 
 A read-only call goes through the generated descriptor:
 
@@ -281,11 +333,27 @@ verify the first execution result before submitting the second operation.
 
 ## Local Development
 
+For first-run setup in automation, use `groundhog init --non-interactive --json`.
+It initializes global profiles and reports incomplete setup with exit 1 when
+Cargo, the active profile, or a selected stored signing key is unavailable.
+Add `--generate-key` only when authorized to create the initial signing key;
+existing keys and explicit key selections are preserved. `--quiet` does not
+accept wizard defaults. `init --json` performs setup; use `status --json` for
+read-only diagnostics. Create scripted projects separately with `groundhog new`.
+
 Use the CLI to start the supported local stack:
 
 ```console
 groundhog node
 ```
+
+The CLI can acquire a catalog-pinned devnode bundle on startup. Use
+`groundhog toolchain list` to inspect the embedded catalog, `toolchain install`
+to prefetch it, and `toolchain which` to find the installed executable.
+`groundhog --offline node` forbids managed downloads; it does not disable RPC
+or Cargo network traffic in other commands. Keep `GROUNDHOG_DEVNODE_BINARY`
+for a matching local build. Diagnose startup compatibility failures rather
+than adding a protocol override.
 
 Use another terminal for status, build, deploy, call, view, or TypeScript
 application work. Prefer the active local profile and runtime information
@@ -305,9 +373,47 @@ groundhog view --help
 groundhog codegen ts --help
 ```
 
+Use global `--non-interactive` to disable CLI prompts and terminal UI while
+retaining ordinary output. It does not grant consent: protected actions still
+require `--force`, and initial key creation requires `init --generate-key`.
+`keys import` needs piped stdin when prompts are disabled; never place seeds
+in arguments. Cargo/test subprocesses cannot read terminal stdin in this mode.
+
 Use `--json` for agent-consumed command results. Respect commands that require
 explicit confirmation, and never add a confirmation override unless the user
 has authorized the consequential action.
+
+A receipt timeout does not establish that a transaction failed. Inspect the
+transaction using the command printed in the error before submitting the
+operation again. An `unknown` status does not explain why the transaction is
+absent. For detailed local backend logs, start `groundhog node --verbose`;
+output goes to that terminal unless redirected. Do not restart an ephemeral
+node just to enable logging: stopping it discards its chain state.
+
+### Key and address interoperability
+
+`groundhog keys import <name>` reads an Ed25519 seed from a hidden terminal
+prompt or piped stdin. It accepts a checksummed Stellar S StrKey or a 32-byte
+hex seed, never a 64-byte stored keypair. Do not put private seeds in command
+arguments. Existing names are not overwritten; `dev-N` names are reserved.
+Import JSON uses a versioned camelCase report (`data.schemaVersion = 1`).
+Malformed TOML or an invalid `default_key` is rejected before storing the key.
+If the key is stored but selecting the default fails, import succeeds with a
+warning and a recovery
+command (`groundhog keys use <name>`); do not import it again. `isDefault` is
+null when the configuration cannot be reread to confirm selection.
+
+`groundhog keys export <name> --format strkey` exports the same seed as an S
+StrKey after the normal confirmation gate. The default export remains hex.
+For an authorized non-interactive transfer between key stores, pipe export
+stdout directly to the receiving CLI's stdin rather than capturing it in logs.
+
+A G StrKey is an Ed25519 public key, not a derived Groundhog account or wallet
+address. Key commands display public keys separately from account addresses.
+C StrKeys and legacy hex are accepted for contract/wallet address inputs,
+including typed contract arguments. Saved wallet owners accept G StrKeys or
+hex public keys. These encodings preserve bytes and do not identify a network.
+Existing key files and public JSON-RPC wire encodings remain unchanged.
 
 ## Sources and Escalation
 

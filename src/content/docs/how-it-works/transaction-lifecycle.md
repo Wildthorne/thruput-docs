@@ -72,6 +72,12 @@ Transactions excluded during delta reservation (Stage 4) are returned to the mem
 
 ## Related Documentation
 
+For applications, successful submission means admission, not execution success.
+Inspect the committed receipt's result. `recentFailure` is advisory; an observation
+timeout, cancellation, or `unknown` status does not prove the transaction failed.
+Keep signed evidence and its original network/hash, and resume observation instead
+of automatically re-signing. See [client execution and recovery](/tools/typescript-sdk/#typed-calls-and-observation-recovery).
+
 - [Invocation Frames](/how-it-works/invocation-frames/): Execution context
 - [Authorization](/how-it-works/authorization/): How signatures are verified
 - [Contracts](/how-it-works/contracts/): Contract types and deployment

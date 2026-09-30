@@ -16,25 +16,36 @@ That said, the CLI is a convenience, not a requirement. You can also:
 
 The CLI is just a consumer of the SDK. It generates the same Rust crate you'd write by hand: a standard Cargo project that depends on the SDK and uses its storage types and macros. Normal `cargo build` and `cargo test` target the host. `groundhog build` and `groundhog test` target RV32 by default.
 
-## Choose and Install a Client Bundle
+## Choose and Install the CLI
 
-Use the [Groundhog 0.1.27 client bundle](https://github.com/groundhogchain/packaging/releases/tag/v0.1.27). Keep the CLI, local node, runtime libraries, and contract artifacts together in the extracted directory.
+Use [CLI 0.19.0](https://github.com/groundhogchain/groundhog-rpc/releases/tag/v0.19.0) for this documentation. It can install its checksum-verified, catalog-pinned local node. A CLI version is separate from a packaging-bundle version.
 
-| Component | Version in 0.1.27 |
+| Component | Selected version |
 | --- | --- |
-| CLI and JSON-RPC gateway | `0.17.0` |
-| Rust SDK used by the CLI scaffold | `0.34.3` |
-| Rust JSON-RPC client used by the scaffold | `0.17.0` |
-| Standard contract interfaces | `=0.1.30` |
-| Local node | `0.1.27-rc.7` |
+| CLI and JSON-RPC gateway | `0.19.0` |
+| Rust SDK used by the CLI scaffold | `0.41.1` |
+| Rust JSON-RPC client used by the scaffold | `0.19.0` |
+| Standard contract interfaces | `=0.1.41` |
+| Managed local node | `0.1.29-rc.4` |
+| TypeScript client / protocol / contract-spec | `0.12.0` |
 
-The node's RC version is the artifact selected by the final bundle. The [release manifest](https://github.com/groundhogchain/packaging/blob/v0.1.27/release-manifest.toml) records its exact source commit. The scaffold uses `nightly-2026-07-01`.
+The CLI's toolchain catalog pins exact runtime artifacts and checksums. The scaffold selects its contract compiler through `rust-toolchain.toml`; preserve that file.
 
 These docs are checked against those sources. Source review does not establish that every tutorial has been run against the hosted network. Before creating a Devnet wallet or submitting transactions, follow [Devnet version discovery](/tutorials/develop-on-devnet/#2-configure-devnet-identity) and select the bundle matching the serving release.
 
-Before starting, obtain access to the [packaging releases](https://github.com/groundhogchain/packaging/releases) and the private Groundhog Cargo registry. Install Rust and Cargo through [rustup](https://rustup.rs/) if needed. Keep tokens and passwords out of agent conversations.
+Obtain access to the private Groundhog Cargo registry. Install Rust 1.96 or newer through [rustup](https://rustup.rs/). Keep credentials out of agent conversations.
 
-Download the selected release's client archive for your platform. The Apple Silicon archive is `groundhog-client-macos-arm64.tar.gz`; the Linux x86-64 archive is `groundhog-client-linux-x86_64.tar.gz`. Extract the complete archive and keep its directory layout intact.
+Complete [Cargo access setup](#configure-cargo-access), then install the selected CLI through the authenticated registry:
+
+```bash
+export CARGO_REGISTRIES_GROUNDHOG_INDEX="sparse+https://crates.thruput.network/api/v1/crates/"
+cargo install groundhog-cli --version 0.19.0 --registry groundhog --locked
+groundhog --version
+groundhog toolchain list
+groundhog toolchain install 0.1.29-rc.4
+```
+
+The release page also provides platform-specific CLI archives. Keep an explicitly selected release rather than combining arbitrary binaries from different bundles.
 
 On Ubuntu 26.04, install the build tools and Linux node's system libraries before checking the binaries:
 
@@ -45,17 +56,15 @@ sudo apt-get install -y ca-certificates curl build-essential jq libjemalloc2 lib
 
 Other Linux distributions may use different package names. The node requires `libjemalloc.so.2` and `libsnappy.so.1`; these system libraries are separate from the files in the client archive.
 
-Set the actual extracted directory in each terminal you use:
+Check the selected commands in each terminal:
 
 ```bash
-export GROUNDHOG_CLIENT_HOME="/path/to/extracted/groundhog-client-<version>-<platform>"
-export PATH="$GROUNDHOG_CLIENT_HOME/bin:$PATH"
 command -v groundhog
 groundhog --version
-"$GROUNDHOG_CLIENT_HOME/bin/hog-devnode" --version
+groundhog toolchain which
 ```
 
-Confirm these are the versions in the selected release. An older `groundhog` elsewhere on your machine may lack `--skill` or use different commands. The CLI does not manage Cargo registry credentials.
+Confirm the versions above. An older `groundhog` elsewhere on PATH can select a different runtime or scaffold. The CLI does not manage Cargo registry credentials.
 
 The local tutorial includes a [runtime selection check](/tutorials/develop-locally/#verify-the-selected-runtime). An inherited `GROUNDHOG_DEVNODE_BINARY` can override the adjacent bundled node, even after you change `PATH`.
 
@@ -123,7 +132,7 @@ If you already use a credential manager for this registry, keep its provider ins
 
 ### Test and Build
 
-SDK `0.34.3` downloads its test executor from public storage. No FFI download credentials are required. Cargo registry access is still required.
+SDK `0.41.1` downloads its test executor from public storage. No FFI download credentials are required. Cargo registry access is still required.
 
 ```bash
 cargo test

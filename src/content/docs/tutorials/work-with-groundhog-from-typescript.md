@@ -5,7 +5,7 @@ description: Build a contract, generate TypeScript bindings, connect to a local 
 
 This tutorial connects the Groundhog CLI, a Rust contract, generated TypeScript bindings, and `@groundhogchain/client` in one local workflow.
 
-Use release `0.1.27`, which includes CLI `0.17.0`, with the [coordinated TypeScript packages](/tools/typescript-sdk/#install).
+Use CLI `0.19.0`, its managed local node `0.1.29-rc.4`, and the [coordinated client 0.12.0 packages](/tools/typescript-sdk/#install).
 
 ## How the Pieces Fit
 
@@ -45,7 +45,7 @@ This split is similar to an EVM ABI plus an application client, but Groundhog bi
 
 Complete [Develop Locally with the CLI](/tutorials/develop-locally/) first. You need:
 
-- The Groundhog `0.1.27` bundle, including its CLI and local runtime
+- CLI `0.19.0` and its managed local runtime
 - Node.js `22.12.0` or newer
 - Access to the Groundhog Cargo and GitHub Packages registries
 
@@ -122,9 +122,9 @@ Configure GitHub Packages as described in [TypeScript SDK installation](/tools/t
 
 ```bash
 npm install \
-  @groundhogchain/client@0.8.0 \
-  @groundhogchain/protocol@0.11.0 \
-  @groundhogchain/contract-spec@0.11.0
+  @groundhogchain/client@0.12.0 \
+  @groundhogchain/protocol@0.12.0 \
+  @groundhogchain/contract-spec@0.12.0
 
 npm install --save-dev typescript tsx @types/node
 ```
@@ -142,7 +142,9 @@ import {
   createGroundhogClient,
 } from "@groundhogchain/client";
 import { loadLocalDevAccount } from "@groundhogchain/client/local-dev";
-import { Counter } from "./contracts/my-counter.js";
+import { Counter as CounterVersions } from "./contracts/my-counter.js";
+
+const Counter = CounterVersions.v0_1;
 
 const rpcUrl = process.env.GROUNDHOG_RPC_URL ?? "http://127.0.0.1:9545";
 const contractHex = process.env.GROUNDHOG_CONTRACT_ADDRESS;
@@ -192,7 +194,7 @@ The TypeScript view should now print `15`.
 Views simulate a contract call against committed state and do not submit a transaction. A state-changing application starts by building a typed invocation:
 
 ```ts
-import { gasAmount } from "@groundhogchain/protocol";
+import { gasAmount } from "@groundhogchain/client";
 
 const increment = Counter.increment.invocation(
   contract,
@@ -236,9 +238,10 @@ import {
   localnet,
   toHex0x,
 } from "@groundhogchain/client";
-import { DefaultWallet } from "@groundhogchain/client/contracts";
-import { gasAmount } from "@groundhogchain/protocol";
-import { Counter } from "./contracts/my-counter.js";
+import { gasAmount } from "@groundhogchain/client";
+import { Counter as CounterVersions } from "./contracts/my-counter.js";
+
+const Counter = CounterVersions.v0_1;
 
 const contractHex = process.env.GROUNDHOG_CONTRACT_ADDRESS;
 if (!contractHex) {
@@ -253,32 +256,23 @@ const account = createPubkeyAccount({
 });
 const wallet = createWalletClient({ client, account });
 const contract = addressFromHex(contractHex);
-const increment = Counter.increment.invocation(
+const increment = Counter.increment.call({
   contract,
-  gasAmount(500_000n),
-  { amount: 5n },
-);
+  gasLimit: gasAmount(500_000n),
+  args: { amount: 5n },
+});
 
 const airdrop = await wallet.requestAirdrop();
 if (airdrop.status.result !== "ok") {
   throw new Error(`Airdrop failed with ${airdrop.status.result}`);
 }
 
-const txHash = await wallet.execute({
-  invocation: increment,
+const { txHash, receipt, values } = await wallet.executeCallsAndWait({
+  calls: [increment],
   gasLimit: gasAmount(10_000_000n),
 });
-const receipt = await wallet.waitForTransactionReceipt(txHash);
-
-const outcome = DefaultWallet.execute.decodeReceiptOutcome(receipt);
-if (outcome.kind !== "return") {
-  throw new Error(`DefaultWallet execution ended with ${outcome.kind}`);
-}
-const incrementReturn = outcome.value[0];
-if (!incrementReturn) {
-  throw new Error("Expected one child return");
-}
-Counter.increment.decodeReturn(incrementReturn);
+// increment returns void. The helper checked execution and decoded its result.
+console.log(receipt.gasUsed, values[0]);
 
 const committed = await Counter.get.view({
   client: wallet,
@@ -300,18 +294,20 @@ GROUNDHOG_CONTRACT_ADDRESS="0x..." npm run write
 
 `createPubkeyAccount()` constructs the protocol's `kPubkeySignature` claim and derives the matching address. `createWalletClient()` selects the DefaultWallet adapter automatically for this account type. Because `localnet()` validates the endpoint's network identity, the wallet can also use the returned network hash when signing.
 
-HOG funds storage deposits. Gas costs zero tokens. A committed airdrop can still contain a failed execution result, so the program checks `airdrop.status.result` before submitting the counter transaction.
+Gas costs zero tokens, but declared root gas reserves scheduling capacity against the sender's free HOG. Storage deposits are separate and belong to the address storing the data. The example checks airdrop execution before submitting. Calibrate gas for other workloads; `gasUsed` is not a token fee.
+
+If observation fails, keep `TransactionObservationError.txHash` and query it on the original network. A timeout or cancellation does not prove the operation failed. Never automatically re-sign or replace the transaction. See [observation recovery](/tools/typescript-sdk/#typed-calls-and-observation-recovery).
 
 Do not submit `Counter.increment` directly as the transaction root. `wallet.execute()` wraps it in `DefaultWallet.execute` and then signs and submits the root transaction.
 
 :::note[Local bootstrap accounts]
-Accounts loaded by `loadLocalDevAccount()` are existing source-address accounts created by `groundhog node`. To write through one, use `createSourceAddressAccount()` with `devWalletAdapter`. The adapter wraps calls through `DevWallet.doAction`. The maintained [counter deployment example](https://github.com/groundhogchain/client-ts/blob/v0.8.0/examples/deploy-counter.ts) shows the complete setup.
+Accounts loaded by `loadLocalDevAccount()` are existing source-address accounts created by `groundhog node`. Use `createSourceAddressAccount()` with `devWalletAdapter`. DevWallet discards child return data; use `executeAndWait` and a view or event. The [counter deployment example](https://github.com/groundhogchain/client-ts/blob/v0.12.0/examples/deploy-counter.ts) shows the setup.
 :::
 
 For additional implementation references, see the maintained client examples:
 
-- [Transfer native HOG through a pubkey account and DefaultWallet](https://github.com/groundhogchain/client-ts/blob/v0.8.0/examples/transfer-hog.ts).
-- [Deploy and call a counter](https://github.com/groundhogchain/client-ts/blob/v0.8.0/examples/deploy-counter.ts)
+- [Transfer native HOG through a pubkey account and DefaultWallet](https://github.com/groundhogchain/client-ts/blob/v0.12.0/examples/transfer-hog.ts).
+- [Deploy and call a counter](https://github.com/groundhogchain/client-ts/blob/v0.12.0/examples/deploy-counter.ts)
 
 To use an installed browser wallet, follow [Connect a Wallet to Your App](/tutorials/connect-a-wallet-to-your-app/). This tutorial uses local signers.
 
@@ -320,7 +316,9 @@ To use an installed browser wallet, follow [Connect a Wallet to Your App](/tutor
 Generated descriptors can decode a receipt when the descriptor represents the transaction's root method. In `write.ts`, the root is `DefaultWallet.execute`:
 
 ```ts
-const outcome = DefaultWallet.execute.decodeReceiptOutcome(receipt);
+import { DefaultWallet } from "@groundhogchain/client/contracts";
+
+const outcome = DefaultWallet.v0_1.execute.decodeReceiptOutcome(receipt);
 
 if (outcome.kind === "return") {
   const [incrementReturn] = outcome.value;
@@ -333,14 +331,15 @@ if (outcome.kind === "return") {
 
 `decodeReceipt()` is the throwing convenience API. `decodeReceiptOutcome()` returns a typed `return`, `abort`, or `failure` result.
 
-The generated DefaultWallet binding decodes its root return into one raw return buffer per child call. Use the child method's generated `decodeReturn()` method for each item. The client cannot choose that child descriptor automatically because the receipt does not carry enough TypeScript method identity to do so.
+The generated DefaultWallet binding decodes its root return into one raw buffer per child. The earlier `executeCallsAndWait` call supplied descriptors and decoded these automatically. When recovering from a receipt alone, retain the original call descriptors or explicitly select the known child method; the receipt does not identify arbitrary child ABIs.
 
 For a void mutation such as `increment` or ERC-20 `transfer`, successful decoding produces `undefined`. Applications commonly combine the root execution result with typed events and a follow-up view of committed state.
 
 After a wallet-backed `Counter.ping` call, its generated event descriptor can find the nested event by emitting contract address:
 
 ```ts
-import { PingEvent } from "./contracts/my-counter.js";
+import { my_counter } from "./contracts/my-counter.js";
+const { PingEvent } = my_counter.v0_1.implementation;
 
 const ping = PingEvent.singleFromReceipt(receipt, {
   contractAddress: contract,
@@ -357,10 +356,14 @@ The client ships generated bindings for the standard Groundhog ERC-20 and metada
 
 ```ts
 import {
-  ERC20,
-  ERC20Metadata,
-  ERC20TransferEvent,
+  ERC20 as ERC20Versions,
+  ERC20Metadata as ERC20MetadataVersions,
+  groundhog_erc20_if,
 } from "@groundhogchain/client/contracts";
+
+const ERC20 = ERC20Versions.v0_1;
+const ERC20Metadata = ERC20MetadataVersions.v0_1;
+const { TransferEvent } = groundhog_erc20_if.v0_1.events;
 ```
 
 A useful token demonstration follows the contract's authorization and balance preconditions:
@@ -403,7 +406,7 @@ const txHash = await wallet.execute({
   gasLimit: gasAmount(10_000_000n),
 });
 const receipt = await wallet.waitForTransactionReceipt(txHash);
-const transferReturn = DefaultWallet.execute.decodeReceipt(receipt).value[0];
+const transferReturn = DefaultWallet.v0_1.execute.decodeReceipt(receipt).value[0];
 if (!transferReturn) {
   throw new Error("Expected one child return");
 }
@@ -413,14 +416,23 @@ ERC20.transfer.decodeReturn(transferReturn);
 `mint`, `transfer`, `adjustAllowance`, `transferFrom`, and `burn` return `void`. Their useful application results are the committed execution outcome, emitted event, and updated state:
 
 ```ts
-const event = ERC20TransferEvent.singleFromReceipt(receipt, {
+const event = TransferEvent.singleFromReceipt(receipt, {
   contractAddress: token,
 });
 
 console.log(event.topics.from, event.topics.to, event.fields.amount);
 ```
 
-Groundhog's allowance interface differs from Ethereum's common `approve(spender, absoluteAmount)` pattern. `adjustAllowance({ spender, diff })` applies a positive or negative change to the existing allowance.
+Interface 0.1.41 uses `adjustAllowance` arguments `{ spender, difference, exclusive }`.
+`difference` is signed, and `AllowanceChangeEvent` records that delta. An exclusive
+change conflicts with concurrent changes to the entry, but cannot make an earlier
+off-chain read current. Read-then-adjust is not a guarantee of an exact target.
+`clearAllowance({ spender })` revokes and deletes an allowance; `clearBalance()`
+deletes the caller's empty balance entry.
+
+Convert human amounts with `parseUnits(text, decimals)` and format with
+`formatUnits(value, decimals)`, both from the client root. Obtain token decimals
+from its metadata rather than applying HOG's seven decimals to every token.
 
 ## CLI, Binding, or Client?
 

@@ -1,350 +1,150 @@
 ---
 title: TypeScript Bindings
-description: Generate typed TypeScript method and event descriptors for Groundhog contracts.
+description: Generate versioned method, event, and type descriptors from a Groundhog contract spec.
 ---
 
-TypeScript bindings turn a contract spec into typed methods, events, and contract types. Contract arguments, returns, exceptions, and event payloads use CXS; the client handles their encoding.
-
-For JSON-RPC transports, transaction helpers, deployment, and package setup, see [TypeScript SDK](/tools/typescript-sdk/).
-
-Use CLI `0.17.0` from release `0.1.27` with the [coordinated TypeScript packages](/tools/typescript-sdk/#install). Regenerate older bindings after upgrading.
-
-## What Bindings Provide
-
-Generated bindings include:
-
-- TypeScript types for contract structs, enums, and unions
-- Method descriptors for invocations, typed views, return values, exceptions, and root receipts
-- Event descriptors for decoding, filtering, and receipt extraction
-- Entrypoint IDs, interface metadata, and the contract spec
-
-Re-run codegen after changing exported methods, events, exceptions, or contract types.
+Bindings describe a contract's API. The client runtime encodes arguments and decodes results using that description. Use CLI 0.19.0 with the [coordinated client 0.12.0 packages](/tools/typescript-sdk/#install).
 
 ## Generate Bindings
 
-Generate the TypeScript binding as part of the project build:
-
 ```bash
 groundhog build --bindings ts
+# Or choose an output path for an existing canonical spec:
+groundhog codegen ts target/groundhog/my_counter.spec.xdr -o web/src/contracts/my-counter.ts
 ```
 
-With Cargo's default target directory, a crate named `my-contract` writes:
+Create the output directory first. The default build output for crate `my-counter` is `target/groundhog/my_counter.ts`. Standalone codegen consumes `.spec.xdr`, not `.spec.json` or the executable artifact. Regenerate after changing exported methods, events, exceptions, or reachable contract types. Never edit generated output by hand.
 
-```text
-target/groundhog/my_contract.ts
-```
+## Select an Interface Version
 
-Use standalone codegen when the binding belongs elsewhere:
-
-```bash
-mkdir -p web/src/contracts
-groundhog codegen ts \
-  target/groundhog/my_contract.spec.xdr \
-  -o web/src/contracts/my-contract.ts
-```
-
-Standalone TypeScript codegen consumes the canonical `.spec.xdr` contract spec.
-
-Depending on the contract, generated bindings import from these public modules:
-
-- `@groundhogchain/client/contract`
-- `@groundhogchain/contract-spec`
-- `@groundhogchain/protocol`
-- `@groundhogchain/protocol/utils`
-
-See [TypeScript SDK installation](/tools/typescript-sdk/#install) for the required package versions.
-
-## Generated Method Descriptors
-
-Generated interface objects expose method descriptors, not callable functions. Abbreviated output looks like this:
+Methods and their types live under the interface's compatibility major:
 
 ```ts
-import {
-  createContractCodecContext,
-  defineContractMethod,
-  type ContractException,
-  type ContractSpec,
-} from "@groundhogchain/client/contract";
+import { Counter as CounterVersions } from "./contracts/my-counter.js";
 
-export interface CounterIncrementArgs {
-  amount: bigint;
-}
-
-export type CounterIncrementResult = void;
-export type CounterException = ContractException<CounterDeclaredException>;
-
-const codecs = createContractCodecContext(spec.type_defs);
-
-export const Counter = {
-  increment: defineContractMethod<
-    CounterIncrementArgs,
-    CounterIncrementResult,
-    CounterDeclaredException
-  >({
-    entrypoint: entrypoints.Counter.increment,
-    args: [
-      {
-        abiName: "amount",
-        publicName: "amount",
-        type: spec.interfaces[0]!.methods[0]!.args[0]!.ty,
-      },
-    ],
-    returnType: spec.interfaces[0]!.methods[0]!.return_type,
-    throws: [
-      {
-        selector: 0xeb2cf72be75a4c62n,
-        name: "CounterError",
-        type: spec.interfaces[0]!.throws[0]!.ty,
-      },
-    ],
-    codecs,
-  }),
-} as const;
+const Counter = CounterVersions.v0_1;
+const args: CounterVersions.v0_1.IncrementArgs = { amount: 1n };
+const invocation = Counter.increment.invocation(contract, gasLimit, args);
 ```
 
-The generated file contains the complete spec and metadata omitted above.
+The `const` alias shortens value access; it does not alias a TypeScript type namespace. Use the full versioned path for explicit type annotations. Different versions remain separately accessible. Crate-scoped types and events follow the canonical spec ID's crate, major, module, and declaration path.
 
-### Build an Invocation
+The generated code separates type namespaces from runtime value objects so it supports erasable TypeScript and Node type stripping. Reserved names receive the generator's escaped spelling. Use the actual generated exports rather than reconstructing names.
+
+## Method Descriptors
+
+| Operation | Purpose |
+| --- | --- |
+| `invocation(contract, gasLimit, args)` | Encode an application invocation |
+| `call({ contract, gasLimit, args })` | Retain typed result/exception decoders with that invocation |
+| `decodeArgs(bytes)` | Inspect complete calldata using generated public argument names |
+| `view(options)` | Simulate and return a typed value, height, and events |
+| `viewOutcome(options)` | Simulate and return a typed return/abort/fault outcome |
+| `decodeReturn(bytes)` / `decodeException(bytes)` | Decode known method output |
+| `decodeReceipt(receipt)` / `decodeReceiptOutcome(receipt)` | Decode a receipt for the known root method |
+
+Argumentless invocations omit the last argument; argumentless `call`/`view` options omit `args`. Public argument names use camelCase while metadata retains ABI names.
 
 ```ts
-const invocation = Counter.increment.invocation(contract, gasLimit, {
-  amount: 1n,
+const decoded = Counter.increment.decodeArgs(invocation.calldata);
+const value = await Counter.get.view({ client, contract, caller, signal });
+const outcome = await Counter.get.viewOutcome({ client, contract, signal });
+```
+
+Select the descriptor only after identifying the intended method. Decoding does not establish the target contract's behavior. `decodeArgs` rejects incomplete/trailing input and returns `undefined` for no-argument methods. The shared runtime supplies this operation without extra ABI metadata. Moving older flat bindings to the current spec/namespace format is a separate regeneration step.
+
+`view` throws `ContractViewError` for abort/fault. `viewOutcome` returns `kind: "return"`, `"abort"`, or `"fault"`. Malformed contract bytes throw `ContractDecodeError`; RPC/transport failures remain separate. A caller address simulates call context and does not authorize a transaction.
+
+## Execute and Decode
+
+Use a wallet to wrap an application invocation in an authorized root:
+
+```ts
+const call = Counter.increment.call({ contract, gasLimit: callGas, args: { amount: 1n } });
+const { receipt, values } = await wallet.executeCallsAndWait({
+  calls: [call],
+  gasLimit: walletGas,
 });
 ```
 
-The descriptor builds an application invocation. Execute it through a wallet client so the configured DefaultWallet, DevWallet, or custom adapter can construct the authorized root invocation:
+The wallet must preserve child returns. DefaultWallet does; DevWallet does not. For a void mutation the decoded value is `undefined`. `executeAndWait` is appropriate when only execution success is needed.
 
-```ts
-const txHash = await wallet.execute({
-  invocation,
-  gasLimit: walletGasLimit,
-});
-```
-
-See the [TypeScript SDK wallet flow](/tools/typescript-sdk/#bind-a-wallet-client) for account setup and receipt handling.
-
-Argumentless methods omit the final argument object. Generated argument names use camelCase, while descriptor metadata retains the original ABI name. For example, `initial_value` becomes `initialValue`.
-
-Every descriptor also exposes its entrypoint ID as a defensive copy:
-
-```ts
-const entrypoint = Counter.increment.entrypoint;
-```
-
-### Decode Returns and Exceptions
-
-```ts
-const value = Counter.get.decodeReturn(returnData);
-const exception = Counter.increment.decodeException(abortData);
-```
-
-Return decoders and declared-exception decoders consume the complete buffer and reject trailing bytes with `ContractDecodeError`. An unknown exception preserves its selector and complete raw abort buffer. It does not interpret or reject bytes after the selector.
-
-### Run a Typed View
-
-```ts
-const result = await Counter.get.view({
-  client,
-  contract,
-  caller,
-});
-
-console.log(result.value, result.height, result.events);
-```
-
-`caller` is optional. Methods with arguments require `args`; argumentless views reject it at the type level.
-
-`view()` throws `ContractViewError` for a typed abort or execution fault. `viewOutcome()` returns a discriminated `return`, `abort`, or `fault` result:
-
-```ts
-const outcome = await Counter.get.viewOutcome({ client, contract, caller });
-```
-
-Transport and JSON-RPC errors pass through unchanged. Malformed return or abort data throws `ContractDecodeError` from both APIs.
-
-### Decode a Root Receipt
-
-```ts
-const receiptResult = Counter.get.decodeReceipt(receipt);
-const receiptOutcome = Counter.get.decodeReceiptOutcome(receipt);
-```
-
-`decodeReceipt()` returns the typed value with `txHash`, `height`, and `events`. It throws `ContractReceiptError` for an abort, execution failure, or missing return data from a non-void method. `decodeReceiptOutcome()` returns a discriminated `return`, `abort`, or `failure` result. Both can throw `ContractDecodeError` for malformed data.
-
-These APIs require a receipt known to come from a transaction whose root invocation called that method. The descriptor cannot verify the root method identity.
-
-For a DefaultWallet transaction, decode the root `DefaultWallet.execute` receipt first. It returns one raw return buffer per child call. Then use each child method's generated `decodeReturn()` method:
+For manual decoding, identify the root method first:
 
 ```ts
 import { DefaultWallet } from "@groundhogchain/client/contracts";
 
-const root = DefaultWallet.execute.decodeReceipt(receipt);
+const root = DefaultWallet.v0_1.execute.decodeReceipt(receipt);
 const childReturn = root.value[0];
-
-if (!childReturn) {
-  throw new Error("Expected one child return");
-}
-
-const childValue = Counter.get.decodeReturn(childReturn);
+if (childReturn === undefined) throw new Error("Expected one child return");
+const value = Counter.increment.decodeReturn(childReturn);
 ```
 
-This deserialization is generated from the Rust contract specification. The application selects the descriptor because it knows which child calls it submitted; the receipt does not contain enough TypeScript method identity for the client to choose one automatically.
+The receipt does not supply enough method identity to select arbitrary child ABIs. Keep submitted call descriptors if you need later decoding. Never assume a wallet-root abort came from a particular child.
 
-## Generated Exceptions
+`decodeReceipt` throws `ContractReceiptError` for an abort, execution failure, or missing required return data. `decodeReceiptOutcome` returns `return`, `abort`, or `failure`. These operate on a known root receipt, not nested calls.
 
-Bindings generate a union for exceptions declared by the interface:
+## Exceptions
+
+Each interface version exposes `DeclaredException` and `Exception` types. A declared exception includes `kind: "declared"`, selector, name, and decoded value, plus a symbolic enum variant when available. An unknown selector preserves `{ kind: "unknown", selector, data }` with the complete raw buffer.
+
+Return and declared-exception decoders reject trailing bytes. Unknown selectors preserve bytes they cannot interpret. Error objects retain their outcome or original receipt so applications can distinguish execution failure from decode failure.
+
+## Events
+
+Standard events use crate/version paths:
 
 ```ts
-export type CounterDeclaredException = {
-  kind: "declared";
-  name: "CounterError";
-  selector: 0xeb2cf72be75a4c62n;
-  value: CounterError;
-};
+import { groundhog_erc20_if } from "@groundhogchain/client/contracts";
+const { TransferEvent } = groundhog_erc20_if.v0_1.events;
+
+const filter = TransferEvent.filter({
+  contractAddresses: [token], topics: { to: owner },
+});
+const decoded = TransferEvent.decode(event);
+const matches = TransferEvent.allFromReceipt(receipt, { contractAddress: token });
 ```
 
-A declared exception contains:
+`decode` returns `null` for a different signature, and throws for malformed matching data. `singleFromReceipt` requires exactly one matching event from the selected emitter. A matching event must have the declared topic count, 32-byte topics, valid payload, and no trailing bytes. The protocol limit is three topics including the signature and 1,024 bytes for topics plus payload.
 
-- `kind: "declared"`
-- Its selector
-- Its typed decoded value
-- Its declared name, which is `null` when the spec does not name the exception type
+Directly filterable topics include addresses, fixed 32-byte values, `u32`, `u64`, `u128`, `i32`, `i64`, `i128`, `U256`, `I256`, and `bool`. Integers are fixed 32-byte big-endian values with zero/sign extension, not CXS scalar encodings. Strings and byte slices retain only a hash, not the original value. Follow generated filter types; do not invent a preimage filter.
 
-An unknown selector returns `{ kind: "unknown", selector, data }`, preserving the complete abort buffer.
+Filters require one to five contract addresses. Named topic constraints accept one value or `{ oneOf: [...] }` with 1–16 values. Empty filters are not all-contract scans. `decodeEvent` decodes events known to a generated module; standard modules expose named aliases such as `decodeERC20Event`.
 
-`ContractViewError` and `ContractReceiptError` retain the typed failure outcome on their `outcome` property. `ContractDecodeError` identifies malformed contract data. Transport and JSON-RPC errors are not wrapped as contract errors.
-
-## Generated Event Descriptors
-
-Each declared event gets a descriptor for strict decoding, named filters, and receipt extraction:
-
-```ts
-const signature = ChangedEvent.signature;
-const decoded = ChangedEvent.decode(event);
-
-const filter = ChangedEvent.filter({
-  contractAddresses: [contract],
-  topics: { actor },
-});
-
-const matches = ChangedEvent.allFromReceipt(receipt, {
-  contractAddress: contract,
-});
-
-const match = ChangedEvent.singleFromReceipt(receipt, {
-  contractAddress: contract,
-});
-```
-
-`signature` returns a defensive copy. `decode()` returns `null` when topic 0 has a different event signature. A matching signature is decoded strictly:
-
-- The event must have the exact declared topic count, up to the protocol maximum of three topics including the signature.
-- Every topic must contain exactly 32 bytes.
-- Topics plus data must not exceed 1,024 bytes.
-- The payload must contain no trailing bytes.
-
-A malformed event with the matching signature throws `ContractDecodeError`.
-
-Named topic filters are generated only for directly represented topics: addresses, fixed 32-byte values, and `u256`/`i256` integers. Integer topics decode as `bigint`. Hashed topic preimages are not available as generated named filters.
-
-Filters require one to five contract addresses. A named topic accepts one value or a non-empty `{ oneOf: [...] }` constraint containing at most 16 values.
-
-`allFromReceipt()` returns every matching event emitted by the selected contract, in receipt order. Each match retains its emitting `contractAddress`. `singleFromReceipt()` requires exactly one match.
-
-Module-level `decodeEvent()` decodes any event declared by that binding:
-
-```ts
-const event = decodeEvent(emittedEvent);
-```
+Use [typed event pages and durable restart](/tutorials/add-events-to-a-contract/#step-5-query-it-on-chain) for historical queries.
 
 ## Type Mapping
 
-The TypeScript generator maps contract-spec types as follows:
+| Contract type | TypeScript type |
+| --- | --- |
+| Void | `void` |
+| Bool | `boolean` |
+| Integer types | `bigint` |
+| String | `string` |
+| Address | `ContractAddress` |
+| Bytes / Vec of u8 | `Uint8Array` |
+| Other vectors | `T[]` |
+| Fixed bytes | `FixedBytes<N>` |
+| Fixed arrays of length 0–3 | Exact readonly tuple |
+| Longer fixed arrays | `FixedArray<T, N>` |
+| Tuple | Readonly tuple |
+| Option | `T \| null` |
+| Named struct | Interface in its spec-ID namespace |
+| Enum | Bigint value union and const object |
+| Union | Discriminated `{ case, value? }` union |
+| SignedToken | `SignedToken<T>` placeholder |
 
-| Contract type                            | TypeScript representation                          |
-| ---------------------------------------- | -------------------------------------------------- |
-| `SignedToken<T>` | `SignedToken<T>` placeholder |
-| `Void`                                   | `void`                                             |
-| `Bool`                                   | `boolean`                                          |
-| Integer types, including `u8`, `u256`, and `i256`       | `bigint`                                           |
-| `String`                                 | `string`                                           |
-| `Address`                                | `ContractAddress`                                  |
-| `Bytes`, `Vec<u8>`                       | `Uint8Array`                                       |
-| Other `Vec<T>`                           | `T[]`                                              |
-| `[u8; N]`                                | `FixedBytes<N>`                                    |
-| Other fixed arrays of length 0 through 3 | Exact readonly tuple                               |
-| Other fixed arrays longer than 3         | `FixedArray<T, N>`                                 |
-| Tuple                                    | Readonly tuple                                     |
-| `Option<T>`                              | `T \| null`                                        |
-| Named struct                             | Interface                                          |
-| Enum                                     | Bigint const object and value-union type           |
-| Union                                    | `{ case: "..."; value?: ... }` discriminated union |
+`fixedBytes(bytes, length)` validates and brands caller-owned mutable bytes without copying. `fixedArray(values, length)` returns a frozen copy. `signedToken<T>()` supplies the zero-byte placeholder; it does not create authorization.
 
-Construct branded fixed-length values with the client contract helpers:
+## Standard Bindings
 
-```ts
-import { fixedArray, fixedBytes } from "@groundhogchain/client/contract";
+Client 0.12.0 ships versioned `DefaultWallet`, `DevWallet`, `ERC20`, `ERC20Metadata`, `ERC20Permit`, and `SignedOp` descriptors. Use generated types and events under their exported crate namespaces; old flat exports such as `ERC20TransferEvent` and `ERC20ApprovalEvent` are not the current API.
 
-const id = fixedBytes(rawBytes, 32);
-const values = fixedArray(rawValues, 4);
-```
-
-Encoding and decoding enforce the declared lengths. `fixedBytes()` validates and brands the caller-owned mutable `Uint8Array` without copying it. `fixedArray()` returns a frozen copy.
-
-`SignedToken<T>` occupies no calldata or return bytes. The runtime passes its authorization handle between contracts; off-chain code sees only a placeholder. `signedToken<T>()` constructs that placeholder, not an authorization token.
-
-## Standard Contract Bindings
-
-The client ships `DefaultWallet`, `DevWallet`, `ERC20`, `ERC20Metadata`, and `SignedOp` bindings. The wallet bindings use interface `0.1.0`; the ERC-20 bindings use interface `0.1.9`, and `SignedOp` uses `0.1.22`:
-
-```ts
-import { ERC20 } from "@groundhogchain/client/contracts";
-
-const balance = await ERC20.getBalanceOf.view({
-  client,
-  contract: token,
-  args: { addr },
-});
-
-const transfer = ERC20.transfer.invocation(token, gasLimit, {
-  receiver,
-  amount,
-});
-```
-
-The standard entrypoint also exports `ERC20Error`, `ERC20Spec`, `ERC20TransferEvent`, `ERC20ApprovalEvent`, and `decodeERC20Event`. Generated argument, result, exception, and filter types are available from the same subpath.
-
-Wallet bindings expose the root methods used by wallet clients and explicit wallet operations:
-
-```ts
-import { DefaultWallet, DevWallet } from "@groundhogchain/client/contracts";
-
-const defaultWalletResult = DefaultWallet.execute.decodeReceipt(defaultWalletReceipt);
-const devWalletResult = DevWallet.doAction.decodeReceipt(devWalletReceipt);
-```
-
-`DefaultWalletSpec`, `DevWalletSpec`, and their generated argument, result, and exception types are exported from the same entrypoint. Pubkey accounts use DefaultWallet behavior automatically. Source-address accounts can use a deployed smart wallet such as DevWallet with `devWalletAdapter`.
-
-Root receipt decoding does not inspect a nested application call. Decode the root with its wallet descriptor, then use typed views or event descriptors for the application-level result.
-
-## Bindings vs SDK
-
-Generated bindings sit on top of the client runtime:
-
-| Need                                                      | Use                                                        |
-| --------------------------------------------------------- | ---------------------------------------------------------- |
-| Connect to JSON-RPC                                       | [TypeScript SDK](/tools/typescript-sdk/)                   |
-| Bind an account and execute an application invocation     | [TypeScript SDK](/tools/typescript-sdk/#bind-a-wallet-client) |
-| Construct, sign, submit, and poll a low-level transaction | [TypeScript SDK](/tools/typescript-sdk/#low-level-signing) |
-| Build a typed application invocation                      | Generated method descriptor                                |
-| Decode a typed method return or exception                 | Generated method descriptor                                |
-| Run a typed view or decode a root receipt                 | Generated method descriptor                                |
-| Decode events, build filters, or extract receipt events   | Generated event descriptor                                 |
+The ERC-20 interface 0.1.41 uses signed `difference` and `exclusive` for allowance changes, `AllowanceChangeEvent`, and explicit cleanup methods. See the [token workflow](/tutorials/work-with-groundhog-from-typescript/#8-work-with-erc-20-tokens).
 
 ## Related Documentation
 
-- [TypeScript SDK](/tools/typescript-sdk/) for the app-facing client package
-- [Groundhog CLI](/tools/groundhog-cli/) for CLI codegen commands
-- [Contract Spec](/reference/contract-spec/) for the canonical codegen input
-- [Wallet Integration](/tools/wallet-integration/) for using generated invocations with an external wallet
-- [JSON-RPC API](/reference/json-rpc-api/) for the underlying gateway surface
+- [TypeScript SDK](/tools/typescript-sdk/) for accounts, transport, reads, and execution
+- [Groundhog CLI](/tools/groundhog-cli/) for build and codegen
+- [Contract Spec](/reference/contract-spec/) for canonical metadata
+- [Wallet Integration](/tools/wallet-integration/) for external wallets and recovery
