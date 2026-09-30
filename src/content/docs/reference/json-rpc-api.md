@@ -8,7 +8,7 @@ This API is under active development. Method signatures and response formats may
 :::
 
 :::note[Version checked]
-This page was source-checked against `groundhog-rpc` `0.17.0` (client bundle `0.1.27`) and JSON-RPC wire format `5.2.0`.
+This page describes `groundhog-rpc` `0.19.0` and JSON-RPC wire format `7.0.0`. Documentation-only corrections do not add methods or change payloads.
 :::
 
 The Groundhog gateway exposes JSON-RPC 2.0 over HTTP. For its place in the node topology, see [Networking](/how-it-works/networking/).
@@ -25,6 +25,17 @@ The Groundhog gateway exposes JSON-RPC 2.0 over HTTP. For its place in the node 
 ```
 
 Public response fields use camelCase. Addresses, hashes, calldata, event topics, and other byte fields use `0x`-prefixed lowercase hex. Large protocol quantities such as balances use decimal strings. Block heights and other bounded fields use JSON numbers.
+
+## JSON-RPC Arrays
+
+| Property | Contract |
+| --- | --- |
+| Maximum entries | 1,000 per array on the supported embedded node and standalone gateway |
+| Correlation | Match responses by request ID; response order is not execution order |
+| Errors | Per-entry RPC errors remain independent; transport failures can affect the shared exchange |
+| Guarantees | No shared snapshot, ordering, or atomicity between independent requests |
+| Other limits | Request/response byte limits and concurrency settings are separate |
+| Client defaults | Opt-in HTTP batching uses 100 entries and a 0ms scheduling window; see [client transport](/tools/typescript-sdk/#http-batching) |
 
 ## Wire Design
 
@@ -78,7 +89,8 @@ Get a committed transaction's execution result and events.
   "height": 12345,
   "status": { "result": "ok" },
   "events": [],
-  "returnData": "0x42"
+  "returnData": "0x42",
+  "gasUsed": 1234
 }
 ```
 
@@ -97,9 +109,14 @@ Get a committed transaction's execution result and events.
 
 A receipt proves that the transaction committed. Only `status.result: "ok"` proves successful execution.
 
+| Field | Meaning |
+| --- | --- |
+| `gasUsed` | Consumed root/child execution gas plus pre-execution validation of attached contracts; a JSON integer, parsed as bigint by the TypeScript client |
+| Gas billing | No token fee or unused-gas refund; declared root gas remains the scheduling quantity |
+
 ### `groundhog_getTransactionStatus`
 
-Check the scheduler first, then committed history, for a transaction.
+Check committed history first, then the scheduler mempool when needed.
 
 | Parameter | Type | Description |
 | --- | --- | --- |
@@ -126,7 +143,18 @@ Get the current committed chain tip.
 
 **Returns:** `{ "height": number, "blockHash": "0x..." }`.
 
+### `groundhog_chainConfig`
+
+| Property | Contract |
+| --- | --- |
+| Parameters | None |
+| Result | `NetworkConfigParams`, the execution parameters explicitly stated by the chain |
+| Optional integer fields | `maxSha256Buffers`, `maxCrossInvokeDepth`, `maxNewContractsPerTx`, `maxBytestringLen`, `maxContractSizeBytes`, `maxSavepointDepth`, `maxAuthTokenDepth`, `maxRv32CodeBytes`, `maxRv32MemoryBytes` |
+| Missing field | Unspecified by this config, not zero and not an SDK-selected default |
+| Scope | Configured execution limits; not a general storage-cost estimator or a complete list of effective runtime defaults |
+
 ### `groundhog_networkInfo`
+
 
 Get the network identity used for transaction signing.
 
@@ -192,11 +220,11 @@ Get wire, implementation, build, and packaging-platform versions.
 
 ```json
 {
-  "wireFormat": "5.2.0",
-  "implementation": "0.17.0",
+  "wireFormat": "7.0.0",
+  "implementation": "0.19.0",
   "commitHash": "<commit>",
-  "releaseVersion": "0.1.27",
-  "bundleManifestDigest": "sha256:<digest>"
+  "releaseVersion": null,
+  "bundleManifestDigest": null
 }
 ```
 
@@ -312,6 +340,28 @@ Query transactions whose root invocation targets an address.
 **Returns:** `TransactionRefPage` with transaction hashes and heights, the next cursor, latest indexed block, and oldest retained block. Hydrate a reference with `groundhog_getTransactionReceipt`.
 
 The initial cursor is `"0x"`. A limit of `0` selects the server default of 50. Values above the configured cap, normally 200, are rejected. Nested calls to the address do not match.
+
+## Pagination Contract
+
+| Field or case | Rule for event and address-transaction pages |
+| --- | --- |
+| Initial cursor | Send `"0x"`; TypeScript actions use an empty `Uint8Array` or an omitted initial cursor |
+| Non-empty cursor | Continue the same historical walk with the same network, target, and filters |
+| `order` and `anchor` | Required raw request fields even when the cursor supplies continuation state |
+| Returned `"0x"` | This walk is exhausted; it does not subscribe to future blocks |
+| Empty rows, non-empty cursor | Continue; row count alone does not indicate exhaustion |
+| `latestBlock` | Indexer's head at response time, not an application coverage checkpoint |
+| `oldestBlock` | Retained-history lower bound; detect/report a gap if a checkpoint is older |
+| Event identity | Transaction hash plus event sequence number, scoped to the network/query |
+| Transaction-ref identity | Transaction hash; address history matches only root invocation targets |
+| Later ascending scan | Start a new ascending walk with an empty cursor at the last stored row height from ascending ingestion; deduplicate that block |
+| Descending refresh | Start a new descending walk with an empty cursor and `atEnd` anchor; the last (oldest) row is not a forward-ingestion checkpoint |
+| Persistence | Save rows and progress together; never advance past a partially processed block |
+| Invalid filters | Empty filter lists or empty contract-address lists return invalid params, not all-contract results |
+| Cursor validity | Opaque backend format; current malformed-cursor handling can report false exhaustion, so explicit rejection is not guaranteed |
+
+For the executable application pattern and retention limitations, see
+[Resume Without Missing Events](/tutorials/add-events-to-a-contract/#resume-without-missing-events).
 
 ## Error Codes
 

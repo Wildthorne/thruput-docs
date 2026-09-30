@@ -76,6 +76,13 @@ A contract funds deposits for data stored under its address. Its operator can th
 
 ## The Native Token
 
+A sufficient first HOG credit can pay for the recipient's new balance-item
+deposit. A small first credit may be excluded with `insufficientFunds`; funding
+the balance item first is one option, not a universal requirement to use an
+airdrop. Amounts depend on runtime configuration. Funding a target's storage does
+not fund the sender's scheduling capacity. See the
+[client funding example](/tools/typescript-sdk/#fund-and-execute-a-call).
+
 HOG is implemented by a native precompiled token contract exposing the standard asset interface, including transfers, balance queries, and allowances. Applications call it through that interface. The runtime also uses its balances for scheduling and storage accounting.
 
 

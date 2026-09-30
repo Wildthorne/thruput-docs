@@ -6,7 +6,7 @@ description: How Groundhog CLI commands fit into RV32 builds, local nodes, tests
 Run normal Rust loops with `cargo`. Run Groundhog-specific work with `groundhog`: scaffolds, RV32 artifacts, local nodes, deployments, RPC calls, state inspection, keys, wallets, and generated bindings. RV32 is Groundhog's 32-bit RISC-V contract target.
 
 :::note[Version checked]
-This page was source-checked against Groundhog CLI `0.17.0`, included in bundle `0.1.27`. Its generated project declares SDK `0.34.3` and `groundhog-json-rpc-client` `0.17.0`.
+This page targets CLI `0.19.0`, SDK `0.41.1`, and Rust RPC client `0.19.0`. Its managed node catalog selects `0.1.29-rc.4`. See [installation](/start/getting-started/#choose-and-install-the-cli) for the component versions.
 :::
 
 ## Foundry Mental Model
@@ -83,9 +83,29 @@ For complete command sequences, follow [Develop Locally with the CLI](/tutorials
 
 ## First-Run Setup
 
-Early-access Cargo registry credentials are handled by Cargo, not the CLI. Follow [Cargo access setup](/start/getting-started/#configure-cargo-access) to select a credential provider before using an environment token or interactive login. The client-bundle instructions also cover [Linux system prerequisites](/start/getting-started/#choose-and-install-a-client-bundle).
+Cargo handles early-access registry credentials. Follow [Cargo access setup](/start/getting-started/#configure-cargo-access) before using a token or interactive login. The [installation instructions](/start/getting-started/#choose-and-install-the-cli) also cover Linux runtime prerequisites.
 
-Install `groundhog` and `hog-devnode` together from the same [Groundhog client bundle](https://github.com/groundhogchain/packaging/releases). Keep the extracted directory layout intact; the macOS bundle includes runtime libraries beside the binaries. `groundhog node` accepts `--hog-devnode-binary`; both it and `groundhog test --integration` also discover `GROUNDHOG_DEVNODE_BINARY`, a sibling executable beside `groundhog`, or `hog-devnode` on `PATH`. Integration mode does not accept the command-line flag.
+For CLI 0.19.0, use the [installation steps](/start/getting-started/#choose-and-install-the-cli)
+to install the CLI through Cargo or its release archive. Use `groundhog toolchain`
+to select its checksum-verified managed node:
+
+```bash
+groundhog toolchain list
+groundhog toolchain install 0.1.29-rc.4
+groundhog toolchain which
+```
+
+`groundhog node` and `groundhog test --integration` can acquire the selected
+catalog runtime when needed. Explicit source builds and older client bundles are
+alternative setups, not required for this managed path. Check
+`groundhog status --json` for the selected runtime; an inherited
+`GROUNDHOG_DEVNODE_BINARY` can override it. If intentionally using a bundle, keep
+its binaries, runtime libraries, and contract artifacts together.
+
+`groundhog node` accepts `--hog-devnode-binary` for an explicit runtime. For an
+explicit integration-test runtime, use `GROUNDHOG_DEVNODE_BINARY`; integration
+mode does not accept that command-line flag. See
+[runtime selection](/tutorials/develop-locally/#verify-the-selected-runtime).
 
 Run interactive setup before creating your first project:
 
@@ -106,7 +126,7 @@ groundhog docs --port 0
 
 This serves the bundled documentation on loopback, using port `4321` by default or an available port with `--port 0`. Keep the command running while reading. It does not require the hosted site's login.
 
-The snapshot is fixed when the CLI is built. CLI `0.17.0` bundles an earlier docs snapshot with the `0.16.0-rc.1` agent guide; it does not include subsequent website corrections. Use `groundhog --skill` for the installed CLI's own guidance. `groundhog docs --json` reports the snapshot identity and `guideMatchesCli` at startup.
+The snapshot is fixed when the CLI is built. CLI `0.19.0` embeds an earlier site snapshot containing guide `0.17.0`, so it does not include later website corrections. Use `groundhog --skill` for that CLI's own guidance. `groundhog docs --json` reports source identity and `guideMatchesCli`; version differences are explicit, not an automatic refresh.
 
 ## Configuration
 
@@ -314,6 +334,14 @@ When omitted, the target resolves to the effective wallet from the selected prof
 ## Transactions, Events, and Tokens
 
 The inspection commands return one page at a time. Cursors are opaque and must be reused with the same target and filters.
+
+An empty returned cursor (`"0x"`) ends one historical walk, not a subscription.
+Continue through empty pages with non-empty cursors. These commands scan newest
+first; omit `--cursor` to refresh from the head. For forward indexing through RPC
+or the client, use a new ascending walk with an empty cursor at the last stored
+row height from ascending ingestion, then deduplicate that block. Save rows and
+progress together; `latestBlock` is not an application checkpoint. See the
+[restart example](/tutorials/add-events-to-a-contract/#resume-without-missing-events).
 
 ```bash
 groundhog tx show 0x<32-byte-hash>

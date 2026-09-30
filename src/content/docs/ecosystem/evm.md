@@ -290,7 +290,7 @@ fn transfer(&mut self, receiver: &ContractAddress, amount: Amount) {
 }
 ```
 
-**What changes:** No `indexed` keyword. Events use typed structs (`TransferEvent`, `ApprovalEvent`) with topic-based indexing built into the type. Fields marked `#[topic]` are indexed. The SDK provides helpers like `log_transfer_event` that handle serialization. Indexing and filtering happen at the node/explorer layer, not in the contract. See [Add Events to a Contract](/tutorials/add-events-to-a-contract/) for the full workflow and [Contract Spec](/reference/contract-spec/#events) for how events are described to off-chain tools.
+**What changes:** Fields marked `#[topic]` become topics on typed events. Interface 0.1.41 uses `TransferEvent` and `AllowanceChangeEvent`, whose `.log()` methods encode the event. Allowance changes carry signed deltas, not absolute approvals. Filtering happens through the indexer/RPC. See [Add Events](/tutorials/add-events-to-a-contract/) and [Contract Spec](/reference/contract-spec/#events).
 
 ## ERC-20 Side-by-Side
 

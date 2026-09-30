@@ -41,6 +41,12 @@ Choose the application's network explicitly. Compare the session's `networkHash`
 
 ## Prepare, Sign, Save, Submit, Observe
 
+Client 0.12.0 also offers `executeAndWait` and `executeCallsAndWait`. Provider-backed
+forms require `onSigned` to durably save the verified signed bytes and hash before
+submission. Use these helpers for routine operations, retaining observation errors
+and the original network for recovery. The explicit path below shows the same
+persist-before-submit boundary when the app needs control of each step.
+
 This example accepts an already discovered provider and a client connected to the application's expected network. Its selection, persistence, and UI callbacks are application code, not SDK options. Build `request.invocation` with your [generated bindings](/tools/typescript-bindings/), and supply its wallet gas limit in `PrepareExecutionRequest`. Error-reporting callbacks must not throw. `onApplicationError` handles session parsing or UI callback failures without letting them escape the event listener.
 
 ```ts

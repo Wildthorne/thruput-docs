@@ -1,323 +1,112 @@
 ---
 title: Contract Spec
-description: "Reference for the Groundhog contract spec: the machine-readable interface description produced by `groundhog build`: methods, types, events, and errors."
+description: Canonical contract metadata, structured identities, methods, types, events, and exceptions.
 ---
 
-Every Groundhog contract carries a **spec**: a machine-readable description of its interfaces, the types they use, the events they emit, and the errors they throw. The spec is Groundhog's equivalent of an EVM ABI. It is generated at compile time by the SDK macros and consumed by `groundhog codegen ts`, `groundhog call`, indexers, and any other tool that needs to encode calldata or decode results and events.
-
-:::note[Version checked]
-This page was checked against CLI `0.17.0`, which scaffolds SDK `0.34.3`.
-:::
+Source baseline: CLI 0.19.0, SDK/spec-tool 0.41.1. For usage, see
+[TypeScript Bindings](/tools/typescript-bindings/) and [Build a Counter](/tutorials/build-a-counter/).
 
 ## Where the Spec Lives
 
-`groundhog build` produces the spec sidecars next to the built artifact:
-
-| Artifact | Format | Purpose |
-|----------|--------|---------|
-| `<artifact>.spec.xdr` sidecar | XDR | Canonical, as a standalone file. Accepted by `groundhog codegen ts`. |
-| `<artifact>.spec.json` sidecar | JSON | Human-readable rendering for inspection and debugging. Not designed to be parsed back. |
-
-For a contract crate named `counter`, the default RV32 build writes `target/groundhog/counter.rv32a`, `target/groundhog/counter.spec.json`, and `target/groundhog/counter.spec.xdr`.
-
-Under the hood, the SDK macros embed raw spec fragments in the compiled binary. `groundhog build` collects the fragments, canonicalizes them (deduplication, sorting, validation), and writes the sidecars.
+| Artifact | Purpose |
+| --- | --- |
+| `<crate>.spec.xdr` | Canonical contract API, consumed by standalone TypeScript codegen |
+| `<crate>.spec.json` | Human-readable rendering for inspection; not the codegen input |
+| `<crate>.rv32a` | Deployable RV32 artifact |
+| Generation | SDK macros emit fragments; build canonicalizes, sorts, validates, and writes sidecars under `target/groundhog/` by default |
 
 ## Top-Level Structure
 
-The JSON rendering has four top-level keys:
+| JSON key | Contents |
+| --- | --- |
+| `format` | `gh_contract_spec_v1`, the inspection-rendering tag |
+| `interfaces` | Exported interfaces, methods, and declared exceptions |
+| `type_defs` | Reachable named type layouts |
+| `events` | Declared event identities, signatures, topics, and payload fields |
 
-| Key | Contents |
-|-----|----------|
-| `format` | Version tag for the JSON rendering. Currently `gh_contract_spec_v1`. |
-| `interfaces` | One entry per `#[contract]` interface the binary exports: its methods and declared error types. |
-| `type_defs` | The layout of every named user type (struct, enum, union) reachable from an interface. |
-| `events` | Every event the contract declares. |
+## Structured Identity
 
-The complete spec for the counter contract from [Build a Counter](/tutorials/build-a-counter/), built as crate `counter` at version `0.1.0` (the identifiers below depend on the crate's name and version):
+| Identity field | Meaning |
+| --- | --- |
+| `crate` | Declaring crate in the JSON rendering (`crate_name` in the canonical type) |
+| `major` | Compatibility major, such as `1`, `0.1`, or `0.0.2` |
+| `module_path` | Module within that crate |
+| `declared` | Declaration name |
+| Used by | Named type references, type definitions, and event names |
+| TypeScript projection | Crate, compatibility-major namespace, module path, then declaration; interface methods use interface name and major |
 
-```json
-{
-  "format": "gh_contract_spec_v1",
-  "interfaces": [
-    {
-      "name": "Counter",
-      "version": "0.1.0",
-      "throws": [
-        {
-          "selector": "0xeb2cf72be75a4c62",
-          "type": { "kind": "named", "name": "CounterError" }
-        }
-      ],
-      "methods": [
-        {
-          "name": "decrement",
-          "args": [{ "name": "amount", "type": { "kind": "u64" } }],
-          "return_type": { "kind": "void" }
-        },
-        {
-          "name": "error",
-          "args": [],
-          "return_type": { "kind": "u64" }
-        },
-        {
-          "name": "get",
-          "args": [],
-          "return_type": { "kind": "u64" }
-        },
-        {
-          "name": "increment",
-          "args": [{ "name": "amount", "type": { "kind": "u64" } }],
-          "return_type": { "kind": "void" }
-        },
-        {
-          "name": "initialize",
-          "args": [{ "name": "initial_value", "type": { "kind": "u64" } }],
-          "return_type": { "kind": "void" }
-        },
-        {
-          "name": "ping",
-          "args": [{ "name": "tag", "type": { "kind": "u64" } }],
-          "return_type": { "kind": "void" }
-        }
-      ]
-    }
-  ],
-  "type_defs": [
-    {
-      "kind": "enum",
-      "name": "CounterError",
-      "variants": [{ "name": "NotAuthorized", "value": 1 }]
-    }
-  ],
-  "events": [
-    {
-      "name": "PingEvent",
-      "signature": "f0c8fa264c489d9d6bc8796daa7d6ab408d76b37ef41b6d6d951e20f63d10f52",
-      "topics": [{ "name": "tag", "type": { "kind": "u64" } }],
-      "fields": []
-    }
-  ]
-}
-```
+The compatibility major is the leftmost non-zero SemVer component. Use canonical
+IDs and generated descriptors; short declaration names are not globally unique.
 
 ## Interfaces
 
-Each interface entry corresponds to one `#[contract]` trait or inherent impl:
-
-| Field | Description |
-|-------|-------------|
-| `name` | The interface name: the trait name, the self type name, or the `interface = "..."` override. |
-| `version` | The full `MAJOR.MINOR.PATCH` version (the crate version, or the `version = "..."` override). |
-| `throws` | Error types any method of this interface may throw, with their selectors. See [Errors](#errors). |
-| `methods` | The exported methods, sorted by name. |
-
-Each method lists its `name`, `args` (each `{ "name", "type" }`), and `return_type`.
-
-Entrypoint IDs are **not** stored in the spec. Clients derive them deterministically from the interface name, the major version, and the normalized method signature. See [Contracts](/how-it-works/contracts/) for entrypoint encoding details.
-
-:::note[What "major version" means]
-Selectors, event signatures, and entrypoint IDs all hash the interface or crate's *major version*, defined as the leftmost non-zero version component (mirroring Cargo's SemVer-compatibility rule): `1.2.3` → `1`, `0.9.2` → `0.9`, `0.0.2` → `0.0.2`. SemVer-compatible releases therefore keep the same identifiers; a breaking version bump changes all of them.
-:::
+| Field | Meaning |
+| --- | --- |
+| `name` | Interface name from the trait, inherent self type, or explicit override |
+| `version` | Full interface version |
+| `throws` | Declared exception selectors and types |
+| `methods` | Exported methods in canonical order |
+| Method `name` | ABI name |
+| Method `args` | Ordered fields with `name` and `type` |
+| Method `return_type` | Contract type of the result |
+| Entrypoint ID | Derived by tooling from interface/version/signature; not an additional JSON field |
+| Effect metadata | The spec does not provide an authoritative read-only/initializer capability flag |
 
 ## Type Encoding
 
-Every type that appears in a method signature, type definition, or event is an object with a `kind` tag.
+| `kind` | Other JSON fields | Meaning |
+| --- | --- | --- |
+| `void`, `bool`, `u8` | None | Unit, boolean, or byte |
+| `u32`, `i32`, `u64`, `i64`, `u128`, `i128`, `u256`, `i256` | None | Corresponding integer |
+| `string`, `bytes`, `address` | None | String, variable bytes, or contract address |
+| `option` | `inner` | Optional value |
+| `vec` | `element`, `max_len` | Variable-length sequence |
+| `array` | `element`, `len` | Fixed-length sequence |
+| `tuple` | `items` | Ordered element types |
+| `named` | `name` | Structured identity of a named type |
+| `signed_token` | `preimage` | Payload type, or null when erased |
 
-Primitive kinds:
-
-| `kind` | Rust type |
-|--------|-----------|
-| `void` | `()` |
-| `bool` | `bool` |
-| `u8` | `u8` |
-| `u32`, `i32`, `u64`, `i64`, `u128`, `i128` | the corresponding integer |
-| `u256`, `i256` | `U256`, `I256` |
-| `string` | `String` |
-| `bytes` | variable-length byte string |
-| `address` | `ContractAddress` |
-
-Composite kinds:
-
-```json
-{ "kind": "option", "inner": { "kind": "u64" } }
-{ "kind": "vec", "element": { "kind": "address" }, "max_len": 4294967295 }
-{ "kind": "array", "len": 32, "element": { "kind": "u8" } }
-{ "kind": "tuple", "items": [{ "kind": "u32" }, { "kind": "bool" }] }
-{ "kind": "named", "name": "Payload" }
-{ "kind": "signed_token", "preimage": { "kind": "named", "name": "Payload" } }
-```
-
-These correspond to `Option<u64>`, `Vec<ContractAddress>`, `[u8; 32]`, `(u32, bool)`, a user-defined type named `Payload`, and `Signed<Payload>`. A `named` reference points at an entry in `type_defs` by name. The nested-type key differs by kind: `inner` for `option`, `element` for `vec` and `array`, `items` for `tuple`, and `preimage` for `signed_token`. `preimage` is `null` for `Signed<Opaque>`. `max_len` is the vector's declared bound (`4294967295`, i.e. `u32::MAX`, when unbounded).
-
-For the generated TypeScript representations of these types, see [Type mapping](/tools/typescript-bindings/#type-mapping).
+Contract arguments, results, and exception payloads use CXS. The spec sidecar
+uses its canonical XDR encoding. JSON is the inspection projection, not either
+binary encoding.
 
 ## Type Definitions
 
-`type_defs` carries the layout of every named type, generated from [`#[contract_type]`](/reference/sdk-macros/#contract_type) (or the lower-level `#[derive(ContractTypeSpec)]`). There are three kinds.
-
-**Structs:**
-
-```rust
-#[contract_type]
-pub struct Payload {
-    pub count: u32,
-}
-```
-
-```json
-{
-  "kind": "struct",
-  "name": "Payload",
-  "fields": [{ "name": "count", "type": { "kind": "u32" } }]
-}
-```
-
-**Enums**: Rust enums whose variants carry no data:
-
-```rust
-#[contract_type]
-pub enum Choice {
-    Left = 1,
-    Right = 2,
-}
-```
-
-```json
-{
-  "kind": "enum",
-  "name": "Choice",
-  "variants": [
-    { "name": "Left", "value": 1 },
-    { "name": "Right", "value": 2 }
-  ]
-}
-```
-
-**Unions**: Rust enums where at least one variant carries data. Each case records its discriminant and payload shape (`void`, `tuple`, or `struct`):
-
-```rust
-#[contract_type]
-pub enum Envelope {
-    Empty = 0,
-    Wrapped { payload: Payload } = 1,
-    Pair(Payload, Choice) = 3,
-}
-```
-
-```json
-{
-  "kind": "union",
-  "name": "Envelope",
-  "cases": [
-    {
-      "name": "Empty",
-      "discriminant": 0,
-      "case_type": { "kind": "void" }
-    },
-    {
-      "name": "Wrapped",
-      "discriminant": 1,
-      "case_type": {
-        "kind": "struct",
-        "fields": [{ "name": "payload", "type": { "kind": "named", "name": "Payload" } }]
-      }
-    },
-    {
-      "name": "Pair",
-      "discriminant": 3,
-      "case_type": {
-        "kind": "tuple",
-        "items": [
-          { "kind": "named", "name": "Payload" },
-          { "kind": "named", "name": "Choice" }
-        ]
-      }
-    }
-  ]
-}
-```
-
-Only types reachable from an interface are included. This covers method arguments and returns, thrown error types, declared events, and fields of other reachable types. A `#[contract_type]` that nothing references does not appear in the spec, unless it is marked `#[contract_type(export)]`, which forces the type into the spec of any contract that links it.
+| Kind | Fields beyond structured `name` |
+| --- | --- |
+| `struct` | `fields`, each with name/type |
+| `enum` | `variants`, each with name/value |
+| `union` | `cases`, each with name, discriminant, and case_type |
+| Union case `void` | No payload |
+| Union case `tuple` | `items` |
+| Union case `struct` | `fields` |
 
 ## Events
 
-Each entry in `events` describes one event the contract declares. Inclusion works the same way as for named types: deriving `Event` alone does not put an event in the spec. An event appears only when an interface declares it via `emits(...)` on `#[contract]`, or when the type is marked `#[event_spec(export)]`.
+| Field | Meaning |
+| --- | --- |
+| `name` | Structured event identity |
+| `signature` | 32-byte event signature rendered as hex; topic 0 for derived events |
+| `topics` | User topic fields and their types |
+| `fields` | CXS payload fields and their types |
+| Limits | At most three topics including signature; 1,024 bytes for topics plus payload |
+| Discovery | Events must be declared by the interface or explicitly exported through supported SDK metadata |
 
-```json
-{
-  "name": "TransferEvent",
-  "signature": "5ff62377bf52711e75461f4d8f9b4585f17d1c20f7e1eceb280194a7764bae5f",
-  "topics": [
-    { "name": "from", "type": { "kind": "address" } },
-    { "name": "to", "type": { "kind": "address" } }
-  ],
-  "fields": [{ "name": "amount", "type": { "kind": "i128" } }]
-}
-```
-
-| Field | Description |
-|-------|-------------|
-| `name` | The Rust type name of the `#[derive(Event)]` struct. |
-| `signature` | The 32-byte event signature, hex-encoded without a `0x` prefix. Every emitted instance carries it as topic 0. |
-| `topics` | The `#[topic]` fields in declaration order. These occupy the topic slots after the signature (at most two). |
-| `fields` | The remaining fields, CXS-serialized into the event's data payload. |
-
-The signature is computed as:
-
-```
-signature = sha256(MAJOR_VERSION ++ "::" ++ CRATE_NAME ++ "::" ++ TYPE_NAME)
-```
-
-where `CRATE_NAME` is the crate that defines the event type and `MAJOR_VERSION` is its major version. For `TransferEvent` defined in `groundhog-erc20-if` (currently `0.1.30`): `sha256("0.1::groundhog-erc20-if::TransferEvent")` = `5ff62377…` above. The compatibility version is `0.1` here, so patch releases of this interface keep the same signature. For `0.0.x` types, the patch component is part of the compatibility version and changes the signature.
-
-To find instances of an event on chain, query [`groundhog_getEvents`](/reference/json-rpc-api/#groundhog_getevents) with the contract's address and `topic0 = "0x" + signature` (filters always require a contract address).
-
-Topic values other than addresses, hashes, `[u8; 32]`, `U256`, and `I256` are CXS-encoded and SHA-256 hashed when emitted, so they can be filtered on but not recovered from the event. Data you need to read back belongs in `fields`.
+Use the generated signature rather than copying a literal from another contract.
+See [Add Events](/tutorials/add-events-to-a-contract/) for emission, filtering, and restart.
 
 ## Errors
 
-The `throws` array of an interface lists every error type its methods may throw:
-
-```json
-{
-  "selector": "0xb19947acb2fa14ff",
-  "type": { "kind": "named", "name": "ERC20Error" }
-}
-```
-
-The selector is the first 8 bytes of the same hash construction used for event signatures:
-
-```
-selector = sha256(MAJOR_VERSION ++ "::" ++ CRATE_NAME ++ "::" ++ TYPE_NAME)[0..8]
-```
-
-Unlike event signatures, selectors are rendered with a `0x` prefix. When a contract throws, the exception payload is tagged with the selector. Clients use the spec to map a selector back to its named type and decode the payload; Rust clients keep an unrecognized exception raw inside `CallError::Exception` (see [Error Handling](/reference/error-handling/)); TypeScript bindings surface it as `{ kind: "unknown", selector, data }` (see [TypeScript Bindings](/tools/typescript-bindings/#generated-exceptions)).
-
-## How Code Surfaces Into the Spec
-
-| In your code | In the spec |
-|--------------|-------------|
-| [`#[contract]`](https://crates.thruput.network/docs/sdk/0.34.3/doc/sdk/attr.contract.html) on a trait or inherent impl | An `interfaces` entry with one method per exported fn |
-| `throws = E` / `throws(E1, E2)` on [`#[contract]`](https://crates.thruput.network/docs/sdk/0.34.3/doc/sdk/attr.contract.html) | The interface's `throws` array |
-| `emits(E1, E2)` on [`#[contract]`](https://crates.thruput.network/docs/sdk/0.34.3/doc/sdk/attr.contract.html) | `events` entries |
-| [`#[contract_exception]`](https://crates.thruput.network/docs/sdk/0.34.3/doc/sdk/attr.contract_exception.html) type named in `throws` | A `type_defs` entry plus the `throws` selector |
-| [`#[contract_type]`](https://crates.thruput.network/docs/sdk/0.34.3/doc/sdk/attr.contract_type.html) struct or enum reachable from an interface | A `type_defs` entry |
-| `#[contract_type(export)]` | A `type_defs` entry, even when nothing references the type |
-| [`#[derive(Event)]`](https://crates.thruput.network/docs/sdk/0.34.3/doc/sdk/derive.Event.html) + `#[event_spec(export)]` | An `events` entry, even with no `emits(...)` declaration |
-
-See [SDK Macros](/reference/sdk-macros/) for the full macro reference and [Add Events to a Contract](/tutorials/add-events-to-a-contract/) for an end-to-end walkthrough.
-
-## Consuming the Spec
-
-- `groundhog build --bindings ts` generates TypeScript bindings as part of the build.
-- [`groundhog codegen ts`](/tools/typescript-bindings/) accepts a canonical `.spec.xdr` when the binding needs a custom output path. It does not accept an artifact or `.spec.json` input.
-- `groundhog call` uses local contract metadata when it can resolve it from the project or artifact.
-- Indexers and explorers can read the `.spec.json` sidecar to label methods and decode events.
+| Field or case | Meaning |
+| --- | --- |
+| Exception `selector` | Hex rendering of its 64-bit selector |
+| Exception `type` | Payload type, potentially a structured named reference |
+| Known selector | Generated decoder interprets the declared payload and rejects trailing bytes |
+| Unknown selector | Client preserves selector and raw abort bytes |
+| Runtime fault | May have no contract exception payload; do not infer a child ABI from root failure bytes |
 
 ## Related Documentation
 
-- [SDK Macros](/reference/sdk-macros/) for the macros that generate spec metadata
-- [Add Events to a Contract](/tutorials/add-events-to-a-contract/) for the events workflow end to end
-- [TypeScript Bindings](/tools/typescript-bindings/) for spec-driven codegen
-- [JSON-RPC API](/reference/json-rpc-api/) for querying emitted events
-- [Contracts](/how-it-works/contracts/) for entrypoint ID encoding and deployment
+- [SDK Macros](/reference/sdk-macros/)
+- [TypeScript Bindings](/tools/typescript-bindings/)
+- [XDR Protocol](/reference/xdr-protocol/)

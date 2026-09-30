@@ -8,7 +8,7 @@ This tutorial builds an ERC-20-compatible token with transfers, allowances, mint
 **Prerequisites:** Complete [Build a Counter](/tutorials/build-a-counter/) first.
 
 :::note[Version checked]
-This tutorial starts from CLI `0.17.0`, whose generated project uses SDK `0.34.3`. The matching standard interface crate is `groundhog-erc20-if` `0.1.30`.
+This tutorial uses CLI `0.19.0`, SDK `0.41.1`, and `groundhog-erc20-if` `0.1.41`.
 :::
 
 ## 1. Create the Project
@@ -40,7 +40,7 @@ rather than editing either `[target.'cfg(...)']` block:
 
 ```toml
 [dependencies]
-groundhog-erc20-if = { version = "=0.1.30", registry = "groundhog" }
+groundhog-erc20-if = { version = "=0.1.41", registry = "groundhog" }
 ```
 
 Leave the rest of the generated manifest alone. In particular keep the
@@ -53,9 +53,9 @@ The interface crate is the source of truth for:
 - `ERC20` and `ERC20Client`
 - `Amount = u128` and `Difference = i128`
 - `ERC20Error`
-- `TransferEvent`, `ApprovalEvent`, `MintEvent`, `BurnEvent`, and their logging helpers
+- `TransferEvent`, `AllowanceChangeEvent`, `MintEvent`, `BurnEvent`, and their `.log()` methods
 
-Its `#[contract]` declaration includes `throws = ERC20Error` and `emits(TransferEvent, ApprovalEvent, MintEvent, BurnEvent)`, so implementations and generated clients share the same wire contract.
+Its interface declares `ERC20Error` and those four events, so implementations and generated clients share the same wire contract. Version 0.1.41 uses signed allowance deltas with optional exclusive locking and explicit cleanup.
 
 ## 2. Wire the Library
 
@@ -80,7 +80,7 @@ Replace `src/implementation.rs` with these imports and storage types:
 
 ```rust
 use groundhog_erc20_if::*;
-use sdk::storage::{Balance, Map, Value};
+use sdk::storage::{Balance, Deletable, Map, Value};
 use sdk::*;
 
 type Allowance = Balance;
@@ -167,9 +167,14 @@ impl TokenContract {
         owner: &ContractAddress,
         spender: &ContractAddress,
         diff: Difference,
+        exclusive: bool,
     ) {
         let mut owner_allowances = self.allowances.at_mut(owner);
-        let mut allowance = owner_allowances.at_mut(spender);
+        let mut allowance = if exclusive {
+            owner_allowances.at_mut_exclusive(spender)
+        } else {
+            owner_allowances.at_mut(spender)
+        };
         let result = if diff >= 0 {
             allowance.try_increase(diff as u128)
         } else {
@@ -177,7 +182,7 @@ impl TokenContract {
         };
         result.unwrap_or_else(|_| throw(ERC20Error::TooLarge));
 
-        log_approval_event(owner, spender, diff);
+        AllowanceChangeEvent::new(owner, spender, diff).log();
     }
 
     fn increase_total_supply(&mut self, amount: Amount) {
@@ -228,7 +233,7 @@ impl ERC20 for TokenContract {
 
         self.decrease_balance(&owner, amount);
         self.lazy_increase_balance(receiver, amount);
-        log_transfer_event(&owner, receiver, amount);
+        TransferEvent::new(&owner, receiver, amount_to_diff(amount)).log();
     }
 
     fn transfer_from(
@@ -240,19 +245,35 @@ impl ERC20 for TokenContract {
         let spender = get_caller();
         let diff = amount_to_diff(amount);
 
-        self.adjust_allowance_by(owner, &spender, -diff);
+        if owner != &spender {
+            self.adjust_allowance_by(owner, &spender, -diff, false);
+        }
         self.decrease_balance(owner, amount);
         self.lazy_increase_balance(receiver, amount);
-        log_transfer_event(owner, receiver, amount);
+        TransferEvent::new(owner, receiver, amount_to_diff(amount)).log();
     }
 
     fn adjust_allowance(
         &mut self,
         spender: &ContractAddress,
-        diff: Difference,
+        difference: Difference,
+        exclusive: bool,
     ) {
         let owner = get_caller();
-        self.adjust_allowance_by(&owner, spender, diff);
+        self.adjust_allowance_by(&owner, spender, difference, exclusive);
+    }
+
+    fn clear_allowance(&mut self, spender: &ContractAddress) {
+        let owner = get_caller();
+        let remaining = amount_to_diff(self.allowance_of(&owner, spender));
+        self.allowances.at_mut(&owner).at_mut(spender).delete_exclusive();
+        AllowanceChangeEvent::new(&owner, spender, -remaining).log();
+    }
+
+    fn clear_balance(&mut self) {
+        let owner = get_caller();
+        ensure(self.balance_of(&owner) == 0, ERC20Error::BalanceNotZero);
+        self.balances.at_mut(&owner).delete_exclusive();
     }
 
     fn allowance(
@@ -281,7 +302,7 @@ impl ERC20 for TokenContract {
         // receiver increase cannot overflow an individual balance.
         self.increase_total_supply(amount);
         self.lazy_increase_balance(receiver, amount);
-        log_mint_event(receiver, amount);
+        MintEvent::new(receiver, amount_to_diff(amount)).log();
     }
 
     fn burn(&mut self, owner: &ContractAddress, amount: Amount) {
@@ -292,7 +313,7 @@ impl ERC20 for TokenContract {
 
         self.decrease_balance(owner, amount);
         self.decrease_total_supply(amount);
-        log_burn_event(owner, amount);
+        BurnEvent::new(owner, amount_to_diff(amount)).log();
     }
 
     fn total_supply(&self) -> Amount {
@@ -303,7 +324,12 @@ impl ERC20 for TokenContract {
 
 Deployment does not call `initialize` automatically. Call it once afterward. The stored config enforces one-time initialization.
 
-Mint and burn are restricted to the administrator. Transfers use the immediate caller as the owner. `transfer_from` uses the immediate caller as the spender and decreases both allowance and owner balance.
+Mint and burn are restricted to the administrator. `transfer_from` spends allowance when caller and owner differ. `clear_allowance` revokes and deletes one pair; `clear_balance` deletes only an empty balance. This minimal token keeps released storage funding at the contract; a production token should define any caller-refund policy explicitly.
+
+Allowance adjustments with `exclusive=false` can merge within bounds. With
+`exclusive=true`, competing writes to that pair conflict. An off-chain read
+followed by a signed delta is still not an exact-target update; the read may be
+old before the transaction starts.
 
 ## 6. Test the Contract
 
@@ -337,6 +363,16 @@ fn transfer_updates_balances_and_supply() {
             assert_eq!(token.get_balance_of(&owner), 900);
             assert_eq!(token.get_balance_of(&bob), 100);
             assert_eq!(token.total_supply(), 1_000);
+
+            token.adjust_allowance(&bob, 25, false);
+            token.adjust_allowance(&bob, -5, true);
+            assert_eq!(token.allowance(&owner, &bob), 20);
+            token.clear_allowance(&bob);
+            assert_eq!(token.allowance(&owner, &bob), 0);
+            token.burn(&owner, 900);
+            token.clear_balance();
+            assert_eq!(token.get_balance_of(&owner), 0);
+            assert_eq!(token.total_supply(), 100);
         })
     })
     .assert_success();

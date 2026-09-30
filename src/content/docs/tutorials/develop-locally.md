@@ -9,11 +9,11 @@ Local development is the fastest way to exercise deployment and RPC behavior. Th
 
 ## Prerequisites
 
-Install the complete client bundle using [Getting Started](/start/getting-started/#choose-and-install-a-client-bundle). You also need `jq` for the structured-output checks below. Keep the generated SDK dependencies and toolchain for your selected CLI.
+Install CLI 0.19.0 and its managed node using [Getting Started](/start/getting-started/#choose-and-install-the-cli). You also need `jq`. Keep the generated SDK dependencies and compiler toolchain.
 
 ### Verify the Selected Runtime
 
-After setting `GROUNDHOG_CLIENT_HOME` and `PATH` as described in Getting Started, inspect what the CLI will actually run:
+Inspect the CLI and selected runtime:
 
 ```bash
 command -v groundhog
@@ -21,16 +21,18 @@ groundhog --version
 groundhog status --json | jq '.data.environment.devnode'
 ```
 
-Read the returned `path` and `version`. They must identify the node from your selected bundle. A successful status command alone does not establish that it selected the right node. `GROUNDHOG_DEVNODE_BINARY` takes precedence over the executable beside the CLI.
+Read the returned path, version, and source. CLI 0.19.0's catalog selects node 0.1.29-rc.4. An explicit `GROUNDHOG_DEVNODE_BINARY` can override managed selection, so a successful status command alone does not establish the intended runtime.
 
-If you intend to use the bundle and the path points elsewhere, select its node for this terminal, then check again:
+If an inherited override is unintended, remove it for this terminal and inspect the managed selection:
 
 ```bash
-export GROUNDHOG_DEVNODE_BINARY="$GROUNDHOG_CLIENT_HOME/bin/hog-devnode"
+unset GROUNDHOG_DEVNODE_BINARY
+groundhog toolchain list
+groundhog toolchain which
 groundhog status --json | jq '.data.environment.devnode'
 ```
 
-Use the same bundle and environment in the terminal that starts the node. This changes only the current shell; do not rewrite a developer's shell configuration or discard an intentional source-build setup. A protocol mismatch is a reason to verify the selected binaries before trying any protocol override.
+Use the same CLI and environment in the terminal that starts the node. Preserve intentional source-build overrides. A protocol mismatch requires matching binaries and bindings, not merely overriding the protocol token.
 
 ## 1. Initialize the CLI
 
@@ -105,7 +107,7 @@ Open a second terminal, keep it running, and start the node:
 groundhog node
 ```
 
-The command starts one supervised `hog-devnode`, exposes JSON-RPC on `http://127.0.0.1:9545`, and records the active endpoint and runtime manifest in global CLI state. With the verified bundled runtime, the default artifact layout needs no extra flags. Use repeatable `--contract-artifacts-dir <DIR>` options only when the node must load contracts from nonstandard directories.
+The command starts one supervised `hog-devnode`, exposes JSON-RPC at `http://127.0.0.1:9545`, and records its runtime manifest. The managed runtime's artifact layout needs no extra flags. Use `--contract-artifacts-dir <DIR>` only for intentional nonstandard artifact directories.
 
 The node is ephemeral. Deployments and calls share state while this process runs, but stopping it discards chain state and clears the active-runtime record.
 
