@@ -8,7 +8,7 @@ An **Invocation Frame** represents the execution context for a single [contract]
 - Whenever a contract invokes another contract via the Invoke [syscall](/reference/syscalls/) (a child frame), also known as a [cross-contract call](/reference/cross-contract-calls/)
 
 Each frame tracks the execution state, resource usage, and state modifications for one contract method invocation.
-Frames are independent of artifact type. The default user contract runtime is RV32, Groundhog's 32-bit RISC-V target, but the same frame model also covers native contracts, test mocks, and legacy WASM contracts.
+Frames are independent of artifact type. The default user contract runtime is RV32, Groundhog's 32-bit RISC-V target, but the same frame model also covers native contracts.
 
 ## Frame Structure
 

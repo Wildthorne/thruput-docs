@@ -409,6 +409,6 @@ groundhog codegen ts \
   -o ./web/src/contracts/my-counter.ts
 ```
 
-Standalone TypeScript codegen accepts canonical `.spec.xdr` input. It does not accept `.wasm`, `.rv32a`, or `.spec.json` input.
+Standalone TypeScript codegen accepts canonical `.spec.xdr` input. It does not accept `.rv32a` or `.spec.json` input.
 
 For generated contract bindings, see [TypeScript Bindings](/tools/typescript-bindings/). For the app-facing client package, see [TypeScript SDK](/tools/typescript-sdk/).
