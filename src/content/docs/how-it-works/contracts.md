@@ -7,7 +7,7 @@ An address normally needs deployed code to receive a contract call. An undeploye
 
 The root invocation of a transaction is specified by a contract address, an 8-byte entrypoint ID, and method arguments. Each invocation creates an [invocation frame](/how-it-works/invocation-frames/) that tracks execution state and storage modifications.
 
-The normal user-deployed contract path is RV32, Groundhog's 32-bit RISC-V contract target. The protocol also supports legacy WASM contracts, native precompiled contracts, and local test mocks.
+The normal user-deployed contract path is RV32, Groundhog's 32-bit RISC-V contract target. The protocol also supports native precompiled contracts.
 
 ## Contract Types
 
@@ -30,7 +30,7 @@ The executor accepts contract code blobs up to 256 KiB. The complete signed tran
 
 #### Entrypoints
 
-Every callable method is identified by an 8-byte `ContractEntrypointID`. RV32 contracts do not expose methods through exported WASM function names. Instead, the SDK's `#[contract]` macro emits one dispatch record per method into a link-time `GROUNDHOG_RV32_ENTRYPOINTS` registry.
+Every callable method is identified by an 8-byte `ContractEntrypointID`. The SDK's `#[contract]` macro emits one dispatch record per method into a link-time `GROUNDHOG_RV32_ENTRYPOINTS` registry.
 
 When hogd invokes an RV32 contract, it enters the guest at `_start` with the method ID in registers. The RV32 runtime dispatches by scanning the registry, then calls the generated wrapper for the matching method. That wrapper decodes calldata, calls the Rust method, and returns through the Return syscall.
 
@@ -47,27 +47,11 @@ Most developers should let the [Groundhog CLI](/tools/groundhog-cli/) produce RV
 
 The node executes the lowered artifact through the RV32 runtime. Contract state does not live in guest memory. Durable state must be written through Groundhog storage APIs.
 
-### Legacy WASM Contracts
-
-The protocol still has a `Contract::kWasmi` variant for legacy WASM compatibility. New contracts should use RV32.
-
-Legacy WASM contracts identify methods by exporting a function whose name is the uppercase hex encoding of the 8-byte entrypoint ID, such as:
-
-```wasm
-(export "01CC155247140001" (func $transfer))
-```
-
-That export-name convention is not how the default RV32 path dispatches methods.
-
 ### Native Precompiled Contracts
 
 Native precompiled contracts are implemented directly inside the Groundhog runtime. They are used for trusted system behavior, such as the native token contract, and can have permissions that user-deployed guest contracts do not have.
 
 Users cannot deploy native contracts. Network configuration assigns system contract addresses; implementations are identified by values from `HogexecPrecompiledNativeContracts`.
-
-### Test Mocks
-
-Local test environments can deploy mock contracts that execute host-side test code. Mock contracts are useful for native unit tests and simulation, but they cannot be deployed on chain.
 
 ## Contract Deployment
 
@@ -79,9 +63,7 @@ Contracts are identified by the SHA256 hash of the XDR-encoded `Contract` union:
 
 ```rust
 pub enum Contract {
-    kWasmi { wasmi_contract: ContractBlob },
     kNative { native_contract_id: HogexecPrecompiledNativeContracts },
-    kMockTest { mock_contract_id: i32 },
     kRv32 { rv32_contract: ContractBlob },
 }
 ```
@@ -206,7 +188,7 @@ pub struct DeployedContractHash {
     /// Size of the contract in bytes.
     pub contract_size: u32,
 
-    /// Type of contract: kRv32, kWasmi, kNative, or kMockTest.
+    /// Type of contract: kRv32 or kNative.
     pub contract_type: ContractType,
 }
 ```
