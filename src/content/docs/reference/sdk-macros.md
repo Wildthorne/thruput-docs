@@ -1,537 +1,182 @@
 ---
 title: SDK Macros
-description: "Reference for #[contract], #[contract_exception], #[contract_type], #[storage], #[derive(Event)], #[derive(ContractTypeSpec)], and other SDK macros."
+description: Macro targets, parameters, generated APIs, and constraints for the Rust SDK.
 ---
 
-:::note[Version checked]
-This reference was source-checked against SDK `0.34.3`.
-:::
-
-Rustdoc shortcuts: [`#[contract]`](https://crates.thruput.network/docs/sdk/0.34.3/doc/sdk/attr.contract.html), [`#[contract_exception]`](https://crates.thruput.network/docs/sdk/0.34.3/doc/sdk/attr.contract_exception.html), [`#[storage]`](https://crates.thruput.network/docs/sdk/0.34.3/doc/sdk/attr.storage.html), [`#[contract_type]`](https://crates.thruput.network/docs/sdk/0.34.3/doc/sdk/attr.contract_type.html), [`#[derive(Event)]`](https://crates.thruput.network/docs/sdk/0.34.3/doc/sdk/derive.Event.html), [`#[derive(Deletable)]`](https://crates.thruput.network/docs/sdk/0.34.3/doc/sdk/derive.Deletable.html), [`#[derive(ContractTypeSpec)]`](https://crates.thruput.network/docs/sdk/0.34.3/doc/sdk/derive.ContractTypeSpec.html), and [`declare_mock_contract!`](https://crates.thruput.network/docs/sdk/0.34.3/doc/sdk/macro.declare_mock_contract.html). See [Rust API Docs](/tools/rust-api-docs/) for common SDK links.
+| Task | Guide |
+| --- | --- |
+| Define state and methods | [Methods and interfaces](/contracts/methods/) |
+| Choose storage | [Storage types](/programming-model/storage-types/) |
+| Declare and handle failures | [Handle errors](/contracts/errors/) |
+| Call another contract | [Cross-Contract Calls](/contracts/cross-contract-calls/) |
+| Define, emit, and test events | [Events](/contracts/events/) |
+| Register a test contract | [Testing](/programming-model/testing/) |
+| Find complete generated APIs | [Rust API Docs](/tools/rust-api-docs/) |
 
 ## `#[contract]`
 
-Generates contract entrypoints, a client struct for cross-contract calls, and the spec metadata for the declared errors and events.
-
 ### Applies to
 
-| Target | What it generates |
-|--------|-------------------|
-| Trait definition | Client struct, entrypoints metadata |
-| Trait impl | Export functions, mock registration (dev builds) |
-| Inherent impl | Export functions, client struct |
-| Free function | Export function only (no client) |
+| Target | Generates |
+| --- | --- |
+| Trait definition | Client struct and interface metadata |
+| Trait implementation | Export functions and mock registration |
+| Inherent implementation | Export functions, client struct, and interface metadata |
+| Free function | Export function, no client |
 
 ### Parameters
 
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `throws` | Type path or list | None | Error type(s) the contract may throw. Accepts `throws = MyError` or `throws(ErrorA, ErrorB)`. |
-| `emits` | Type path list | None | Event type(s) the interface declares. Accepts `emits(EventA, EventB)`. Declared events are recorded in the [contract spec](/reference/contract-spec/#events). |
-| `client` | Identifier | `{Interface}Client` | Name of the generated client struct. On traits, defaults to trait name + `Client`. On inherent impls, defaults to self type + `Client`. |
-| `interface` | String | Trait name or self type name | Overrides the interface name used in entrypoint identifiers. |
-| `version` | String | `CARGO_PKG_VERSION` | Version used for entrypoint identifier computation. |
-| `exports` | String | Auto-generated | Overrides the internal exports module name. Rarely needed. |
+| Parameter | Default | Meaning |
+| --- | --- | --- |
+| `throws = Error` or `throws(ErrorA, ErrorB)` | None | Error types recorded in the spec; does not restrict which exceptions callers can catch |
+| `emits(EventA, EventB)` | None | Event types recorded in the spec |
+| `client = ClientName` | `{Interface}Client` | Generated client name |
+| `interface = "Name"` | Trait or self-type name | Interface identity used for entrypoints |
+| `version = "0.1.0"` | `CARGO_PKG_VERSION` | Version used for entrypoint identity |
+| `exports = "name"` | Generated | Internal exports module name |
 
 ### `throws` rules
 
-- `throws` belongs on the trait definition or inherent impl, not on the trait impl. The compiler rejects `throws` on a trait impl.
-- Accepts a single type (`throws = MyError`) or a list (`throws(AlphaError, BetaError)`).
-- `throws` declares the interface's error contract for the [contract spec](/reference/contract-spec/). It does not restrict what a caller can catch: exceptions are identified on the wire by a selector derived from the type, so a caller can match any exception type it knows about, declared or not.
-- Listing the same type twice is rejected at compile time. Types that merely share a last path segment (`foo::Error` and `bar::Error`) are fine, and no names are reserved.
+| Constraint | Rule |
+| --- | --- |
+| Placement | Trait definition or inherent implementation; rejected on trait implementations |
+| Duplicates | The same type cannot be listed twice; different paths with the same final name are allowed |
+| Runtime | A known exception can be caught whether or not it is declared in `throws` |
 
 ### `emits` rules
 
-- `emits` belongs on the trait definition or inherent impl, not on the trait impl. Like `throws`, events are part of the interface, and the compiler rejects `emits` on a trait impl.
-- Each listed type must derive [`Event`](#deriveevent).
-- Declaring an event records its name, signature, topics, and payload layout in the [contract spec](/reference/contract-spec/#events), which is what lets codegen, indexers, and explorers decode it. Emitting an undeclared event is not a runtime error, but the event won't appear in the spec unless its type is marked `#[event_spec(export)]`.
+| Constraint | Rule |
+| --- | --- |
+| Placement | Trait definition or inherent implementation; rejected on trait implementations |
+| Type | Must implement `Event` |
+| Spec | Records name, signature, topics, and payload layout |
+| Undeclared event | May be emitted; use `#[event_spec(export)]` to include a library event without an interface declaration |
 
 ### Generated client
 
-The generated client struct provides:
-
-| Method | Description |
-|--------|-------------|
-| `ClientName::new(&ContractAddress)` | Constructor. |
-| `client.with_gas_limit(u64)` | Returns a new client with the specified gas limit. |
-| `client.with_commit_locking()` | Returns a client whose calls use the runtime's try-invoke commit-locking flag. |
-| `client.with_read_only()` | Returns a client whose calls are rejected if the callee writes storage. |
-| `client.method(args...)` | Calls the contract method. Re-throws on exception. |
-| `client.try_method(args...)` | Calls the contract method. Returns `Result<T, CallError>` so exceptions can be inspected. |
-
-The names `new`, `with_gas_limit`, `with_commit_locking`, `with_read_only`, and any name starting with `try_` are reserved. Contract methods using these names are rejected at compile time.
+| Method | Behavior |
+| --- | --- |
+| `ClientName::new(&ContractAddress)` | Construct a client |
+| `with_gas_limit(&self, u64) -> Self` | Return a configured copy with a child gas cap |
+| `with_commit_locking(&self) -> Self` | Request commit locks before the child returns |
+| `with_read_only(&self) -> Self` | Reject child state changes |
+| `method(&self, ...) -> T` | Return the value or propagate failure |
+| `try_method(&self, ...) -> Result<T, CallError>` | Return the value or an inspectable failure |
+| Reserved names | `new`, `with_gas_limit`, `with_commit_locking`, `with_read_only`, and the `try_` prefix |
 
 ### Inspecting errors
 
-`try_` methods return the SDK's `CallError`, the same type for every client. A caught exception stays undecoded inside it; `match_exn!` decodes it against the types you name, and `try_as` handles the single-type case:
-
-```rust
-match client.try_decrement(10) {
-    Ok(()) => {}
-    Err(CallError::Fault(f)) => { /* the callee panicked */ }
-    Err(e) => match_exn!(e, {
-        MyError::NotAuthorized => { /* ... */ }
-        LibraryExn::NonNegativeIntUnderflow => { /* ... */ }
-        _ => e.re_throw(),
-    }),
-}
-```
-
-See [Error Handling](/reference/error-handling/) for the full model.
-
-### Examples
-
-Trait definition with client and error:
-
-```rust
-#[contract(client = ERC20Client, throws = ERC20Error)]
-pub trait ERC20 {
-    fn transfer(&mut self, receiver: &ContractAddress, amount: Amount);
-    fn get_balance(&self) -> Amount;
-}
-```
-
-Trait implementation (exports entrypoints):
-
-```rust
-#[contract(version = "0.1.0")]
-impl ERC20 for TokenContract {
-    fn transfer(&mut self, receiver: &ContractAddress, amount: Amount) {
-        // ...
-    }
-
-    fn get_balance(&self) -> Amount {
-        // ...
-    }
-}
-```
-
-Inherent impl (self-contained contract):
-
-```rust
-#[contract(throws = Error)]
-impl Counter {
-    pub fn increment(&mut self, amount: u64) {
-        self.value.strict_inc(amount as i128);
-    }
-
-    pub fn get(&self) -> u64 {
-        self.value.try_get().none_if_missing().unwrap_or(0) as u64
-    }
-}
-```
-
-Multiple error types:
-
-```rust
-#[contract(client = Client, throws(MyExn, BigExn))]
-pub trait Interface {
-    fn hello();
-    fn throws_my_exn() -> u32;
-}
-```
+| API | Purpose |
+| --- | --- |
+| `match_exn!` | Match typed exceptions; requires a final `_` arm |
+| `try_as::<E>()` | Decode one known exception type; returns `None` for a different type or failed decoding |
+| `try_decode::<E>()` | Distinguish unknown type from malformed payload |
+| Usage | [Error matching examples](/contracts/cross-contract-calls/#matching-exceptions-with-match_exn) |
 
 ### Method behavior
 
-- `&mut self` methods: state is loaded from storage before the call and written back on success. Exceptions and faults revert the frame.
-- `&self` methods: state is loaded read-only. Nothing is written back.
-- Public methods on inherent impls are exported. Private methods are not.
-- On trait impls, all trait methods are exported regardless of visibility.
-
----
+| Method | Behavior |
+| --- | --- |
+| Public inherent method | Exported |
+| Private inherent method | Internal helper |
+| Trait implementation method | Exported |
+| Storage receiver | Uses generated storage handles; see [Methods and interfaces](/contracts/methods/) |
 
 ## `#[contract_exception]`
 
-Convenience macro for defining contract error types. Applies `#[repr(i32)]` (enums only), derives serialization traits, and implements `Exn` with a computed selector.
-
-### Applies to
-
-Enums and structs.
-
-### Parameters
-
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `version` | String | `CARGO_PKG_VERSION` | Overrides the version used for selector computation. |
-| `name` | String | Rust type name | Overrides the type name used for `ContractTypeName` and selector computation. |
-
-### What it generates
-
-For an enum:
-
-```rust
-// Input
-#[contract_exception]
-pub enum Error {
-    NotAuthorized = 1,
-}
-
-// Generates equivalent of:
-#[derive(Debug, Clone, PartialEq, ReadXDR, WriteXDR, ContractTypeSpec)]
-#[repr(i32)]
-pub enum Error {
-    NotAuthorized = 1,
-}
-
-impl Exn for Error {
-    const SELECTOR: u64 = /* computed from crate name, version, type name */;
-}
-
-impl ContractTypeName for Error {
-    const NAME: &'static str = "Error";
-}
-```
-
-For a struct:
-
-```rust
-// Input
-#[contract_exception]
-pub struct MyExn;
-
-// Generates equivalent of:
-#[derive(Debug, Clone, PartialEq, ReadXDR, WriteXDR, ContractTypeSpec)]
-pub struct MyExn;
-
-impl Exn for MyExn {
-    const SELECTOR: u64 = /* computed */;
-}
-
-impl ContractTypeName for MyExn {
-    const NAME: &'static str = "MyExn";
-}
-```
+| Property | Value |
+| --- | --- |
+| Targets | Structs and enums; no generics |
+| Generated derives | `Debug`, `PartialEq`, `ReadXDR`, `WriteXDR`, `ContractTypeSpec` |
+| Generated traits | `Exn` and `ContractTypeName` |
+| Enum representation | Adds `#[repr(i32)]`; variants require explicit discriminants |
+| `version = "0.1.0"` | Override `CARGO_PKG_VERSION` for identity |
+| `name = "Name"` | Override the Rust type name for identity |
+| `Clone` | Add the derive explicitly if needed |
+| Examples | [Enum and struct errors](/contracts/errors/#defining-errors) |
 
 ### Selector computation
 
-The selector is the first 8 bytes of `sha256(MAJOR_VERSION :: CRATE_NAME :: TYPE_NAME)`, where:
-
-1. `MAJOR_VERSION` is the leftmost non-zero component of the crate version (or the `version` parameter): `1.2.3` → `1`, `0.9.2` → `0.9`, `0.0.2` → `0.0.2`
-2. `CRATE_NAME` is the crate name (`CARGO_PKG_NAME`)
-3. `TYPE_NAME` is the type name
-
-SemVer-compatible releases keep the same selector; a breaking version bump changes it, which makes error types from incompatible contract versions distinguishable. Error types named in `throws` are recorded with their selectors in the [contract spec](/reference/contract-spec/#errors).
-
-### Example
-
-```rust
-#[contract_exception]
-#[non_exhaustive]
-pub enum ERC20Error {
-    AlreadyInitialized = 1,
-    MustBeContractOwner = 2,
-    TooLarge = 3,
-    Internal = 100,
-}
-```
-
-Struct errors carry data:
-
-```rust
-#[contract_exception]
-pub struct BigExn {
-    pub payload: [u8; 600],
-}
-```
-
----
+| Component | Rule |
+| --- | --- |
+| Selector | First 8 bytes of `sha256(MAJOR_VERSION :: CRATE_NAME :: TYPE_NAME)` |
+| `MAJOR_VERSION` | Leftmost nonzero version component: `1.2.3` → `1`, `0.9.2` → `0.9`, `0.0.2` → `0.0.2` |
+| `CRATE_NAME` | `CARGO_PKG_NAME` |
+| `TYPE_NAME` | Type name or explicit `name` |
+| Compatibility | Stable selector does not guarantee an older caller can decode every new payload; see [decoding errors](/contracts/cross-contract-calls/#telling-a-corrupt-error-from-an-unknown-one) |
 
 ## `#[exn]`
 
-Low-level version of `#[contract_exception]`. Implements `Exn` with a computed selector but does not add any derives. Use this when you handle your own `#[derive(...)]` and `#[repr(...)]`.
-
-### Parameters
-
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `version` | String | `CARGO_PKG_VERSION` | Overrides the version used for selector computation. |
-
-### Example
-
-```rust
-#[derive(Debug, Clone, PartialEq, ReadXDR, WriteXDR)]
-#[sdk::exn]
-#[repr(i32)]
-pub enum ERC20Error {
-    AlreadyInitialized = 1,
-    MustBeContractOwner = 2,
-}
-```
-
----
+| Property | Value |
+| --- | --- |
+| Purpose | Low-level `Exn` implementation with computed selector |
+| Derives and representation | Supplied by the author; prefer `#[contract_exception]` for normal contract errors |
+| `version` | Optional selector-version override |
 
 ## `#[storage]` / `#[derive(Storage)]`
 
-Marks a struct as contract state. `#[storage]` is shorthand for `#[derive(Storage)]`.
-
-### Applies to
-
-Structs with named fields, or unit structs.
-
-### What it generates
-
-A `From<Keypath>` implementation that assigns a sub-keypath to each field. This is what allows the `#[contract]` macro to load and store your state automatically.
-
-All fields must be SDK storage types. Plain data must be wrapped in `Value<T>`.
-
-### Storage types
-
-| Type | Description |
-|------|-------------|
-| `Value<T>` | Single CXS-serializable value |
-| `Balance` | Nonnegative, zero-defaulting balance with checked and lazy adjustments |
-| `NNInt` | Integer storage for signed changes that can [merge across concurrent transactions](/programming-model/execution/#merged-deltas) |
-| `CapacityConstraint` | Commit-time capacity shared across concurrent transactions |
-| `Bytestring` | Variable-length byte blob |
-| `Map<K, V>` | Key-addressed collection (entries not enumerable) |
-| `Vector<T>` | Indexed collection backed by `Map<u32, T>` plus a length counter |
-| `RCQ<T>` | Retrocausal queue (insert-commutes; consume is sequential) |
-| `Node<T>` | Nested storage struct for use inside collections |
-
-### Example
-
-```rust
-use sdk::storage::{Balance, Map, Value};
-
-#[derive(Debug)]
-#[sdk::storage]
-pub struct TokenContract {
-    contract_owner: Value<ContractAddress>,
-    balances: Map<ContractAddress, Balance>,
-    allowances: Map<ContractAddress, Map<ContractAddress, Balance>>,
-    total_supply: Balance,
-}
-```
-
----
+| Property | Value |
+| --- | --- |
+| Targets | Named-field structs and unit structs |
+| Output | `From<Keypath>` implementation assigning each field a subpath |
+| Fields | Storage handles; wrap plain data in `Value<T>` |
+| Collections | Use `Node<T>` to place a compound storage struct inside `Map` or `Vector` |
+| Usage | [Storage types](/programming-model/storage-types/) |
 
 ## `#[derive(Deletable)]`
 
-Generates a `Deletable` implementation that calls `delete_internal()` on every field. Provides `delete()` and `delete_exclusive()` methods for clearing stored data.
-
-### Applies to
-
-Structs with named fields, or unit structs. Every field type must implement `Deletable`. If a field's type is not `Deletable` (e.g. `Map`), the derive produces a compile error.
-
-### Example
-
-```rust
-#[sdk::storage]
-#[derive(Deletable)]
-struct Counters {
-    a: NNInt,
-    b: Value<u64>,
-}
-// Counters::delete() will delete both `a` and `b`.
-```
-
----
+| Property | Value |
+| --- | --- |
+| Targets | Named-field structs and unit structs |
+| Requirement | Every field must implement `Deletable`; `Map` does not |
+| Output | Calls each field's `delete_internal()`; exposes `delete()` and `delete_exclusive()` |
 
 ## `#[derive(Event)]`
 
-Generates an `Event` implementation for emitting on-chain events.
-
-### Applies to
-
-Structs with named fields.
-
-### Field attributes
-
-| Attribute | Description |
-|-----------|-------------|
-| `#[topic]` | Marks a field as an indexed topic. Topics are searchable. Fields without `#[topic]` go into the serialized payload. |
-
-Events support at most 3 topics. Topic 0 is always the event signature (see below), so up to 2 fields can be marked `#[topic]`. Topic values that are already 32 bytes wide (`ContractAddress`, `SHA256Hash`, `[u8; 32]`, `U256`, `I256`) are used directly; other types are CXS-encoded and SHA-256 hashed, which makes them filterable but not recoverable from the event. Data you need to read back belongs in the payload.
-
-### Container attributes
-
-| Attribute | Description |
-|-----------|-------------|
-| `#[event_spec(export)]` | Forces the event into the contract spec of any contract that links this type, even when no interface declares it via `emits(...)`. Useful for events emitted by library code. |
-
-### What it generates
-
-| Item | Description |
-|------|-------------|
-| `SIGNATURE` const | A `&'static Topic` containing the event's computed signature bytes. |
-| `Event` impl | Provides `num_topics()`, `topic(index)`, and `decode_payload()`. |
-| `WriteXDR` impl | Serializes only the non-topic (payload) fields. |
-| `{Name}Payload` struct | A companion struct with `ReadXDR` for decoding the payload from raw event data. |
-
-### Example
-
-```rust
-#[derive(Event, Clone, Debug)]
-pub struct TransferEvent<'a> {
-    #[topic]
-    pub from: &'a ContractAddress,
-    #[topic]
-    pub to: &'a ContractAddress,
-    pub amount: u128,
-}
-```
-
-Emitting:
-
-```rust
-let event = TransferEvent { from: &sender, to: &receiver, amount: 100 };
-log_event(&event);
-```
-
-Decoding from raw event data:
-
-```rust
-if sig == TransferEvent::SIGNATURE {
-    let from: &ContractAddress = event.topic(1).unwrap().into();
-    let to: &ContractAddress = event.topic(2).unwrap().into();
-    let payload: TransferEventPayload = TransferEvent::decode_payload(event.payload())?;
-}
-```
-
-### Signature and the spec
-
-The signature is the full 32-byte `sha256(MAJOR_VERSION :: CRATE_NAME :: TYPE_NAME)`, where `CRATE_NAME` is the crate defining the event type and `MAJOR_VERSION` is its major version (leftmost non-zero component: `1.2.3` → `1`, `0.9.2` → `0.9`). Every emitted instance carries the signature as topic 0, and clients filter [`groundhog_getEvents`](/reference/json-rpc-api/#groundhog_getevents) on it to find instances of the event.
-
-Deriving `Event` alone does not put an event in the contract spec. An event appears in the [contract spec](/reference/contract-spec/#events) with its name, signature, topic layout, and payload layout only when it is declared via `emits(...)` on `#[contract]`, or when the type is marked `#[event_spec(export)]` (the counterpart of `#[contract_type(export)]` for types).
-
----
+| Property | Value |
+| --- | --- |
+| Target | Named-field struct |
+| `#[topic]` | Mark an indexed field; at most two fields, in addition to the signature at topic 0 |
+| Direct topics | `ContractAddress`, `SHA256Hash`, `[u8; 32]`, `U256`, `I256`, `u32`, `u64`, `u128`, `i32`, `i64`, `i128`, `bool` |
+| Integer topics | Fixed 32-byte big-endian encoding with zero or sign extension |
+| String and byte-slice topics | Hashed; filterable but not recoverable from the topic |
+| Payload | Non-topic fields, serialized by the generated `WriteXDR` implementation |
+| `#[event_spec(export)]` | Include the event in the linked contract spec without `emits(...)` |
+| `SIGNATURE` | Full 32-byte hash of version, defining crate, and type identity |
+| `Event` implementation | Topic access and payload decoding |
+| `{Name}Payload` | Companion payload type with `ReadXDR` |
+| Usage | [Event definitions, emission, and tests](/contracts/events/) |
 
 ## Utility Macros
 
-### `static_key!`
-
-Computes a `StorageKey` from a string literal at compile time (SHA-256 hash).
-
-```rust
-let key: StorageKey = static_key!("my_storage_slot");
-```
-
-### `sha256_static!`
-
-Computes a `SHA256Hash` from a string literal at compile time.
-
-```rust
-let hash: SHA256Hash = sha256_static!("some_string");
-```
-
-### `sha256_ident!`
-
-Computes a SHA-256 hash from a Rust identifier (rather than a string literal) at compile time. Useful when the input is a type name or other identifier that should not appear as a quoted string.
-
-```rust
-let hash: SHA256Hash = sha256_ident!(MyType);
-```
-
-### `hash_ident!`
-
-Declares a static `SHA256Hash` or `ContractAddress` whose bytes are the SHA-256 hash of the static identifier.
-
-```rust
-hash_ident! { static LP_NONCE: SHA256Hash; }
-hash_ident! { pub static FACTORY_ADDR: ContractAddress; }
-```
-
-### `sha256_array_ident!`
-
-Same as `sha256_ident!` but returns a `[u8; 32]` array instead of a `SHA256Hash`.
-
-```rust
-let bytes: [u8; 32] = sha256_array_ident!(MyType);
-```
-
-### `hash_to_array!`
-
-Computes the SHA-256 hash of a string or byte-string literal and returns it as a `[u8; 32]` array at compile time.
-
-```rust
-let bytes: [u8; 32] = hash_to_array!("my_data");
-let bytes: [u8; 32] = hash_to_array!(b"raw bytes");
-```
-
-### `declare_mock_contract!`
-
-Registers the current crate as a mock contract for the test environment. Place this at crate root. Only active when the `dev` feature is enabled.
-
-```rust
-sdk::declare_mock_contract!();
-```
-
----
+| Macro | Output / usage |
+| --- | --- |
+| `static_key!("slot")` | Compile-time SHA-256 `StorageKey` |
+| `sha256_static!("text")` | Compile-time `SHA256Hash` |
+| `sha256_ident!(Name)` | `SHA256Hash` of an identifier |
+| `hash_ident! { static NAME: SHA256Hash; }` | Named hash static; also supports `ContractAddress` and visibility |
+| `sha256_array_ident!(Name)` | Identifier hash as `[u8; 32]` |
+| `hash_to_array!("text")` | String or byte-string hash as `[u8; 32]` |
+| `declare_mock_contract!()` | Crate-root mock registration when `dev` is enabled; see [test setup](/programming-model/testing/#test-setup) |
 
 ## `#[contract_type]`
 
-Annotates a user-defined struct or enum so that the SDK knows how to serialize, deserialize, and describe it across contract boundaries. Required for any type used as an argument, return value, or storage value where the SDK needs a typed schema.
-
-
-### Applies to
-
-Structs (named, tuple, or unit) and enums.
-
-### Parameters
-
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `name` | String | Rust type name | Override the name recorded in the contract spec. |
-| `export` | Bool | `false` | When `true` (`#[contract_type(export)]`), forces the type into the contract spec even when nothing references it. |
-
-### What it generates
-
-| Item | Description |
-|------|-------------|
-| Serialization derives | `ReadXDR`, `WriteXDR` |
-| `ContractTypeSpec` impl | Describes the layout to introspection tooling (used by codegen and JSON-RPC). |
-
-### Example
-
-```rust
-use sdk::*;
-
-#[contract_type]
-pub struct Config {
-    pub administrator: ContractAddress,
-    pub paused: bool,
-}
-
-#[contract_type]
-pub enum Status {
-    Active = 1,
-    Closed { reason: u32 } = 2,
-}
-```
-
-### In the spec
-
-Each `#[contract_type]` produces a `type_defs` entry in the [contract spec](/reference/contract-spec/#type-definitions) when it is reachable from a contract interface (used in a method signature, thrown error, declared event, or another reachable type):
-
-- Structs become `struct` definitions.
-- Enums whose variants carry no data become `enum` definitions.
-- Enums with data-carrying variants become `union` definitions.
-
-Enum variants must have explicit discriminants (`Active = 1`), and generic type parameters are not supported.
-
-A type that nothing references can be forced into the spec with `#[contract_type(export)]`, the counterpart of `#[event_spec(export)]` for events. Use it for types that off-chain tools need to decode but that don't appear in any interface signature.
-
----
+| Property | Value |
+| --- | --- |
+| Targets | Named, tuple, or unit structs and enums |
+| Output | Serialization derives and `ContractTypeSpec` |
+| `name = "Name"` | Override spec type name |
+| `export` | Include an otherwise unreachable type in the spec |
+| Enum variants | Explicit discriminants required |
+| Generic type parameters | Not supported |
+| Spec inclusion | Types reachable through method signatures, errors, events, or other reachable types; otherwise requires `export` |
+| Spec kind | Struct, enum without payloads, or union with payloads |
+| Examples | [Argument and return types](/contracts/methods/#define-argument-and-return-types) |
 
 ## `#[derive(ContractTypeSpec)]`
 
-Low-level derive that only adds the `ContractTypeSpec` impl, without any serialization derives. Use this when you already provide your own `ReadXDR` / `WriteXDR` implementations.
-
-### Applies to
-
-Structs and enums.
-
-### Container attributes
-
-| Attribute | Description |
-|-----------|-------------|
-| `#[contract_type_spec(export)]` | Forces the type into the contract spec even when nothing references it. This is what `#[contract_type(export)]` expands to. |
-
-### Example
-
-```rust
-#[derive(Debug, ReadXDR, WriteXDR, ContractTypeSpec)]
-pub struct MyType {
-    pub field: u64,
-}
-```
+| Property | Value |
+| --- | --- |
+| Targets | Structs and enums |
+| Output | `ContractTypeSpec` only; serialization must be supplied separately |
+| `#[contract_type_spec(export)]` | Include an otherwise unreachable type in the spec |

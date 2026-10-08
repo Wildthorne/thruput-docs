@@ -1,0 +1,19 @@
+<div class="brand-lockup">
+  <a class="site-brand" href="/" aria-label="Stellar Thruput homepage">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="currentColor" aria-hidden="true"><path d="M14 2h6v2h-2v2h-2v2h-2v2h6v2h-2v2h-2v2h-2v2h-2v2h-2v2H4v-2h2v-2h2v-2h2v-2H4v-2h2v-2h2V8h2V6h2V4h2z" /></svg>
+    <span>STELLAR THRUPUT</span>
+  </a>
+  <span class="release-badge" aria-label="Technology preview: alpha-pre.1">alpha-pre.1</span>
+</div>
+
+<style>
+  .brand-lockup { display: flex; flex-direction: column; align-items: flex-start; gap: .125rem; flex-shrink: 0; }
+  .site-brand { display: flex; align-items: center; gap: .5rem; min-height: 1.75rem; font: 500 1rem/1.2 var(--sl-font); letter-spacing: -.04em; text-decoration: none; color: var(--brand-foreground); }
+  .site-brand svg { display: block; width: 1.5rem; height: 1.5rem; flex-shrink: 0; color: var(--brand-accent); }
+  .release-badge { padding: .125rem .375rem; border: 1px solid var(--brand-border); border-radius: .25rem; color: var(--brand-muted); font: 400 .625rem/1.2 var(--sl-font-mono); white-space: nowrap; }
+  @media (min-width: 50rem) {
+    .brand-lockup { flex-direction: row; align-items: center; gap: .625rem; }
+    .site-brand { min-height: 3rem; font-size: 1.25rem; }
+    .release-badge { font-size: .6875rem; }
+  }
+</style>

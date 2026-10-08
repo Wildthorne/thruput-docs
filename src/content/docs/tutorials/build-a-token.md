@@ -1,98 +1,28 @@
 ---
-title: Build a Token
-description: Build an ERC-20-compatible token with the Groundhog SDK and standard interface crate.
+title: Build a token
+description: Build and test an ERC-20 contract with balances, allowances, administrator-controlled supply, and standard events.
 ---
 
-This tutorial builds an ERC-20-compatible token with transfers, allowances, minting, burning, and standard events. Balances, allowances, and total supply use `Balance`, the SDK's nonnegative, zero-defaulting interface over Groundhog's mergeable integer storage. Its [deltas can merge](/programming-model/execution/#merged-deltas) across concurrent transfers.
+Build the `erc20` contract in the [examples repository](https://github.com/groundhogchain/groundhog-examples/tree/main/contracts/erc20). You will trace a transfer, exercise minting and allowances, and test both native and RV32 execution.
 
-**Prerequisites:** Complete [Build a Counter](/tutorials/build-a-counter/) first.
+This is a contract guide. The [counter series](/tutorials/build-a-counter/) covers the full contract-to-application journey; [TypeScript](/typescript/) covers application interactions.
 
-:::note[Version checked]
-This tutorial uses CLI `0.19.0`, SDK `0.41.1`, and `groundhog-erc20-if` `0.1.41`.
-:::
+## Prepare the project
 
-## 1. Create the Project
-
-Start from the minimal CLI template:
+Complete [CLI and Cargo setup](/cli/install/), then clone the examples repository if you do not already have it:
 
 ```bash
-groundhog new erc20 --template stub
-cd erc20
+git clone https://github.com/groundhogchain/groundhog-examples.git
+cd groundhog-examples
 ```
 
-The generated RV32 wrapper and Groundhog profiles can remain unchanged. This tutorial replaces the library implementation and native test. The generated RV32 test only deploys the artifact, so it keeps passing; remove it if you would rather not carry it:
+Use the workspace's manifests, toolchain, and lockfile together. The token implements the shared interface crates rather than copying their definitions.
 
-```bash
-rm tests/test_rv32.rs
-```
+## Model the token state
 
-Now make two edits to the generated `Cargo.toml`. Extend the `dev` feature so it forwards to the interface crate:
-
-```toml
-[features]
-dev = ["sdk/dev", "groundhog-erc20-if/dev"]
-```
-
-and add the interface crate. The generated manifest declares `sdk` twice, once
-per target, because it needs `std` on the host and forbids it on the guest.
-`groundhog-erc20-if` needs no such split, so add it as a plain dependency
-rather than editing either `[target.'cfg(...)']` block:
-
-```toml
-[dependencies]
-groundhog-erc20-if = { version = "=0.1.41", registry = "groundhog" }
-```
-
-Leave the rest of the generated manifest alone. In particular keep the
-`groundhog-integration-test` feature and the `[target.'cfg(not(target_arch = "riscv32"))'.dependencies]`
-block: `tests/integration.rs` is gated on them, and removing them makes
-`groundhog test --integration` fail with cargo's "package does not have the feature".
-
-The interface crate is the source of truth for:
-
-- `ERC20` and `ERC20Client`
-- `Amount = u128` and `Difference = i128`
-- `ERC20Error`
-- `TransferEvent`, `AllowanceChangeEvent`, `MintEvent`, `BurnEvent`, and their `.log()` methods
-
-Its interface declares `ERC20Error` and those four events, so implementations and generated clients share the same wire contract. Version 0.1.41 uses signed allowance deltas with optional exclusive locking and explicit cleanup.
-
-## 2. Wire the Library
-
-Replace `src/lib.rs`:
+Open `contracts/erc20/src/implementation.rs`:
 
 ```rust
-#![cfg_attr(not(feature = "dev"), no_std)]
-
-sdk::declare_mock_contract!();
-
-mod implementation;
-
-pub use groundhog_erc20_if::{ERC20, ERC20Client};
-pub use implementation::TokenContract;
-```
-
-`declare_mock_contract!()` generates `register_mock_contract` for native tests. The standard interface remains in its own crate rather than being copied into this project.
-
-## 3. Define Storage
-
-Replace `src/implementation.rs` with these imports and storage types:
-
-```rust
-use groundhog_erc20_if::*;
-use sdk::storage::{Balance, Deletable, Map, Value};
-use sdk::*;
-
-type Allowance = Balance;
-
-#[contract_type]
-#[cfg_attr(feature = "dev", derive(Debug))]
-pub struct Config {
-    pub administrator: ContractAddress,
-}
-
-#[sdk::storage]
-#[cfg_attr(feature = "dev", derive(Debug))]
 pub struct TokenContract {
     config: Value<Config>,
     balances: Map<ContractAddress, Balance>,
@@ -101,307 +31,90 @@ pub struct TokenContract {
 }
 ```
 
-The fields have distinct jobs:
+The storage attribute derives paths for these handles:
 
-| Field | Purpose |
-|-------|---------|
-| `config` | Stores the administrator that can mint and burn. |
-| `balances` | Maps each account to a zero-defaulting `Balance`. |
-| `allowances` | Maps owner and spender pairs to `Balance` values. |
-| `total_supply` | Tracks all outstanding tokens in a `Balance`. |
+| Field | Job |
+| --- | --- |
+| `config` | Administrator and optional token metadata |
+| `balances` | Each account's nonnegative token amount |
+| `allowances` | An owner/spender pair's remaining authorization |
+| `total_supply` | Outstanding tokens |
 
-[`Value<Config>` and `Map`](/programming-model/storage-types/) provide typed storage and key-derived paths. `Balance` accepts nonnegative `u128` amounts and exposes increase and decrease operations instead of signed arithmetic or an absolute `set`.
+Different map keys are independent. Balance changes use deltas instead of replacing a shared absolute value. See [Storage Types](/programming-model/storage-types/) for the merge rules.
 
-## 4. Add Storage Helpers
+## Follow a transfer
 
-Continue in `src/implementation.rs`:
+The implementation takes the payer from the direct caller:
 
 ```rust
-impl TokenContract {
-    fn init(&mut self, administrator: &ContractAddress) {
-        if self.config.try_get().none_if_missing().is_some() {
-            throw(ERC20Error::AlreadyInitialized);
-        }
-
-        self.config.set(&Config {
-            administrator: *administrator,
-        });
-    }
-
-    fn administrator(&self) -> ContractAddress {
-        self.config.get().administrator
-    }
-
-    fn balance_of(&self, owner: &ContractAddress) -> Amount {
-        self.balances.at(owner).get()
-    }
-
-    fn lazy_increase_balance(
-        &mut self,
-        owner: &ContractAddress,
-        amount: Amount,
-    ) {
-        self.balances
-            .at_mut(owner)
-            .try_lazy_increase(amount)
-            .unwrap_or_else(|_| throw(ERC20Error::TooLarge));
-    }
-
-    fn decrease_balance(&mut self, owner: &ContractAddress, amount: Amount) {
-        self.balances
-            .at_mut(owner)
-            .try_decrease(amount)
-            .unwrap_or_else(|_| throw(ERC20Error::TooLarge));
-    }
-
-    fn allowance_of(
-        &self,
-        owner: &ContractAddress,
-        spender: &ContractAddress,
-    ) -> Amount {
-        self.allowances.at(owner).at(spender).get()
-    }
-
-    fn adjust_allowance_by(
-        &mut self,
-        owner: &ContractAddress,
-        spender: &ContractAddress,
-        diff: Difference,
-        exclusive: bool,
-    ) {
-        let mut owner_allowances = self.allowances.at_mut(owner);
-        let mut allowance = if exclusive {
-            owner_allowances.at_mut_exclusive(spender)
-        } else {
-            owner_allowances.at_mut(spender)
-        };
-        let result = if diff >= 0 {
-            allowance.try_increase(diff as u128)
-        } else {
-            allowance.try_decrease(diff.unsigned_abs())
-        };
-        result.unwrap_or_else(|_| throw(ERC20Error::TooLarge));
-
-        AllowanceChangeEvent::new(owner, spender, diff).log();
-    }
-
-    fn increase_total_supply(&mut self, amount: Amount) {
-        self.total_supply
-            .try_increase(amount)
-            .unwrap_or_else(|_| throw(ERC20Error::TooLarge));
-    }
-
-    fn decrease_total_supply(&mut self, amount: Amount) {
-        self.total_supply
-            .try_decrease(amount)
-            .unwrap_or_else(|_| throw(ERC20Error::TooLarge));
-    }
-
-    fn supply(&self) -> Amount {
-        self.total_supply.get()
-    }
+fn transfer(&mut self, receiver: &ContractAddress, amount: Amount) {
+    let owner = get_caller();
+    self._decrease_balance(&owner, amount);
+    self._lazy_increase_balance(receiver, amount);
+    TransferEvent::new(&owner, receiver, amount_to_diff(amount)).log();
 }
 ```
 
-The helpers preserve the interface's error and storage behavior:
+The checked debit reports insufficient balance during execution. The credit records a relative increase. The event records the movement for applications; it is not the source of the contract's balance state.
 
-1. A missing `Balance` reads as zero, so balance, allowance, and supply getters do not need missing-storage handling.
-2. The standard interface requires overdrafts and overflows to surface as `ERC20Error::TooLarge`. The `try_` methods let the helpers translate SDK library failures into that domain error.
-3. Both checked and lazy operations record mergeable deltas. Checked `decrease` loads the sender so insufficient funds fail during contract execution. `lazy_increase` skips the receiver load and leaves its bound check to delta reservation after the contract returns.
+`transfer_from` first spends the caller's allowance, then performs the same debit and credit. An allowance belongs to a specific owner/spender pair, not to every caller.
 
-:::note[Checked and lazy failures happen at different points]
-Suppose a sender's snapshot balance is 10. `try_decrease(11)` returns `Err` while the contract is running, so `decrease_balance` can translate it into `ERC20Error::TooLarge`.
+## Apply supply and allowance policy
 
-Now suppose a receiver's snapshot balance is `Balance::MAX`, with no offsetting debit in the proposed block. `try_lazy_increase(1)` returns `Ok(())` inside the contract because it does not load that snapshot balance. After the contract returns, the completed delta batch cannot satisfy the balance bound, so the transaction is excluded and returned to the mempool.
+Read the `mint`, `burn`, and `adjust_allowance` implementations:
 
-The distinction is when the snapshot-bound result becomes known. Both checked and lazy calls still produce deltas that can merge with compatible transactions. A lazy call can still reject an amount that cannot be represented or accumulated within the transaction.
-:::
+- Minting and burning require the configured administrator.
+- Initialization records that administrator and rejects a later initialization.
+- Allowances change by a signed `difference`. A positive value adds authority; a negative value removes it.
+- An exclusive allowance update requests sole write access to that entry for the block. It does not make a prior offchain read current.
+- `clear_allowance` deletes an allowance; `clear_balance` requires an empty balance before deleting its row.
 
-## 5. Implement the Interface
+The metadata feature adds name, symbol, and decimals. The permit feature adds signed-operation authorization. Keep the basic transfer policy clear before extending either surface.
 
-Add the implementation below the helpers:
-
-```rust
-#[contract(version = "0.1.5")]
-impl ERC20 for TokenContract {
-    fn initialize(&mut self, administrator: &ContractAddress) {
-        self.init(administrator);
-    }
-
-    fn transfer(&mut self, receiver: &ContractAddress, amount: Amount) {
-        let owner = get_caller();
-
-        self.decrease_balance(&owner, amount);
-        self.lazy_increase_balance(receiver, amount);
-        TransferEvent::new(&owner, receiver, amount_to_diff(amount)).log();
-    }
-
-    fn transfer_from(
-        &mut self,
-        owner: &ContractAddress,
-        receiver: &ContractAddress,
-        amount: Amount,
-    ) {
-        let spender = get_caller();
-        let diff = amount_to_diff(amount);
-
-        if owner != &spender {
-            self.adjust_allowance_by(owner, &spender, -diff, false);
-        }
-        self.decrease_balance(owner, amount);
-        self.lazy_increase_balance(receiver, amount);
-        TransferEvent::new(owner, receiver, amount_to_diff(amount)).log();
-    }
-
-    fn adjust_allowance(
-        &mut self,
-        spender: &ContractAddress,
-        difference: Difference,
-        exclusive: bool,
-    ) {
-        let owner = get_caller();
-        self.adjust_allowance_by(&owner, spender, difference, exclusive);
-    }
-
-    fn clear_allowance(&mut self, spender: &ContractAddress) {
-        let owner = get_caller();
-        let remaining = amount_to_diff(self.allowance_of(&owner, spender));
-        self.allowances.at_mut(&owner).at_mut(spender).delete_exclusive();
-        AllowanceChangeEvent::new(&owner, spender, -remaining).log();
-    }
-
-    fn clear_balance(&mut self) {
-        let owner = get_caller();
-        ensure(self.balance_of(&owner) == 0, ERC20Error::BalanceNotZero);
-        self.balances.at_mut(&owner).delete_exclusive();
-    }
-
-    fn allowance(
-        &self,
-        owner: &ContractAddress,
-        spender: &ContractAddress,
-    ) -> Amount {
-        self.allowance_of(owner, spender)
-    }
-
-    fn get_balance_of(&self, owner: &ContractAddress) -> Amount {
-        self.balance_of(owner)
-    }
-
-    fn get_balance(&self) -> Amount {
-        self.balance_of(&get_caller())
-    }
-
-    fn mint(&mut self, receiver: &ContractAddress, amount: Amount) {
-        ensure(
-            get_caller() == self.administrator(),
-            ERC20Error::MustBeContractOwner,
-        );
-
-        // Establish the checked supply bound first. Once it holds, the lazy
-        // receiver increase cannot overflow an individual balance.
-        self.increase_total_supply(amount);
-        self.lazy_increase_balance(receiver, amount);
-        MintEvent::new(receiver, amount_to_diff(amount)).log();
-    }
-
-    fn burn(&mut self, owner: &ContractAddress, amount: Amount) {
-        ensure(
-            get_caller() == self.administrator(),
-            ERC20Error::MustBeContractOwner,
-        );
-
-        self.decrease_balance(owner, amount);
-        self.decrease_total_supply(amount);
-        BurnEvent::new(owner, amount_to_diff(amount)).log();
-    }
-
-    fn total_supply(&self) -> Amount {
-        self.supply()
-    }
-}
-```
-
-Deployment does not call `initialize` automatically. Call it once afterward. The stored config enforces one-time initialization.
-
-Mint and burn are restricted to the administrator. `transfer_from` spends allowance when caller and owner differ. `clear_allowance` revokes and deletes one pair; `clear_balance` deletes only an empty balance. This minimal token keeps released storage funding at the contract; a production token should define any caller-refund policy explicitly.
-
-Allowance adjustments with `exclusive=false` can merge within bounds. With
-`exclusive=true`, competing writes to that pair conflict. An off-chain read
-followed by a signed delta is still not an exact-target update; the read may be
-old before the transaction starts.
-
-## 6. Test the Contract
-
-Replace `tests/test.rs`:
-
-```rust
-use erc20::{register_mock_contract, ERC20Client};
-use sdk::*;
-
-static NONCE: SHA256Hash = sdk::sha256_static!("ERC20_TUTORIAL_NONCE");
-
-#[test]
-fn transfer_updates_balances_and_supply() {
-    let env = TestEnvironment::no_cost();
-    let test_contract = register_mock_contract(&env);
-    let contract_hash = test_contract.as_hash().clone();
-
-    let alice = ContractAddress::named("alice");
-    let bob = ContractAddress::named("bob");
-
-    env.transact(|tx| {
-        tx.call(&alice).run(move || {
-            let address = deploy_contract(&NONCE, &contract_hash);
-            let token = ERC20Client::new(&address);
-            let owner = get_current_address();
-
-            token.initialize(&owner);
-            token.mint(&owner, 1_000);
-            token.transfer(&bob, 100);
-
-            assert_eq!(token.get_balance_of(&owner), 900);
-            assert_eq!(token.get_balance_of(&bob), 100);
-            assert_eq!(token.total_supply(), 1_000);
-
-            token.adjust_allowance(&bob, 25, false);
-            token.adjust_allowance(&bob, -5, true);
-            assert_eq!(token.allowance(&owner, &bob), 20);
-            token.clear_allowance(&bob);
-            assert_eq!(token.allowance(&owner, &bob), 0);
-            token.burn(&owner, 900);
-            token.clear_balance();
-            assert_eq!(token.get_balance_of(&owner), 0);
-            assert_eq!(token.total_supply(), 100);
-        })
-    })
-    .assert_success();
-}
-```
-
-Run the native test and build the deployable artifact:
+## Exercise the contract
 
 ```bash
-cargo test
-groundhog build
+cargo test -p erc20 --locked
 ```
 
-The RV32 build produces `erc20.rv32a`, lowering metadata, and contract-spec sidecars under `target/groundhog/`.
+`tests/test_native.rs` deploys the contract in the SDK environment and runs the shared scenarios under `tests/common`. Inspect those scenarios for administrator checks, minting, transfers, allowance spending, cleanup, and expected exceptions.
 
-In the native test's root transaction, `get_current_address()` is Alice's root address. `get_caller()` is meaningful inside the nested token invocation.
+`tests/same_block.rs` tests behavior that a serial-only token test would miss:
 
-## Concurrency Semantics
+| Scenario | Expected result |
+| --- | --- |
+| Compatible credits to one balance | Deltas merge |
+| Debits covered by the balance | Both can commit |
+| Combined debits exceed the balance | Reservation excludes an overdrawing transaction |
+| Read during the same block | Reads the block snapshot |
+| Approval and a separate spending transaction in one block | The new approval is not already spendable from the snapshot |
 
-`Balance` records increases and decreases as changes rather than replacing the stored value with a newly calculated result. The transfer path checks the sender with `decrease` and credits the receiver with `lazy_increase`. Allowance adjustments use checked operations in both directions so the interface can report failures immediately.
+Run a specific case while inspecting the corresponding code:
 
-This is the [merged-delta model](/programming-model/execution/#merged-deltas): the runtime combines changes from concurrent transfers when they can all be applied safely. Changes to different balances or allowances do not conflict. Credits to the same balance can combine, and debits from the same balance or allowance can combine as long as their total does not exceed the available value. If the total is too large, the runtime excludes one or more transactions and returns them to the mempool.
+```bash
+cargo test -p erc20 --test same_block same_block_credits_merge --locked
+```
 
-## Next Steps
+**Checkpoint:** the native tests pass, including expected failure paths. A test that deliberately catches a contract exception can still be a passing test.
 
-- [Design a Swap](/tutorials/design-a-swap/) for an application built from cross-contract token calls
-- [Add Events to a Contract](/tutorials/add-events-to-a-contract/) for event testing and queries
-- [Merged Deltas](/programming-model/execution/#merged-deltas) for the snapshot, execution, and exclusion model behind this contract
-- [Storage Types](/programming-model/storage-types/) for checked and lazy `Balance` operations and other state choices
-- [NNInt In Depth](/programming-model/nnint/) for the lower-level `set_add` representation behind `Balance`
-- [How Conflicts Are Resolved](/how-it-works/execution-model/#how-conflicts-are-resolved) for the engine's concurrent reservation machinery
-- [Error Handling](/reference/error-handling/) for domain and library exception behavior
+## Build and test the guest artifact
+
+```bash
+groundhog build -p erc20
+groundhog test -p erc20
+```
+
+The build writes `target/groundhog/erc20.rv32a` and spec sidecars. The artifact test exercises the compiled guest implementation. Keep it as well as the native tests.
+
+You now have a deployable token artifact. Use [Deploy and call](/cli/deploy-and-call/) for network deployment and [Use contract bindings](/tools/typescript-bindings/) for typed application calls. The repository's standard-token and factory examples add a fixed launch configuration for the separate launchpad application.
+
+## Work with an agent
+
+```text
+Follow Build a token:
+https://docs.groundhog.dev/tutorials/build-a-token/
+Use contracts/erc20 in groundhog-examples with its workspace lockfile.
+Trace administrator checks, transfers, allowances, and events in source.
+Run the native, same-block, and RV32 tests. Report actual results and
+artifact paths. Do not replace the standard interface with invented APIs.
+```

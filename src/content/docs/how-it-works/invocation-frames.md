@@ -1,342 +1,83 @@
 ---
 title: Invocation Frames
-description: Execution context, call stack management, and frame lifecycle.
+description: How contract calls track state, return results, and merge or discard child effects.
 ---
 
-An **Invocation Frame** represents the execution context for a single [contract](/how-it-works/contracts/) method call. A new frame is created:
-- When a transaction first starts (the root frame)
-- Whenever a contract invokes another contract via the Invoke [syscall](/reference/syscalls/) (a child frame), also known as a [cross-contract call](/reference/cross-contract-calls/)
+An invocation frame is the execution context for one contract call. A transaction begins with a root frame. A [cross-contract call](/contracts/cross-contract-calls/) creates a child frame and returns control to its parent when it finishes.
 
-Each frame tracks the execution state, resource usage, and state modifications for one contract method invocation.
-Frames are independent of artifact type. The default user contract runtime is RV32, Groundhog's 32-bit RISC-V target, but the same frame model also covers native contracts.
+The same model applies to RV32 contracts and native system contracts.
 
 ## Frame Structure
 
-An invocation frame contains the following data (pseudocode):
+| Part | Contents |
+| --- | --- |
+| Call context | Contract address, entrypoint, calldata, invocation flags, and gas budget |
+| State changes | Storage operations and deployments made by this frame and its successful children |
+| Events | Events emitted by this frame and its successful children |
+| Child result | Status and return bytes from the most recent child call |
+| Resource use | Gas consumed by this frame and its children |
 
-```rust
-// Pseudocode - not actual implementation
-struct InvocationFrame {
-    // Immutable context (set at frame creation)
-    contract_address: ContractAddress,
-    entrypoint: ContractEntrypointID,     // 8-byte method identifier
-    calldata: Vec<u8>,                      // Encoded arguments
-    invocation_flags: InvocationFlagSet,  // Behavioral modifiers (e.g., try_invoke, read_only)
-                                          // Root frame has no flags set
-    max_gas: GasAmount,                   // Capped at parent's remaining gas
-
-    // Mutable state (modified during execution)
-    most_recent_child_result: Option<ChildResultState>,  // Result from last child invocation
-    deployed_contracts: Vec<(ContractAddress, DeployedContractHash)>,  // Deployments in this frame + committed children
-    state_changes: HashMap<AddressAndKey, StorageDelta>,  // Ledger modifications from this frame + committed children
-    events: Vec<Event>,  // Events emitted in this frame + committed children
-    gas_used: GasAmount,  // Gas consumed so far
-}
-
-struct ChildResultState {
-    buffer: Vec<u8>,           // Return data from child (empty if **Fault**)
-    status: InvocationFrameStatusCode, // **Return**, **Abort**, or **Fault**
-}
-
-enum InvocationFrameStatusCode {
-    Return = 0,   // Child returned successfully (preserves state)
-    Fault  = 1,   // Child hit a **Fault** (discards state)
-    Abort  = 2,   // Child **Aborted** (discards state, but returns data)
-}
-
-// State changes can be writes, deletes, or other operations
-enum StateChange {
-    Write_Bytestring(Bytes),
-    // Other state operations...
-}
-
-type AddressAndKey = (ContractAddress, StorageKey);
-```
-
-**Notes:**
-- The root frame has no invocation flags set
-- Contracts manipulate mutable state via [system calls](/reference/syscalls/)
+A transaction's root invocation has no child-call flags. A child's gas budget is capped by its parent's remaining budget. See [Invocation configuration](/contracts/cross-contract-calls/) for SDK controls.
 
 ## Call Stack
 
-Invocation frames are organized as a stack. When a contract invokes another contract, a new frame is pushed onto the stack. When the subinvocation completes, its frame is popped and control returns to the caller.
-
-**Example stack:**
+```text
+Root: wallet.execute
+  Child: counter.increment
+    Nested child: another contract method
 ```
-[Root Frame]
-  contract: contract_a_address
-  entrypoint: 0x1111111111111111
 
-  [Child Frame]
-    contract: contract_b_address
-    entrypoint: 0x2222222222222222
-
-    [Nested Child Frame]
-      contract: contract_c_address
-      entrypoint: 0x3333333333333333
-```
+Each child has its own execution context. Its ordinary reads use the block snapshot plus visible changes from the current transaction. A child call is part of that transaction, not a separate transaction or a separate block.
 
 ## Frame Lifecycle
 
-Each invocation frame progresses through five stages:
-
 ### 1. Creation
 
-A new frame is created when:
-- A transaction begins (root frame)
-- A contract calls the Invoke [syscall](/reference/syscalls/) (child frame)
-
-The frame is initialized with:
-- Immutable context: contract address, entrypoint ID, calldata, invocation flags, max gas
-- Empty mutable state: no child returns, no deployments, no state changes, no events, zero gas used
-
-**Note:** Gas allocated to a child frame is capped at the parent's remaining gas. The root frame has no invocation flags set.
+The runtime creates a frame with the call context and an empty record of local changes and events.
 
 ### 2. Execution
 
-The contract executes in its runtime, RV32 by default, making syscalls to read and write ledger state.
-All modifications are recorded in the frame's mutable state.
+Contract code uses [syscalls](/reference/syscalls/) to read state, record changes, emit events, and call other contracts. Child calls can create further frames.
 
 ### 3. Completion
 
-A frame terminates in one of three ways:[^termination-syscall]
+| Result | Return bytes | Contract effects |
+| --- | --- | --- |
+| **Return** (`0`) | Returned to the caller | Preserved for merging into the parent |
+| **Fault** (`1`) | Empty | Discarded |
+| **Abort** (`2`) | Returned to the caller, usually as error data | Discarded |
 
-**a) Fault**
-
-The frame terminates abnormally due to:
-- Runtime trap, such as an invalid instruction, bad program counter, bad memory access, breakpoint, or equivalent deterministic guest failure
-- Out of gas
-
-When a frame **Faults**: No return buffer, all state changes discarded, gas still consumed
-
-**b) Return**
-
-The contract completes successfully, preserving its state changes.
-
-When a frame **Returns**: Return buffer (may be empty) passed to caller, state changes preserved, gas consumed
-
-**c) Abort**
-
-The contract explicitly aborts its execution, discarding state changes but returning data to the caller.
-
-When a frame **Aborts**: Return buffer passed to caller, state changes discarded, gas consumed
-
-[^termination-syscall]: Contracts normally control termination through the Return syscall, which takes an output buffer and a `revert_frame` flag (`false` for Return, `true` for Abort). SDK-generated RV32 entrypoint wrappers use this path. A missing RV32 entrypoint or a wrapper that falls through traps deterministically. The status codes used on this page (`Return = 0`, `Fault = 1`, `Abort = 2`) match `InvocationFrameStatusCode` in `protocol/transaction.x`.
+A fault can result from an invalid instruction, invalid memory access, or exhausted gas. An abort is an explicit revert. SDK-generated wrappers use the Return syscall with its revert flag to produce a return or abort. Gas consumed before either failure remains consumed; it is computation metering, not a token fee.
 
 ### 4. Merge into Parent (or Finalize for Root)
 
-**For child frames:**
+On a successful child return, its storage changes, deployments, and events become part of the parent frame. They have not committed to the ledger yet. On a child abort or fault, those effects are discarded.
 
-The parent frame is updated:
-- Gas: Parent's `gas_used` increases by child's `gas_used`
-- Result state: Parent's `most_recent_child_result` is set to child's result
-  - If child hit a **Fault**: status = Fault, buffer = empty
-  - If child **Returned**: status = Return, buffer = child's return buffer
-  - If child **Aborted**: status = Abort, buffer = child's return buffer
+In either case, the parent receives the child's status and return buffer and accounts for its gas use. A recoverable SDK call lets the parent inspect the failure. A throwing call propagates an unhandled failure. See [Cross-Contract Calls](/contracts/cross-contract-calls/#error-handling).
 
-State changes:
-- If child **Returned**: Parent merges child's `state_changes`, `deployed_contracts`, and `events` into its own
-  - Child writes overwrite parent writes on the same `(ContractAddress, StorageKey)` pair
-  - This ensures each frame has at most one delta per storage key
-  - Child events are appended to parent's event list
-- If child **Aborted or hit a Fault**: Child's state changes, deployments, and events are discarded
-
-**For root frame:**
-
-The transaction terminates. The root frame's `state_changes` map is passed to the conflict checking and commit protocol (see [Transaction Lifecycle](/how-it-works/transaction-lifecycle/)).
+When the root returns successfully, the transaction's changes must still pass reservation against the proposed block. A committed root abort or fault records the failure while discarding contract effects; protocol bookkeeping such as replay protection remains. See [Transaction Lifecycle](/how-it-works/transaction-lifecycle/#root-frame-completion).
 
 ### 5. Pop and Return
 
-The frame is removed from the call stack:
-- Control returns to the caller (or transaction ends if root frame)
-- **All guest execution state is discarded** (memory, registers, stack, program counter)
-
-**WARNING:** Guest memory does not persist across invocation frames. Any data not written to ledger storage is lost when the frame terminates.
+The runtime discards the completed frame's guest memory, registers, and stack. Control returns to the parent, or execution ends for the root. Only state written through the storage APIs can persist beyond execution.
 
 ## Example: Nested Contract Calls
 
-This example shows contract A calling B, C, and D. A uses recoverable calls and handles C's abort and D's fault. A throwing SDK client would instead propagate an unhandled child failure.
+Suppose contract A calls B, C, and D using recoverable calls:
 
-**1. Root frame - ContractA.method() created**
+| Step | Outcome | Changes retained by A |
+| --- | --- | --- |
+| A writes `AAA` | A continues | `AAA` |
+| B writes `BBB` and returns | Child effects merge | `AAA`, `BBB` |
+| C writes `CCC` and aborts | Child effects are discarded; A handles the error | `AAA`, `BBB` |
+| D writes `DDD` and faults | Child effects are discarded; A handles the fault | `AAA`, `BBB` |
+| A writes `FINAL` and returns | Root changes enter reservation | `AAA`, `BBB`, `FINAL` |
 
-Immutable context:
-```
-contract: contract_a_address
-entrypoint: 0x1111111111111111
-calldata: <empty>
-flags: (none - root frame has no flags)
-max_gas: 1_000_000
-```
-
-Initial mutable state:
-```
-most_recent_child_result: (none)
-deployed_contracts: []
-state_changes: {}
-gas_used: 0
-```
-
-**2. ContractA writes to storage**
-
-ContractA executes a storage write:
-```
-state_changes: {
-  (contract_a_address, key_0x01): Write_Bytestring('AAA')
-}
-gas_used: 10_000
-```
-
-**3. ContractA calls ContractB - Push new frame**
-
-ContractB frame immutable context:
-```
-contract: contract_b_address
-entrypoint: 0x2222222222222222
-calldata: <empty>
-flags: (none)
-max_gas: 500_000  // allocated from ContractA's remaining gas
-```
-
-ContractB executes and writes to storage:
-```
-state_changes: {
-  (contract_b_address, key_0x02): Write_Bytestring('BBB')
-}
-gas_used: 15_000
-```
-
-**4. ContractB Returns (preserves state changes)**
-
-ContractB completes successfully, preserving its state:
-```
-return_buffer: "success_b"
-status: Return
-```
-
-ContractA frame updated after ContractB Returns:
-```
-most_recent_child_result: { buffer: "success_b", status: Return }
-deployed_contracts: []
-state_changes: {
-  (contract_a_address, key_0x01): Write_Bytestring('AAA'),
-  (contract_b_address, key_0x02): Write_Bytestring('BBB')
-}  // ContractB's changes merged into parent
-gas_used: 25_000  // 10_000 from A + 15_000 from B
-```
-
-**5. ContractA calls ContractC - Push new frame**
-
-ContractC frame immutable context:
-```
-contract: contract_c_address
-entrypoint: 0x3333333333333333
-calldata: <empty>
-flags: (none)
-max_gas: 475_000  // remaining gas from ContractA
-```
-
-ContractC executes and writes to storage:
-```
-state_changes: {
-  (contract_c_address, key_0x03): Write_Bytestring('CCC')
-}
-gas_used: 20_000
-```
-
-**6. ContractC Aborts (discards state)**
-
-ContractC explicitly aborts, discarding its state changes:
-```
-return_buffer: "error_c"
-status: Abort
-```
-
-ContractA frame updated after ContractC Aborts:
-```
-most_recent_child_result: { buffer: "error_c", status: Abort }
-deployed_contracts: []
-state_changes: {
-  (contract_a_address, key_0x01): Write_Bytestring('AAA'),
-  (contract_b_address, key_0x02): Write_Bytestring('BBB')
-}  // ContractC's changes DISCARDED (aborted)
-gas_used: 45_000  // gas still consumed
-```
-
-**7. ContractA calls ContractD - Push new frame**
-
-ContractD frame immutable context:
-```
-contract: contract_d_address
-entrypoint: 0x4444444444444444
-calldata: <empty>
-flags: (none)
-max_gas: 455_000
-```
-
-ContractD writes to storage:
-```
-state_changes: {
-  (contract_d_address, key_0x04): Write_Bytestring('DDD')
-}
-gas_used: 10_000
-```
-
-**8. ContractD hits a Fault (unhandled error)**
-
-ContractD hits a runtime trap, such as bad memory access, an invalid instruction, or a breakpoint:
-```
-status: Fault
-No return buffer
-All state changes discarded
-```
-
-ContractA frame updated after ContractD hits a Fault:
-```
-most_recent_child_result: { buffer: <empty>, status: Fault }
-deployed_contracts: []
-state_changes: {
-  (contract_a_address, key_0x01): Write_Bytestring('AAA'),
-  (contract_b_address, key_0x02): Write_Bytestring('BBB')
-}  // ContractD's changes DISCARDED (hit a Fault)
-gas_used: 55_000  // gas still consumed
-```
-
-**9. ContractA makes final storage write**
-
-ContractA writes one more value:
-```
-state_changes: {
-  (contract_a_address, key_0x01): Write_Bytestring('AAA'),
-  (contract_b_address, key_0x02): Write_Bytestring('BBB'),
-  (contract_a_address, key_0x05): Write_Bytestring('FINAL')
-}
-gas_used: 60_000
-```
-
-**10. Root frame Returns (ready for reservation)**
-
-ContractA completes successfully. Its deltas still need to pass reservation:
-```
-return_buffer: "done"
-status: Return
-deployed_contracts: []
-state_changes: {
-  (contract_a_address, key_0x01): Write_Bytestring('AAA'),
-  (contract_b_address, key_0x02): Write_Bytestring('BBB'),
-  (contract_a_address, key_0x05): Write_Bytestring('FINAL')
-}
-```
-
-**11. Reservation and commit**
-- The root frame's `state_changes` map is used for reservation and commit
-- Each delta is reserved against the block's accumulated state
-- If all reservations succeed, all writes commit atomically to the ledger
-- Final ledger state includes AAA, BBB, and FINAL
-- CCC and DDD were never committed (ContractC Aborted, ContractD hit a Fault)
+If the transaction is admitted and committed, the ledger contains `AAA`, `BBB`, and `FINAL`. C's and D's writes never commit. If A instead propagates either child failure, A's contract effects are discarded too.
 
 ## Related Documentation
 
-- [Contracts](/how-it-works/contracts/): Contract types and entrypoint IDs
-- [Transaction Lifecycle](/how-it-works/transaction-lifecycle/): How transactions progress from submission to commit
-- [Syscalls](/reference/syscalls/): How contracts interact with frames
-- [Cross-Contract Calls](/reference/cross-contract-calls/): SDK-level call patterns
+- [Cross-Contract Calls](/contracts/cross-contract-calls/): SDK call and error-handling patterns
+- [Authorization](/how-it-works/authorization/#passing-auth-tokens): Auth-token ownership across frames
+- [Transaction Lifecycle](/how-it-works/transaction-lifecycle/): Reservation and final outcomes
+- [Contract artifacts and addresses](/how-it-works/contracts/): Code and deployment identities

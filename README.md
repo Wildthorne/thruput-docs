@@ -1,6 +1,6 @@
-# Groundhog Developer Docs
+# Stellar Thruput Developer Docs
 
-Developer documentation for the [Groundhog](https://groundhog.dev) L1 blockchain. Built with [Astro](https://astro.build) + [Starlight](https://starlight.astro.build).
+Developer documentation for the [Stellar Thruput](https://groundhog.dev) blockchain. Built with [Astro](https://astro.build) + [Starlight](https://starlight.astro.build).
 
 ## Development
 
@@ -75,6 +75,15 @@ The smoke blocks non-loopback browser requests and checks local search,
 tutorial navigation, the agent prompt, Markdown, and desktop/mobile layout.
 Screenshots are written below `test-results/snapshot/`.
 
+To validate counter-guide files independently of the examples app, extract a
+chapter with `node scripts/prepare-counter-guide.mjs APP_DIR COUNTER_BINDING 4`,
+using the binding generated from your counter build. Install the chapter's
+dependencies in `APP_DIR` and run its build. Then run
+`node scripts/check-counter-recovery.mjs APP_DIR` to check the exact recovery
+helper against expiry, network/hash mismatches, receipt and RPC outcomes, storage
+failure, and evidence-preserving archival. This check uses the app's installed
+SDK and React packages through their public exports.
+
 ## Content
 
 Markdown files live in `src/content/docs/`, organized by section. The sidebar is manually configured in `astro.config.mjs`.
@@ -99,9 +108,10 @@ Markdown files live in `src/content/docs/`, organized by section. The sidebar is
 
 ## Agent guidance
 
-The landing page points agents to `/start/build-with-an-agent/` for pre-install
-access checks, then to the installed CLI's `groundhog --skill`. The hosted
-reference is a pinned artifact, not an independently authored copy of CLI docs.
+The landing page imports the prompt from `/start/build-with-an-agent/`. Maintain
+its text block in that page only. The prompt installs the CLI and skill, exports
+the docs, and verifies a counter through CLI calls on Devnet. The hosted
+standalone reference is a pinned artifact, not a separately authored CLI guide.
 
 `public/agents/current.json` identifies the selected guide's CLI version, status,
 SHA-256, and source. The selected reference is the released CLI **0.19.0** guide
@@ -114,7 +124,8 @@ To promote another guide:
 1. Obtain `agent-guide.md` from the explicitly selected CLI release and verify it
    against that release's `SHA256SUMS`. Do not select the latest prerelease
    automatically. For a source preview, generate/check it at the recorded commit
-   and compare it with that build's `groundhog --skill`.
+    and validate it with that source revision's artifact checks. Installed skill
+    output is not a CLI release artifact.
 2. Add those unchanged bytes at `public/agents/<cli-version>/agent-guide.md`.
    Retain earlier version paths. Never replace an existing version with different
    bytes; a corrected guide needs a new CLI release.
@@ -131,3 +142,62 @@ commit for a push to main). Existing versions cannot be modified, removed, or
 renamed, even if the alias and checksum are updated together. To run this check
 locally, use `node scripts/check-agent-guide-history.mjs origin/main` after fetching
 the base branch. Source-artifact verification in step 1 remains part of promotion.
+
+## Markdown documentation
+
+Documentation titles include an **Agent tools** disclosure with **Copy page**,
+the Markdown link, an existing guide task prompt when present, **View Markdown**,
+and agent setup. The clicked item's label briefly changes to **Copied**, without
+adding space or moving the page.
+Copy failures offer selected text in a modal dialog. Navigation
+links also work without JavaScript. Task prompts come from each page's
+`## Work with an agent` text block; do not maintain a second prompt copy.
+
+Both `pnpm build` and `pnpm build:snapshot` generate Markdown from the rendered
+page content. Astro renders Markdown and components first; the exporter removes
+navigation and controls and preserves code, warning titles, tables, tab choices,
+and described diagrams. The HTML and Markdown therefore share one maintained
+source. New content components need export tests when their meaning depends on
+special markup.
+
+The build writes:
+
+- `markdown/index.md`: descriptions and links to every exported page and section.
+- `markdown/pages/<route>.md`: individual pages, with `pages/index.md` for the home page.
+- `markdown/sections/<section>.md`: bundles using the sidebar's section ownership.
+- `markdown/full.md`: all page content.
+- `markdown/assets/`: local assets used by the exported content.
+- `markdown/manifest.json`: page inventory and source identity.
+- `llms.txt` and `llms-full.txt`: site-root discovery and full documentation.
+
+Every HTML page advertises its Markdown URL with a `text/markdown` alternate
+link. Explicit URLs are the supported access method; HTTP content negotiation
+is not implemented. The existing Caddy authentication applies to the exports
+as it does to HTML. The build does not publish or fetch content.
+
+Keep explicit Markdown URLs as the hosting baseline. If content negotiation is
+added later, verify authentication parity, `Content-Type: text/markdown`, and
+`Vary: Accept` before enabling it. Unauthenticated hosted probes currently return
+401, so successful hosted export access needs verification after deployment.
+
+The agent setup and CLI pages document `groundhog skill` and `groundhog docs`
+from the GH-459 command implementation. Use a CLI build with those commands
+for snapshot export verification.
+
+Markdown links resolve relative to their files. Legacy page and fragment
+redirects are resolved during export. The build checks those targets, then
+reparses the output to check file and fragment links. Broken links fail the
+build. Code blocks are left unchanged, including URLs inside examples.
+
+The whole `markdown/` tree can be copied away from the website. With a CLI
+that supports Markdown export, use:
+
+```sh
+groundhog docs export --dir "$PWD/dist/docs-snapshot" --output /path/to/new-folder
+```
+
+Run `pnpm test` for conversion fixtures. The snapshot smoke also checks the
+real CLI export, links in the copied folder, and code examples against their
+source pages. Markdown output records the docs commit and the separately
+selected standalone agent-guide version; the latter does not version the
+whole site.

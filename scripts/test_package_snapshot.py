@@ -15,9 +15,17 @@ class PackageSnapshotTests(unittest.TestCase):
         (root / "index.html").write_text("Home")
         (root / "start/index.html").write_text("Start")
         (root / "agent-guide.md").write_text("Guide")
+        (root / "markdown").mkdir()
+        (root / "markdown/index.md").write_text("# Index\n")
+        (root / "markdown/full.md").write_text("# Docs\n")
+        (root / "llms.txt").write_text("# Index\n")
+        (root / "llms-full.txt").write_text("# Docs\n")
         (root / "snapshot.json").write_text(json.dumps({
             "schemaVersion": 1, "sourceRevision": "a" * 40,
             "sourceDirty": False, "agentGuideCliVersion": "0.16.0-rc.1",
+        }))
+        (root / "markdown/manifest.json").write_text(json.dumps({
+            "schemaVersion": 1, "snapshot": json.loads((root / "snapshot.json").read_text()),
         }))
 
     def test_bytes_ignore_source_mtime_and_permissions(self):
@@ -44,6 +52,18 @@ class PackageSnapshotTests(unittest.TestCase):
             link.unlink()
             (root / ".env").write_text("private")
             with self.assertRaises(ValueError):
+                module.package_snapshot(root, Path(name) / "out")
+
+    def test_rejects_missing_or_stale_markdown(self):
+        with tempfile.TemporaryDirectory() as name:
+            root = Path(name) / "site"
+            root.mkdir()
+            self.fixture(root)
+            (root / "markdown/manifest.json").write_text('{"schemaVersion": 1, "snapshot": {}}')
+            with self.assertRaisesRegex(ValueError, "identity differs"):
+                module.package_snapshot(root, Path(name) / "out")
+            (root / "markdown/index.md").unlink()
+            with self.assertRaisesRegex(ValueError, "missing markdown/index.md"):
                 module.package_snapshot(root, Path(name) / "out")
 
 

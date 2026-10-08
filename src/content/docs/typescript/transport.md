@@ -1,0 +1,62 @@
+---
+title: Configure HTTP transport
+description: Set RPC timeouts, batch independent reads, and classify transport failures.
+---
+
+The client uses HTTP JSON-RPC by default. Supply `HttpTransport` when you need explicit timeout, header, or batching settings.
+
+## Set a request timeout
+
+```ts
+import { createGroundhogClient, devnet, HttpTransport } from "@groundhogchain/client";
+
+const cluster = devnet();
+const client = await createGroundhogClient({
+  cluster,
+  transport: new HttpTransport(cluster.rpcUrl!, { timeoutMs: 10_000 }),
+});
+```
+
+The cluster still controls identity checks; the transport controls requests to the endpoint. A timeout ends observation of that request, not an already-submitted transaction.
+
+## HTTP batching
+
+Batch independent RPC reads into fewer HTTP requests:
+
+```ts
+const batched = await createGroundhogClient({
+  cluster,
+  transport: new HttpTransport(cluster.rpcUrl!, {
+    batch: { maxSize: 100, waitMs: 0 },
+    timeoutMs: 10_000,
+  }),
+});
+const [tip, version] = await Promise.all([
+  batched.getChainTip(),
+  batched.getVersion(),
+]);
+```
+
+Batching is off by default. `batch: true` uses the defaults shown. Concurrent requests are grouped within the scheduling window and split at `maxSize`.
+
+- Responses match by request ID, not array position.
+- Per-call RPC errors remain separate. HTTP or malformed-batch failures reject affected requests.
+- Cancellation removes one caller; canceling every caller can cancel the shared request.
+- Batching does not provide a shared state snapshot or an atomic transaction. Await dependent reads separately.
+
+Server [array and byte limits](/reference/json-rpc-api/#json-rpc-arrays) still apply.
+
+## Handle transport errors
+
+| Error | Boundary |
+| --- | --- |
+| `HttpRequestError` | Network request failed |
+| `HttpResponseError` | Non-success HTTP status |
+| `JsonRpcError` | RPC error response; includes `code`, `data`, and method context |
+| `ContractViewError` / `ContractDecodeError` | Contract outcome or decoding, not transport |
+
+Use `classifyReadError(error, { signal })` when implementing a bounded read-retry policy. See [read cancellation](/typescript/reads/#cancel-stale-reads). Do not apply automatic read retries to transaction submission.
+
+## Use a custom transport
+
+Implement the exported `Transport` interface when integrating another request layer. A client created with only a transport has no validated cluster identity. For wallet use, provide a trusted signing network hash and verify the endpoint separately, or supply a cluster descriptor as above.

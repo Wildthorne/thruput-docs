@@ -1,9 +1,9 @@
 ---
 title: Authorization
-description: How transaction signatures, address auth data, caller identity, and auth tokens work in Groundhog.
+description: How transaction signatures, address auth data, caller identity, and auth tokens work in Stellar Thruput.
 ---
 
-Groundhog treats addresses uniformly. An address can hold code, store auth data, receive calls, and originate transactions through either supported admission model.
+Stellar Thruput treats addresses uniformly. An address can hold code, store auth data, receive calls, and originate transactions through either supported admission model.
 
 Authorization has two layers:
 
@@ -11,6 +11,18 @@ Authorization has two layers:
 2. **Runtime authorization**: contracts use caller identity, explicit signature checks, and typed auth tokens while executing.
 
 These layers are related but separate. Transaction admission decides whether the root transaction may enter the block. Runtime authorization decides what authority a contract gives to a caller or token it receives.
+
+## Authorize an application operation
+
+For an owner-controlled method, store the owner in `Value<ContractAddress>` and check it before changing state:
+
+```rust
+ensure(get_caller() == self.owner.get(), AccessError::NotOwner);
+```
+
+Define `AccessError` with [a contract exception](/contracts/errors/#defining-errors). Initialize the owner through a guarded method and [deploy and initialize atomically](/cli/deploy-and-call/#include-initialization) if the first caller becomes the owner.
+
+`get_caller()` identifies the immediate caller. A forwarded call identifies the forwarding contract, not the original user. For authority passed through several frames, use the [typed auth-token model](#auth-tokens-and-signedt) below and validate its minter and payload.
 
 ## Transaction Admission
 
@@ -34,7 +46,7 @@ The source address is the root invocation's `invoked_address`. Every transaction
 cxs(DomainSeparator("Transaction")) || networkHash || txs(transaction)
 ```
 
-`txs(value)` denotes its standard XDR encoding. The domain separator prevents a transaction signature from being interpreted as a signature over another object. The network hash binds the signature to one Groundhog network and prevents cross-network replay.
+`txs(value)` denotes its standard XDR encoding. The domain separator prevents a transaction signature from being interpreted as a signature over another object. The network hash binds the signature to one Stellar Thruput network and prevents cross-network replay.
 
 The canonical transaction hash is `sha256(txs(transaction))`. It identifies the inner transaction and excludes signatures. It is distinct from both the signature preimage and the encoded `SignedTransaction` wrapper.
 
@@ -128,7 +140,7 @@ use sdk::get_caller;
 let caller = get_caller();
 ```
 
-This is Groundhog's equivalent of `msg.sender`: immediate caller identity. It is not a signer set and it does not tell you which key signed the root transaction. A root frame has no caller, so the underlying syscall errors there.
+This is Stellar Thruput's equivalent of `msg.sender`: immediate caller identity. It is not a signer set and it does not tell you which key signed the root transaction. A root frame has no caller, so the underlying syscall errors there.
 
 Use [`get_current_address()`](https://crates.thruput.network/docs/sdk/0.34.3/doc/sdk/contract_op/fn.get_current_address.html) when a contract needs its own address.
 

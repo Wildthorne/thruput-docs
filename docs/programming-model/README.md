@@ -1,6 +1,6 @@
-# Groundhog Programming Model
+# Stellar Thruput Programming Model
 
-Compact reference notes for reasoning about Groundhog contract behavior, conflict semantics, and the economic model. These files are not the final authority. For release documentation, the SDK, protocol definitions, and engine source pinned by that release are authoritative. If source code and these notes disagree, trust source code and update these notes.
+Compact reference notes for reasoning about Stellar Thruput contract behavior, conflict semantics, and the economic model. These files are not the final authority. For release documentation, the SDK, protocol definitions, and engine source pinned by that release are authoritative. If source code and these notes disagree, trust source code and update these notes.
 
 ## Reading Order
 
@@ -16,7 +16,7 @@ Every transaction reads from the same frozen snapshot (previous block's committe
 
 ## The Core Design Principle
 
-Groundhog gets parallelism from simplicity: typed deltas with known merge semantics replace arbitrary state mutations. The developer picks the right storage type, writes ordinary sequential Rust, and concurrency is a consequence of the storage model.
+Stellar Thruput gets parallelism from simplicity: typed deltas with known merge semantics replace arbitrary state mutations. The developer picks the right storage type, writes ordinary sequential Rust, and concurrency is a consequence of the storage model.
 
 ## Source Verification
 

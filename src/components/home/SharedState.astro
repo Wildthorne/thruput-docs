@@ -1,0 +1,142 @@
+---
+const transactions = [
+  { name: 'A', delta: 5, incoming: 'M150 0 C150 30 50 30 50 72', outgoing: 'M50 0 C50 42 150 42 150 72' },
+  { name: 'B', delta: 3, incoming: 'M150 0 L150 72', outgoing: 'M150 0 L150 72' },
+  { name: 'C', delta: 2, incoming: 'M150 0 C150 30 250 30 250 72', outgoing: 'M250 0 C250 42 150 42 150 72' },
+];
+---
+
+<shared-state-animation data-phase="complete">
+  <figure class="state-diagram" aria-label="Three compatible counter increments combine from a shared snapshot of 100 into 110">
+    <div class="state initial"><span>Shared snapshot</span><strong>100</strong></div>
+    <svg class="connections" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 72" preserveAspectRatio="none" aria-hidden="true">
+      {transactions.map(({ incoming }) => <g><path d={incoming} /><circle r="3" data-incoming-pulse opacity="0" /></g>)}
+    </svg>
+    <div class="changes">
+      {transactions.map(({ name, delta }) => <div class="transaction"><span>Tx {name}</span><strong>+{delta}</strong><div class="track" aria-hidden="true"><span data-progress></span></div></div>)}
+    </div>
+    <svg class="connections" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 72" preserveAspectRatio="none" aria-hidden="true">
+      {transactions.map(({ outgoing }) => <g><path d={outgoing} /><circle r="3" data-outgoing-pulse opacity="0" /></g>)}
+    </svg>
+    <div class="state result"><span>Next committed state</span><strong data-result>110</strong></div>
+    <div class="controls"><p data-stage>100 + 5 + 3 + 2 = 110</p><button type="button" aria-label="Pause counter animation" hidden>Pause</button></div>
+  </figure>
+</shared-state-animation>
+
+<style>
+  shared-state-animation { display: block; min-width: 0; }
+  .state-diagram { margin: 0; padding: 1.5rem 1.5rem .75rem; border: 1px solid var(--brand-border); border-radius: .375rem; background: var(--brand-surface); }
+  .state { display: flex; flex-direction: column; align-items: center; gap: .375rem; width: fit-content; min-width: min(11rem, 100%); margin-inline: auto; padding: .75rem 1rem; border: 1px solid var(--brand-border); border-radius: .375rem; background: var(--brand-background); }
+  .state span, .transaction > span { color: var(--brand-muted); font-size: .875rem; }
+  strong { font: 400 1.75rem/1.2 var(--sl-font-mono); font-variant-numeric: tabular-nums; }
+  .connections { display: block; width: 100%; height: 4.5rem; overflow: visible; }
+  path { fill: none; stroke: var(--brand-border); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
+  circle { fill: var(--brand-accent); }
+  .changes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .transaction { display: flex; flex-direction: column; align-items: center; gap: .5rem; padding-block: .5rem; }
+  .track { width: 75%; height: 3px; overflow: hidden; background: var(--brand-border); }
+  [data-progress] { display: block; width: 100%; height: 100%; background: var(--brand-accent); transform-origin: left; }
+  .changes strong, [data-phase='complete'] .result strong { color: var(--brand-accent); }
+  .result strong { min-width: 3ch; text-align: center; }
+  .controls { display: flex; align-items: center; justify-content: space-between; gap: .75rem; min-height: 3rem; margin-top: .75rem; }
+  .controls p { margin: 0; color: var(--brand-muted); font-size: .8125rem; }
+  button { flex-shrink: 0; padding: .5rem; border: 0; border-radius: .25rem; color: var(--brand-muted); background: transparent; font: inherit; font-size: .875rem; cursor: pointer; }
+  button:hover { color: var(--brand-foreground); background: var(--brand-background); }
+  button[hidden] { display: none; }
+  @media (max-width: 25rem) { .state-diagram { padding: 1rem 1rem .5rem; } }
+  @media (pointer: coarse) { button { min-height: 3rem; min-width: 3rem; } }
+</style>
+
+<script>
+  class SharedStateAnimation extends HTMLElement {
+    private cleanup?: () => void;
+
+    connectedCallback() {
+      this.cleanup?.();
+      const controller = new AbortController();
+      const motion = matchMedia('(prefers-reduced-motion: reduce)');
+      const button = this.querySelector('button')!;
+      const result = this.querySelector<HTMLElement>('[data-result]')!;
+      const stage = this.querySelector<HTMLElement>('[data-stage]')!;
+      const bars = [...this.querySelectorAll<HTMLElement>('[data-progress]')];
+      const pulses = (selector: string) => [...this.querySelectorAll<SVGCircleElement>(selector)].map(dot => {
+        const path = dot.previousElementSibling as SVGPathElement;
+        return { dot, path, length: path.getTotalLength() };
+      });
+      const incoming = pulses('[data-incoming-pulse]');
+      const outgoing = pulses('[data-outgoing-pulse]');
+      let elapsed = 0;
+      let last: number | null = null;
+      let frame: number | null = null;
+      let visible = false;
+      let paused = false;
+
+      function position(pulse: typeof incoming[number], progress: number) {
+        const active = progress >= 0 && progress < 1;
+        pulse.dot.setAttribute('opacity', active ? '1' : '0');
+        if (!active) return;
+        const point = pulse.path.getPointAtLength(pulse.length * progress);
+        pulse.dot.setAttribute('cx', String(point.x));
+        pulse.dot.setAttribute('cy', String(point.y));
+      }
+
+      const render = (time: number) => {
+        const t = time % 8_000;
+        const finish = 3_400;
+        const progress = Math.max(0, Math.min(1, (t - 1_200) / (finish - 1_200)));
+        bars.forEach((bar, index) => {
+          bar.style.transform = `scaleX(${progress})`;
+          position(incoming[index]!, (t - 250) / 900);
+          position(outgoing[index]!, (t - finish) / 850);
+        });
+        const phase = t < 1_200 ? 'read' : t < 3_400 ? 'execute' : t < 4_500 ? 'merge' : 'complete';
+        if (this.dataset.phase !== phase) this.dataset.phase = phase;
+        const value = phase === 'complete' ? '110' : '—';
+        if (result.textContent !== value) result.textContent = value;
+        const label = { read: 'Read one snapshot', execute: 'Execute in parallel', merge: 'Merge compatible changes', complete: '100 + 5 + 3 + 2 = 110' }[phase];
+        if (stage.textContent !== label) stage.textContent = label;
+      };
+
+      const tick = (now: number) => {
+        if (last !== null) elapsed += now - last;
+        last = now;
+        render(elapsed);
+        frame = requestAnimationFrame(tick);
+      };
+
+      const sync = () => {
+        if (frame !== null) cancelAnimationFrame(frame);
+        frame = null;
+        last = null;
+        button.hidden = motion.matches;
+        if (motion.matches) render(4_500);
+        const running = visible && !document.hidden && !paused && !motion.matches;
+        this.toggleAttribute('data-running', running);
+        if (running) { render(elapsed); frame = requestAnimationFrame(tick); }
+      };
+
+      button.addEventListener('click', () => {
+        paused = !paused;
+        button.textContent = paused ? 'Resume' : 'Pause';
+        button.setAttribute('aria-label', `${paused ? 'Resume' : 'Pause'} counter animation`);
+        sync();
+      }, { signal: controller.signal });
+      motion.addEventListener('change', sync, { signal: controller.signal });
+      document.addEventListener('visibilitychange', sync, { signal: controller.signal });
+      const observer = new IntersectionObserver(entries => {
+        visible = (entries[0]?.intersectionRatio ?? 0) >= .15;
+        sync();
+      }, { threshold: .15 });
+      observer.observe(this);
+      sync();
+      this.cleanup = () => {
+        controller.abort();
+        observer.disconnect();
+        if (frame !== null) cancelAnimationFrame(frame);
+      };
+    }
+
+    disconnectedCallback() { this.cleanup?.(); }
+  }
+  if (!customElements.get('shared-state-animation')) customElements.define('shared-state-animation', SharedStateAnimation);
+</script>

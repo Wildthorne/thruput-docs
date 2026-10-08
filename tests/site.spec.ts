@@ -1,8 +1,10 @@
 import { test as base, expect, type Page } from '@playwright/test';
+import { readFileSync } from 'node:fs';
 
 const origin = 'http://127.0.0.1:4322';
 const docs = '/start/build-with-an-agent/';
-const prompt = 'Help me build my first Groundhog app. Check whether groundhog is installed and verify the CLI and runtime versions. If installed, read groundhog --skill, start groundhog docs, and use its localhost URL for the documentation. Keep that server running while you work. If the CLI is missing, follow https://docs.groundhog.dev/start/getting-started/; if authentication blocks access, ask me for a saved copy. Never ask me to paste credentials or signing keys. Start with a small contract, run its tests, deploy it, and verify the receipt and state.';
+const onboarding = readFileSync(new URL('../src/content/docs/start/build-with-an-agent.md', import.meta.url), 'utf8');
+const prompt = onboarding.match(/```text\r?\n([\s\S]*?)\r?\n```/)![1];
 const test = base.extend({
   page: async ({ page }, use) => {
     const errors: string[] = [];
@@ -21,7 +23,7 @@ async function checkShell(page: Page) {
   const search = page.locator('site-search > button');
   await expect(search).toHaveAccessibleName('Search documentation');
   const label = search.locator(':scope > span');
-  if ((page.viewportSize()?.width ?? 0) >= 800) {
+  if ((page.viewportSize()?.width ?? 0) >= 1100) {
     await expect(label).toBeVisible();
     await expect(label).toHaveText('Search documentation');
     expect(await label.evaluate(el => {
@@ -63,10 +65,11 @@ for (const width of [320, 375, 701, 800, 1024, 1280, 1920]) {
     await expect(page.locator('h1')).toContainText('The blockchain built for');
     await expect(page.locator('h1')).toContainText('abundance');
     await expect(page.locator('[id="_top"]')).toHaveCount(1);
-    for (const title of ['Programming model', 'Development resources']) {
-      await expect(page.getByRole('heading', { name: title, level: 2 })).toHaveCSS('text-align', 'center');
+    for (const title of ['Shared state. Compatible changes.', 'More room for application logic.', 'Write Rust. Build something you can use.']) {
+      await expect(page.getByRole('heading', { name: title, level: 2 })).toBeVisible();
     }
-    await expect(page.locator('.feature-card')).toHaveCount(6);
+    await expect(page.locator('.workflow a')).toHaveCount(5);
+    await expect(page.locator('header .release-badge')).toHaveText('alpha-pre.1');
     await page.keyboard.press('Tab');
     await expect(page.getByRole('link', { name: 'Skip to content' })).toBeFocused();
     await page.keyboard.press('Enter');
@@ -106,10 +109,9 @@ test('mobile homepage navigation and docs sidebar/theme', async ({ page }, testI
   await page.setViewportSize({ width: 375, height: 812 });
   await page.emulateMedia({ colorScheme: 'dark' });
   const links = [
-    ['About', '/how-it-works/architecture/'],
-    ['Get Started', docs],
-    ['Documentation', '/start/'],
-    ['Community', '/community/contributing/'],
+    ['About', '/architecture/'],
+    ['Get Started', '/get-started/'],
+    ['Documentation', '/architecture/'],
   ];
   for (const [name, href] of links) {
     await page.goto(origin);
@@ -118,20 +120,22 @@ test('mobile homepage navigation and docs sidebar/theme', async ({ page }, testI
     await expect(link).toBeVisible();
     await link.click();
     await expect(page).toHaveURL(origin + href);
-    if (name === 'About') await page.screenshot({ path: testInfo.outputPath('about-menu.png') });
+    if (name === 'About') await page.screenshot({ path: testInfo.outputPath('architecture-menu.png') });
     await expect.soft(page.locator('body'), `${name}: navigation closes the menu`).not.toHaveAttribute('data-mobile-menu-expanded', '');
   }
   await page.goto(origin);
   await page.getByRole('button', { name: 'Menu', exact: true }).click();
+  await expect(page.locator('.sidebar .site-navigation').getByRole('link', { name: 'Community', exact: true }))
+    .toHaveAttribute('href', 'https://github.com/groundhogchain');
   await page.locator('.sidebar').getByRole('link', { name: 'Start Building', exact: true }).click();
-  await expect(page).toHaveURL(origin + docs);
+  await expect(page).toHaveURL(origin + '/get-started/');
   await page.getByRole('button', { name: 'Menu', exact: true }).click();
   const sidebar = page.locator('.sidebar');
   await expect(sidebar.getByRole('link', { name: 'Build with an Agent', exact: true })).toBeVisible();
   await sidebar.getByRole('button', { name: 'Switch to light mode', exact: true }).click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
-  await sidebar.getByRole('link', { name: 'Getting Started', exact: true }).click();
-  await expect(page).toHaveURL(origin + '/start/getting-started/');
+  await sidebar.getByRole('link', { name: 'Contract quickstart', exact: true }).click();
+  await expect(page).toHaveURL(origin + '/get-started/contract/');
   await expect(page.locator('body')).not.toHaveAttribute('data-mobile-menu-expanded', '');
 });
 
@@ -183,7 +187,7 @@ test('system theme follows docs until a manual toggle persists across the dark h
   await page.emulateMedia({ colorScheme: 'light' });
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
   expect(await page.evaluate(() => localStorage.getItem('starlight-theme'))).toBeNull();
-  await page.getByRole('link', { name: 'Thruput homepage' }).click();
+  await page.getByRole('link', { name: 'Stellar Thruput homepage' }).click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   await page.emulateMedia({ colorScheme: 'dark' });
   await page.emulateMedia({ colorScheme: 'light' });
@@ -200,7 +204,7 @@ test('system theme follows docs until a manual toggle persists across the dark h
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
   await page.reload();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
-  await page.getByRole('link', { name: 'Thruput homepage' }).click();
+  await page.getByRole('link', { name: 'Stellar Thruput homepage' }).click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   expect(await page.evaluate(() => localStorage.getItem('starlight-theme'))).toBe('light');
   await page.getByRole('link', { name: 'Get Started', exact: true }).click();
@@ -262,18 +266,18 @@ test('header is centered on homepage and full-width with 20px gutters on docs', 
   }
 });
 
-test('header rebrand retains Groundhog page identity and the exact install prompt', async ({ page }) => {
+test('header and page titles use Stellar Thruput while preserving the exact CLI install prompt', async ({ page }) => {
   for (const route of ['/', docs]) {
     await page.goto(origin + route);
-    const brand = page.locator('header').getByRole('link', { name: 'Thruput homepage', exact: true });
-    await expect(brand).toHaveText('THRUPUT');
+    const brand = page.locator('header').getByRole('link', { name: 'Stellar Thruput homepage', exact: true });
+    await expect(brand).toHaveText('STELLAR THRUPUT');
     await expect(brand).toHaveAttribute('href', '/');
-    await expect(page).toHaveTitle(/Groundhog/);
+    await expect(page).toHaveTitle(/Stellar Thruput/);
     await expect(page.locator('header').getByRole('link', { name: 'About', exact: true }))
-      .toHaveAttribute('href', '/how-it-works/architecture/');
+      .toHaveAttribute('href', '/architecture/');
     if (route === '/') {
-      await expect(page.locator('#install-label')).toHaveText('Paste into your coding agent to get started');
-      await expect(page.locator('.prompt-preview')).toHaveText(prompt);
+      await expect(page.locator('#install-label')).toHaveText('Start with your coding agent');
+      await expect(page.locator('[data-preview-text]')).toHaveText(prompt);
       await expect(page.getByRole('textbox', { name: 'Full agent prompt', includeHidden: true })).toHaveValue(prompt);
     }
   }
@@ -281,24 +285,16 @@ test('header rebrand retains Groundhog page identity and the exact install promp
 
 test('homepage learn-more links navigate to real docs and valid anchors', async ({ page }) => {
   for (const [feature, href, title] of [
-    ['Keep the logic on-chain', '/programming-model/execution/', 'Execution Model'],
-    ['Compute without gas fees', '/programming-model/execution/#gas', 'Execution Model'],
-    ['Build on shared state', '/programming-model/storage-types/', 'Storage Types'],
-    ['Make something work', '/tutorials/build-a-counter/', 'Build a Counter'],
-    ['Connect an interface', '/tutorials/work-with-groundhog-from-typescript/', 'Work with Groundhog from TypeScript'],
-    ['Understand the engine', '/how-it-works/architecture/', 'Architecture'],
+    ['Explore the execution model', '/how-it-works/execution-model/', 'Parallel Execution'],
+    ['Understand gas limits', '/programming-model/execution/#gas', 'Contract Execution'],
+    ['Choose your storage', '/programming-model/storage-types/', 'Storage Types'],
+    ['Build a counter, step by step', '/tutorials/build-a-counter/', 'Build a counter, part 1: Contract'],
   ]) {
     await page.goto(origin);
     const link = page.getByRole('link', { name: feature, exact: true });
     await expect(link).toHaveAttribute('href', href);
-    await expect(link).toHaveClass(/\bfeature-card\b/);
     await expect(link.locator('a')).toHaveCount(0);
-    await expect(link.locator('.learn-more')).toBeVisible();
-    await link.hover();
-    await expect(link).toHaveCSS('border-color', 'rgb(233, 239, 100)');
-    await expect(link.locator('.learn-more')).toHaveCSS('text-decoration-line', 'none');
-    // Click the card's padding rather than its visible call to action.
-    await link.click({ position: { x: 10, y: 10 } });
+    await link.click();
     await expect(page).toHaveURL(origin + href);
     await expect(page.locator('main h1')).toHaveText(title);
     const hash = new URL(page.url()).hash;
@@ -366,7 +362,7 @@ test('logo stays yellow in both themes and toggle follows Start Building', async
   for (const theme of ['light', 'dark'] as const) {
     await page.emulateMedia({ colorScheme: theme });
     await page.goto(origin + docs);
-    await expect(page.locator('.site-brand svg')).toHaveCSS('color', 'rgb(233, 239, 100)');
+    await expect(page.locator('.site-brand svg:visible')).toHaveCSS('color', 'rgb(233, 239, 100)');
     const build = await page.locator('.header-actions .build-link').boundingBox();
     const toggle = await page.locator('.desktop-theme button').boundingBox();
     expect(build).not.toBeNull();
@@ -382,7 +378,7 @@ test('clipboard denial exposes and selects the exact manual prompt', async ({ pa
   });
   await page.goto(origin);
   await page.getByRole('button', { name: 'Copy prompt', exact: true }).click();
-  await expect(page.getByRole('status')).toContainText('Clipboard access was blocked.');
+  await expect(page.getByRole('dialog', { name: 'Deploy your first counter' }).getByRole('status')).toContainText('Clipboard access was blocked.');
   const textarea = page.getByRole('textbox', { name: 'Full agent prompt' });
   await expect(textarea).toBeVisible();
   await expect(textarea).toBeFocused();
@@ -402,7 +398,7 @@ test('no JavaScript homepage is dark and offers manual copying', async ({ browse
     await expect(page.getByRole('textbox', { name: 'Full agent prompt' })).toBeVisible();
     await expect(page.locator('[id="_top"]')).toHaveCount(1);
     await page.getByRole('navigation', { name: 'Site navigation', exact: true }).getByRole('link', { name: 'Documentation' }).click();
-    await expect(page).toHaveURL(origin + '/start/');
+    await expect(page).toHaveURL(origin + '/get-started/');
   } finally {
     await context.close();
   }
@@ -419,7 +415,7 @@ for (const width of [320, 375, 701, 800, 1024, 1280, 1920]) {
       await expect(page.locator('[id="_top"]')).toHaveCount(1);
       await page.screenshot({ path: testInfo.outputPath(`docs-${theme}-${width}.png`), fullPage: true });
       await checkShell(page);
-      const ids = await page.locator('main h2[id]').evaluateAll(headings => headings.map(el => el.id));
+      const ids = await page.locator('.sl-markdown-content h2[id]').evaluateAll(headings => headings.map(el => el.id));
       expect(ids.length).toBeGreaterThan(0);
       for (const id of ids) {
         await page.goto(origin + docs + '#' + id);

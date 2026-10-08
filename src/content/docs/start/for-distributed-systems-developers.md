@@ -1,45 +1,32 @@
 ---
 title: "For Distributed Systems Developers"
-description: Map your distributed systems experience to Groundhog's programming model.
+description: Understand Stellar Thruput's use of commutative updates within consensus blocks.
 ---
 
-Commutative operations are a useful starting point for Groundhog. Its typed deltas combine changes within a consensus block, rather than reconciling independently writable replicas.
-
----
+Stellar Thruput uses commutative operations to combine concurrent changes within a block. The storage model supports parallel execution; consensus selects the result validators commit.
 
 ## Your Head Start
 
-You already think in terms of commutative operations. You know that `x + 5` and `x + 3` produce the same result in any order. You know that operations on independent keys don't interact. You've designed systems around these properties.
+Additions such as `+5` and `+3` have the same sum in either order. Stellar Thruput's [`Balance`](/programming-model/storage-types/#balance) and [`NNInt`](/programming-model/nnint/) expose relative updates with explicit bounds. `Map<K, V>` gives separate keys independent storage locations.
 
-That instinct is exactly right for Groundhog. [`Balance`](/programming-model/storage-types/#balance) exposes checked and lazy increases and decreases for non-negative values. Lower-level [`NNInt`](/programming-model/storage-types/#nnint) works like a counter whose signed changes combine additively. `Map<K, V>` gives you key-level independence. If you've ever reached for a PN-Counter or a per-key CRDT map, you already know why these primitives exist.
-
-The key distinction is where coordination happens.
-
----
+The similarity to counters and maps in CRDT systems is useful, but the coordination model differs.
 
 ## Coordination at Block Boundaries
 
-**Groundhog has consensus.** CRDTs solve the problem of replicas that diverge and must eventually agree without coordination. Groundhog has a consensus protocol. Every block is agreed upon by the network. The types don't exist to achieve convergence across unsynchronized replicas. They exist to enable parallel execution *within* a single consensus round.
+CRDTs can reconcile independently updated replicas. Stellar Thruput instead executes transactions against a common committed snapshot, reserves compatible typed changes, and uses [consensus](/how-it-works/consensus/) to select a finalized block.
 
-All transactions in a block execute against the same frozen snapshot. They produce typed changes, called [deltas](/programming-model/execution/#merged-deltas). The runtime checks which changes can coexist, and each finalized block contains one committed result. There's no divergence to reconcile.
-
-This means:
-
-- **No causal metadata.** No vector clocks, no dot stores, no version vectors. The block boundary is the synchronization point. There's no partial order to resolve.
-- **Balance limits are enforced.** A PN-Counter can go negative. Groundhog's `Balance` API keeps ordinary balances non-negative, and the runtime checks the combined result when lazy deltas commit. If debits exceed the available value, one or more transactions are excluded and returned to the mempool. No tombstones, no compensating operations.
-- **Each block has one result.** There is no continuous merge through anti-entropy or gossip. Nodes that have applied the same finalized block agree on its state.
-- **Finalized state.** Nodes may lag while receiving or replaying blocks; applications read the state at the serving node's available height.
-
----
+- **Merge rules operate within a proposal.** Applications do not maintain vector clocks to reconcile ordinary balance or map updates.
+- **Bounds still apply.** A balance cannot commit below zero. If concurrent debits exceed the available value, an overdrawing transaction is excluded and returned to the mempool.
+- **Consensus selects one result.** Validators verify the proposed state transition. Nodes that have applied the same finalized block agree on that state.
+- **Readers can see different heights.** A node may lag while receiving or replaying blocks. Check the returned read height when freshness matters.
 
 ## If You Don't Know Any of This
 
-That's fine. Groundhog doesn't require distributed systems knowledge. Use `Balance` for balances and allowances, `NNInt` for signed counters or votes, and `Map` for per-key data. The types handle commutativity for you. The [For Backend Developers](/start/for-backend-developers/) guide maps the same concepts from database experience, which may be a better starting point.
-
----
+You can write contracts without implementing a concurrency algorithm. Choose the storage type for the updates your application needs, then use its ordinary Rust methods. The [backend-developer guide](/start/for-backend-developers/) explains the same model through database concepts.
 
 ## Next Steps
 
-For the contract-level model, see [Merged Deltas](/programming-model/execution/#merged-deltas). For the storage type API, see [Storage Types](/programming-model/storage-types/). For concurrent delta reservation and the engine's actual conflict timing, see [How Conflicts Are Resolved](/how-it-works/execution-model/#how-conflicts-are-resolved).
-
-Ready to write code? [Getting Started](/start/getting-started/) walks you through the SDK setup and your first contract.
+- [Contract Execution](/programming-model/execution/): snapshots, deltas, and exclusion
+- [Storage Types](/programming-model/storage-types/): data-model choices
+- [How Conflicts Are Resolved](/how-it-works/execution-model/#how-conflicts-are-resolved): engine reservation details
+- [Contract quickstart](/get-started/contract/): build and deploy a counter

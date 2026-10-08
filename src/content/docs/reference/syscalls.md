@@ -1,11 +1,11 @@
 ---
 title: Syscalls
-description: Authoritative reference for the host functions exposed to Groundhog contracts, generated from the protocol's syscalls.yaml.
+description: Host function numbers, parameters, and errors for Stellar Thruput contracts.
 ---
 
-These are the host functions available to Groundhog guest contracts. Most developers use the SDK rather than calling syscalls directly. See [Programming Model: Storage Types](/programming-model/storage-types/) for the high-level API.
+These are the host functions available to Stellar Thruput guest contracts. Most developers use the SDK rather than calling syscalls directly. See [Programming Model: Storage Types](/programming-model/storage-types/) for the high-level API.
 
-The tables below describe the protocol's logical typed interface. The generated low-level bindings map it to each guest target's ABI. User contracts in `0.1.27` use RV32. Variable-length buffers are passed as spans.
+The tables below describe the protocol's logical typed interface. The generated low-level bindings map it to each guest target's ABI. User contracts use RV32. Variable-length buffers are passed as spans.
 
 The return value is a `SyscallErrorCode`. Any syscall can return `Fault` (1) if a pointer argument is out of guest memory bounds, or `NoSyscall` (2) if the syscall number is not supported. Per-syscall error codes are listed with each entry below, and the full enum is at the bottom of this page.
 

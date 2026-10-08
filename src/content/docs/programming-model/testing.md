@@ -1,15 +1,11 @@
 ---
 title: Testing
-description: "How to test Groundhog contracts: native logic tests, RV32 integration tests, setup, and error matching."
+description: "How to test Stellar Thruput contracts: native logic tests, RV32 integration tests, setup, and error matching."
 ---
 
 ## Test Modes
 
 Choose a test path based on the boundary you need to exercise:
-
-:::note[Version checked]
-CLI `0.19.0` scaffolds SDK `0.41.1` and `groundhog-json-rpc-client` `0.19.0`.
-:::
 
 | Command | What it covers | Use for |
 |---------|----------------|---------|
@@ -37,21 +33,7 @@ tests/
 
 The starter remains ignored under ordinary `cargo test`, even if you explicitly enable its feature. `groundhog test --integration` enables the feature and sets `GROUNDHOG_INTEGRATION_TEST=1`, which lets the scaffold's `build.rs` activate the live test. You can rename the module and test functions without changing how activation works.
 
-The generated Cargo entries keep RPC and Tokio dependencies out of RV32 guest builds:
-
-```toml
-[features]
-groundhog-integration-test = ["dep:groundhog-json-rpc-client", "dep:tokio"]
-
-[target.'cfg(not(target_arch = "riscv32"))'.dependencies]
-sdk = { version = "=0.41.1", registry = "groundhog", features = ["std"] }
-tokio = { version = "1", features = ["macros", "rt-multi-thread"], optional = true }
-
-[target.'cfg(not(target_arch = "riscv32"))'.dependencies.groundhog-json-rpc-client]
-version = "0.19.0"
-registry = "groundhog"
-optional = true
-```
+The generated `groundhog-integration-test` feature enables the optional RPC client and Tokio dependencies. Their target-specific Cargo entries keep them out of RV32 guest builds. Preserve the SDK and RPC versions selected together by the scaffold.
 
 The generated `build.rs` contains:
 
@@ -67,7 +49,7 @@ fn main() {
 ```
 
 :::tip[Projects created with an older scaffold]
-Add `tests/integration.rs`, the feature and host-only dependencies above, and the integration activation logic from `build.rs`. If your project already has a build script, merge the activation lines into its existing `main` function. The CLI exits with `integration_test_not_found` when the test target is absent.
+Compare with a fresh scaffold, then add `tests/integration.rs`, its feature and host-only dependencies, and the integration activation logic from `build.rs`. If your project already has a build script, merge the activation lines into its existing `main` function. The CLI exits with `integration_test_not_found` when the test target is absent.
 :::
 
 ## Test Setup
@@ -165,7 +147,7 @@ assert_eq!(
 );
 ```
 
-The `try_decrement` method (generated alongside `decrement` by the `#[contract]` macro) returns a `Result` instead of aborting. The error type is the SDK's `CallError`, which is the same for every client: a caught exception stays undecoded inside it, and `try_as` decodes it as whichever exception type you name. When more than one type is of interest, `match_exn!` matches several in one place. See [Error Handling](/reference/error-handling/) for the full error model.
+The `try_decrement` method (generated alongside `decrement` by the `#[contract]` macro) returns a `Result` instead of aborting. The error type is the SDK's `CallError`, which is the same for every client: a caught exception stays undecoded inside it, and `try_as` decodes it as whichever exception type you name. When more than one type is of interest, `match_exn!` matches several in one place. See [Handle errors](/contracts/errors/) for the full error model.
 
 ## Integration Test Environment
 

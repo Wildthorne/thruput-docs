@@ -1,0 +1,32 @@
+---
+interface Props {
+  href: string;
+  fragmentRoutes?: Record<string, string>;
+}
+
+const { href, fragmentRoutes = {} } = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Page moved | Stellar Thruput</title>
+    <meta name="robots" content="noindex" />
+    <link rel="canonical" href={new URL(href, Astro.site)} />
+    <noscript><meta http-equiv="refresh" content={`0;url=${href}`} /></noscript>
+  </head>
+  <body>
+    <p>This page has moved. <a data-redirect data-fragment-routes={JSON.stringify(fragmentRoutes)} href={href}>Continue to the documentation.</a></p>
+    <script is:inline>
+      const link = document.querySelector('a[data-redirect]');
+      const fragmentRoutes = JSON.parse(link.dataset.fragmentRoutes);
+      const mapped = Object.hasOwn(fragmentRoutes, location.hash.slice(1));
+      const route = mapped ? fragmentRoutes[location.hash.slice(1)] : link.href;
+      const destination = new URL(route, location.href);
+      destination.search = location.search;
+      if (!mapped && !destination.hash) destination.hash = location.hash;
+      location.replace(destination.href);
+    </script>
+  </body>
+</html>

@@ -1,9 +1,9 @@
 ---
 title: "For Backend Developers"
-description: Map your Postgres and database experience to Groundhog's programming model.
+description: Map your Postgres and database experience to Stellar Thruput's programming model.
 ---
 
-Database snapshot isolation is a useful starting point for Groundhog. Transactions share a committed block snapshot, but their writes follow typed storage merge rules rather than SQL conflict rules.
+Database snapshot isolation is a useful starting point for Stellar Thruput. Transactions share a committed block snapshot, but their writes follow typed storage merge rules rather than SQL conflict rules.
 
 ## Shared Snapshot
 
@@ -23,9 +23,9 @@ fn transfer(&mut self, receiver: &ContractAddress, amount: Amount) {
 
 [`Balance`](/programming-model/storage-types/#balance) is the SDK type for this pattern. Both calls record deltas that can merge with concurrent transactions. `decrease()` loads the sender's balance so an insufficient debit fails during execution. `lazy_increase()` skips the receiver load and defers its bound check until the delta batch is reserved. If two transactions debit 20 and 30 from a balance of 100, both can land and the next balance is 50. Applying the changes in either order gives the same result, so the operations **commute**.
 
-That is enough of the model for most contract code. [Merged Deltas](/programming-model/execution/#merged-deltas) explains how storage types decide which concurrent changes can land together. [NNInt In Depth](/programming-model/nnint/) covers the lower-level `set_add` representation behind `Balance`, including base matching and the difference between `strict_inc`, `inc`, and `set`.
+[NNInt and concurrent updates](/programming-model/nnint/) explains the representation behind these balance operations, including base matching and early bound checks.
 
-**If you'd write it as `SET col = col + ?` in SQL, it parallelizes on Groundhog. If you'd write it as `SET col = ?`, it might conflict.**
+**Relative updates such as `SET col = col + ?` map naturally to mergeable integer operations.** Compatibility still depends on bounds and the transaction's other changes. Absolute replacements can conflict when they assign different values.
 
 ---
 
@@ -41,9 +41,9 @@ The balance constraint works the same way. If two concurrent withdrawals togethe
 
 - **No ad-hoc queries.** Storage is key-value with typed values. You access data by key, not by query. An indexer provides query capabilities off-chain.
 - **No JOINs.** If you need data from two Maps, you read both explicitly.
-- **Deterministic execution.** No `NOW()`, no `RANDOM()`, no HTTP calls.
-- **Write costs are deposits, not fees.** Storing data locks HOG tokens proportional to bytes stored. Delete the data, get the tokens back.
-- **Gas limits exist but cost zero.** Gas meters computation (prevents infinite loops) but no tokens are burned. Your free HOG balance provides scheduling capacity. The declared gas limit determines how much capacity the transaction uses.
+- **Deterministic execution.** Use block context rather than the host clock. Contract code cannot make HTTP calls or use the host's random-number generator.
+- **Storage deposits.** Stored data locks native tokens according to its type and size. Deleting the data returns the deposit.
+- **No conventional gas fees.** Gas meters computation (prevents infinite loops) but no tokens are burned. Your unlocked native-token balance provides scheduling capacity under load. The declared gas limit determines how much capacity the transaction uses.
 
 ---
 
@@ -51,4 +51,4 @@ The balance constraint works the same way. If two concurrent withdrawals togethe
 
 For storage type details (`Balance`, `NNInt`, `Map`, `Vector`, `Value`, `Bytestring`, `CapacityConstraint`, and `RetrocausalQueue`) and their conflict semantics, see [Programming Model: Storage Types](/programming-model/storage-types/). For the contract-level execution model, see [Merged Deltas](/programming-model/execution/#merged-deltas).
 
-Ready to write code? [Getting Started](/start/getting-started/) walks you through the SDK setup and your first contract.
+Ready to write code? The [contract quickstart](/get-started/contract/) walks you through building and deploying your first contract.

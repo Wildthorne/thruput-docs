@@ -21,9 +21,14 @@ def package_snapshot(root: Path, output: Path) -> dict:
             or not isinstance(manifest.get("sourceDirty"), bool)
             or not re.fullmatch(r"[0-9A-Za-z.+-]+", manifest.get("agentGuideCliVersion", ""))):
         raise ValueError("invalid snapshot identity")
-    for required in ("index.html", "start/index.html", "agent-guide.md"):
+    for required in ("index.html", "start/index.html", "agent-guide.md",
+                     "markdown/index.md", "markdown/full.md", "markdown/manifest.json",
+                     "llms.txt", "llms-full.txt"):
         if not (root / required).is_file():
             raise ValueError(f"missing {required}")
+    markdown = json.loads((root / "markdown/manifest.json").read_text())
+    if markdown.get("schemaVersion") != 1 or markdown.get("snapshot") != manifest:
+        raise ValueError("Markdown export identity differs from the snapshot")
     files = []
     total = 0
     for path in sorted(root.rglob("*")):
