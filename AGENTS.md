@@ -4,7 +4,7 @@ Guidance for AI agents working in this repository.
 
 ## Project
 
-Developer documentation site for the Groundhog L1 blockchain. Built with Astro and Starlight. Static site, no server-side rendering.
+Developer documentation site for the Stellar Thruput blockchain. Built with Astro and Starlight. Static site, no server-side rendering.
 
 - Package manager: `pnpm`
 - Content: `src/content/docs/`

@@ -1,5 +1,16 @@
 ---
 import DefaultPageTitle from '@astrojs/starlight/components/PageTitle.astro';
+import PageActions from './PageActions.astro';
+import { sectionForPath } from '../navigation';
+const section = sectionForPath(Astro.url.pathname);
 ---
 
-{Astro.url.pathname !== '/' && <DefaultPageTitle />}
+{Astro.url.pathname !== '/' && <div class="page-heading" data-section={section?.label} data-pagefind-meta="section[data-section]">
+  <DefaultPageTitle />
+  {section && <PageActions />}
+</div>}
+
+<style>
+  .page-heading { display: flex; flex-wrap: wrap; align-items: start; gap: 1rem; padding-block-start: 1rem; }
+  .page-heading :global(h1) { flex: 1 1 min(100%, 22rem); min-width: 0; margin: 0; }
+</style>

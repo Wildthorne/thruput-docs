@@ -1,0 +1,32 @@
+---
+title: Build with an Agent
+description: Give your coding agent one prompt to install the Groundhog CLI, fund a wallet, and deploy and call a counter contract on Stellar Thruput Devnet.
+---
+
+Paste this prompt into your coding agent. It will install the CLI and skill, read an exported copy of the docs, and build and verify a counter contract on Devnet.
+
+## Copy the prompt
+
+```text
+Help me deploy and use my first Stellar Thruput counter contract on Devnet.
+
+1. Install the latest Groundhog CLI and run groundhog init. Use
+   groundhog --help to see all available commands. Follow the installation
+   instructions at https://docs.groundhog.dev/cli/install/.
+2. Install the groundhog skill for this project and coding agent with
+   groundhog skill install, then read the installed skill.
+3. Export the documentation into a new folder with groundhog docs export.
+   Read its index and the relevant setup and contract instructions.
+4. Configure Devnet, create a wallet, and request test funds with
+   groundhog airdrop. Verify the balance before deployment.
+5. Run groundhog new counter --template counter, then build it and run its tests.
+6. Deploy and initialize the counter to 10. Call increment with 5,
+   then verify that its read-only view returns 15.
+
+Finish with the project location, contract address, transaction hashes,
+verified counter value, and the CLI commands I can use next.
+```
+
+The agent follows the [CLI](/get-started/cli/) and [contract](/get-started/contract/) quickstarts. Provide repository or registry access through your local environment when requested.
+
+See [Skills and local docs](/cli/agent-tools/) for installation requirements, agent selection, and Markdown export. For a smaller task, use the prompt in an individual [quickstart](/get-started/).

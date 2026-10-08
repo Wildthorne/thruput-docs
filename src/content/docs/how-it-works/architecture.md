@@ -1,48 +1,72 @@
 ---
-title: Architecture
-description: How Groundhog achieves parallel execution without making you think about parallelism.
+title: System Overview
+description: How Stellar Thruput's public gateway, execution services, storage, and consensus coordinator fit together.
 ---
 
-Groundhog executes transactions concurrently against a shared block snapshot. Contracts run on RV32 (32-bit RISC-V) and use typed storage whose merge rules determine which changes can land together. Transactions do not declare access lists.
+Stellar Thruput separates three responsibilities: serving applications, executing transactions and storing state, and agreeing on blocks. This page maps those responsibilities to the services that handle them.
 
-## Typed Storage
+## Components
 
-Groundhog starts with a storage question: which concurrent changes can safely coexist? Each primitive answers that question for its own data. Contract authors choose a type and write sequential Rust; the runtime checks the resulting changes.
+```text
+Applications and wallets
+      |
+      v
+JSON-RPC gateway
+      |
+      +-- Reads
+      |   State / Views / History
+      |
+   submits
+      v
+  Scheduler <--> Coordinator
+      |               |
+      |         Other validators
+      |
+      +-- Auth server
+      +-- Executors <--> DB shards
+      +-- Event server
+```
 
-- **Balance**: checked and lazy adjustments for non-negative balances. Compatible deltas combine within the available bounds.
-- **NNInt**: signed adjustments and explicit bases. Concurrent changes must resolve to the same base.
-- **Map**: different keys use independent storage; changes to the same key follow the value type's rules.
-- **CapacityConstraint**: reserves or releases capacity against a shared limit.
-- **RetrocausalQueue**: supports concurrent producers with queue-specific finalization rules.
-- **Bytestring**: concurrent writes of different values conflict. Identical writes can coexist.
+The diagram shows the main service relationships. [Networking](/how-it-works/networking/) covers registration and communication between them.
 
-Two compatible balance increases can merge. Different writes to the same bytestring cannot both land; excluded transactions return to the mempool for possible inclusion in a later block. These rules enforce storage invariants. Contracts still need authorization checks and application-specific constraints.
+| Component | Responsibility |
+| --- | --- |
+| **JSON-RPC gateway** (`groundhog-rpc`) | Accepts application requests, submits transactions to the scheduler, and routes reads to the relevant service |
+| **Scheduler / mempool** (`hogd`) | Queues transactions, coordinates authorization, dispatches execution, and orchestrates block production and commits |
+| **Auth server** | Checks transaction authorization claims and signatures before scheduling |
+| **Executors** | Run contract code and submit its state changes for reservation against the proposed block |
+| **DB shards** | Serve state snapshots, enforce storage merge rules, and store committed state |
+| **Event server and indexer** | Collect execution results and make transaction history, receipts, and events available for queries |
+| **Coordinator** (`chuckd`) | Drives consensus with other validators and asks the execution layer to propose, validate, and commit blocks |
 
-The SDK provides storage abstractions and macros over the raw syscall interface. You can also build your own abstractions using syscalls. See [SDK Surfaces](/start/getting-started/#sdk-surfaces).
+<span id="how-a-transaction-moves-through-the-system"></span>
 
-## Parallelism and Capacity
+## Two paths through the gateway
 
-Independent storage keys let transactions use shared contracts concurrently. Changes to the same key can also coexist when its merge rules permit them. Conflicting application workflows still need an explicit design, such as a queue for sequencing work.
+**Transactions** enter through the gateway and reach the scheduler. The scheduler arranges signature checks, selects work, and dispatches it to executors. The execution layer produces a block proposal; the coordinator handles agreement with other validators.
 
-Execution workers and database shards distribute a node's work across hardware. Throughput depends on workload, contention, and available resources. Gas costs zero tokens, but gas limits and scheduling capacity still bound computation.
+**Reads** use the service appropriate to the request. State and balance queries use the database gateway, read-only contract calls use the view gateway, and receipt and event queries use the indexer. The scheduler supplies information such as the chain tip and pending transaction status.
 
-For contract-writing rules, see [Merged Deltas](/programming-model/execution/#merged-deltas). For engine internals, see [Execution Model](/how-it-works/execution-model/).
+The public gateway does not participate in consensus. Applications use its [JSON-RPC API](/reference/json-rpc-api/) rather than the internal service interfaces.
 
-## How a Transaction Moves Through the System
+<span id="typed-storage"></span>
 
-1. A transaction arrives specifying a contract address and method arguments.
-2. The runtime creates an [invocation frame](/how-it-works/invocation-frames/) with a read snapshot of the current ledger state.
-3. The contract executes, reading from its snapshot and producing storage deltas.
-4. If the contract calls other contracts, child frames are created. Each child inherits the parent's view of storage (parent writes are visible), but all transactions in the block share the same underlying snapshot for unmodified keys.
-5. After execution, the runtime collects all deltas and checks for conflicts.
-6. Non-conflicting deltas merge into the ledger. Conflicting transactions are excluded and returned to the mempool.
+## Execution and agreement
 
-Executor workers run steps 2-4 concurrently. Steps 5-6 apply the storage merge rules to determine what lands. See [Transaction Lifecycle](/how-it-works/transaction-lifecycle/) for the full breakdown.
+The execution layer determines what a proposed block would do. Contracts run against a shared snapshot and produce typed state changes. Executors and DB shards check which changes can be reserved together.
 
-## Related Documentation
+The coordinator drives agreement on which valid proposal to commit. It uses the Stellar Consensus Protocol (SCP); it does not run the contracts itself. Each validator checks the proposed result through its own execution layer before committing it.
 
-- [Merged Deltas](/programming-model/execution/#merged-deltas): Contract-writing rules for concurrent state changes
-- [Execution Model](/how-it-works/execution-model/): How the engine implements the programming model
-- [Transaction Lifecycle](/how-it-works/transaction-lifecycle/): The six stages from submission to commit
-- [Storage Types Reference](/reference/storage-types/): Full API for Balance, NNInt, Map, Vector, Value, Bytestring, CapacityConstraint, and RetrocausalQueue
-- [Storage & Scheduling Economics](/how-it-works/storage-economics/): The capital-based cost model
+<span id="parallelism-and-capacity"></span>
+
+Multiple execution workers and database shards distribute work within a node. Consensus coordinates agreement between validators. These are different responsibilities; adding execution capacity does not change the consensus rules.
+
+## Explore the details
+
+- [Parallel Execution](/how-it-works/execution-model/): Snapshots, compatible updates, and conflict reservation
+- [Transaction Lifecycle](/how-it-works/transaction-lifecycle/): Submission, execution outcomes, and commit
+- [Compute, Capacity & Storage](/how-it-works/storage-economics/): Scheduling and storage deposits
+- [Consensus](/how-it-works/consensus/): Proposals, validation, and finality
+- [Networking](/how-it-works/networking/): Component registration and internal interfaces
+
+For the behavior your contract relies on, read [Contract Execution](/programming-model/execution/).

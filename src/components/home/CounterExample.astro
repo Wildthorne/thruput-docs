@@ -1,0 +1,185 @@
+---
+import { Code } from '@astrojs/starlight/components';
+
+const agent = `Using the groundhog skill and local docs,
+run groundhog new counter --template counter.
+Add increment(amount) and decrement(amount) methods
+using strict_inc with positive and negative deltas.
+Build it and run the native and RV32 tests.`;
+const rust = `pub fn increment(&mut self, amount: u64) {
+    self.value.strict_inc(amount as i128);
+}
+
+pub fn decrement(&mut self, amount: u64) {
+    self.value.strict_inc(-(amount as i128));
+}`;
+const typescript = `const call = Counter.increment.call({
+  contract: counterAddress,
+  args: { amount: 5n },
+  gasLimit: gasAmount(500_000n),
+});
+
+await wallet.executeCallsAndWait({
+  calls: [call],
+  gasLimit: gasAmount(1_000_000n),
+});`;
+const labels = ['Agent', 'Rust', 'TypeScript'];
+---
+
+<counter-example class="counter-example">
+  <div class="tab-controls">
+    <div role="tablist" aria-label="Counter examples">
+      {labels.map((label, index) => <button type="button" role="tab" id={`counter-tab-${index}`} aria-controls={`counter-panel-${index}`} aria-selected={index === 0 ? 'true' : 'false'} tabindex={index === 0 ? 0 : -1}>{label}</button>)}
+    </div>
+    <button class="play-control" type="button" aria-label="Pause code examples" hidden>Pause</button>
+  </div>
+  <div class="panels">
+    <div role="tabpanel" id="counter-panel-0" aria-labelledby="counter-tab-0" tabindex="0">
+      <div class="agent-code"><p class="code-title">Agent prompt</p><pre data-language="text"><code data-agent-text>{agent}</code><span class="typing-cursor" aria-hidden="true" hidden>▍</span></pre></div>
+    </div>
+    <div role="tabpanel" id="counter-panel-1" aria-labelledby="counter-tab-1" tabindex="0" hidden>
+      <Code code={rust} lang="rust" title="src/implementation.rs" />
+    </div>
+    <div role="tabpanel" id="counter-panel-2" aria-labelledby="counter-tab-2" tabindex="0" hidden>
+      <Code code={typescript} lang="ts" title="increment.ts" />
+    </div>
+  </div>
+</counter-example>
+
+<noscript><style is:inline>
+  .counter-example .tab-controls { display: none; }
+  .counter-example .panels { display: block; }
+  .counter-example [role='tabpanel'][hidden] { visibility: visible; }
+  .counter-example [role='tabpanel'] + [role='tabpanel'] { margin-top: 2rem; }
+</style></noscript>
+
+<style>
+  counter-example { display: block; min-width: 0; }
+  .tab-controls { display: flex; align-items: center; justify-content: space-between; gap: .5rem; padding-bottom: .75rem; }
+  [role='tablist'] { display: flex; min-width: 0; gap: .25rem; }
+  button { padding: .5rem .625rem; border: 0; background: transparent; color: var(--brand-muted); font: 400 .875rem/1.5 var(--sl-font); cursor: pointer; }
+  [role='tab'] { border-bottom: 2px solid transparent; }
+  [role='tab'][aria-selected='true'] { color: var(--brand-accent); border-color: var(--brand-accent); }
+  button:hover { color: var(--brand-foreground); }
+  .play-control { flex-shrink: 0; }
+  button[hidden], .typing-cursor[hidden] { display: none; }
+  .panels { display: grid; }
+  [role='tabpanel'] { display: flex !important; flex-direction: column; align-items: stretch; gap: 1rem; grid-area: 1 / 1; min-width: 0; }
+  [role='tabpanel'][hidden] { visibility: hidden; pointer-events: none; }
+  .agent-code { border: 1px solid var(--brand-border); border-radius: .375rem; background: var(--brand-surface); overflow: hidden; }
+  .code-title { margin: 0; padding: .625rem 1rem; border-bottom: 1px solid var(--brand-border); color: var(--brand-muted); font: .875rem/1.5 var(--sl-font); }
+  pre { margin: 0; padding: 1rem; min-height: 15rem; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--brand-foreground); font: .9375rem/1.75 var(--sl-font-mono); }
+  .counter-example .agent-code pre { border: 0; border-radius: 0; }
+  pre code { font: inherit; }
+  .typing-cursor { color: var(--brand-accent); }
+  :global(.counter-example .expressive-code) { max-width: 100%; }
+  :global(.counter-example #counter-panel-1 .expressive-code pre) { min-height: 15rem; }
+  @media (pointer: coarse) { button { min-height: 3rem; } }
+</style>
+
+<script>
+  class CounterExample extends HTMLElement {
+    private cleanup?: () => void;
+
+    connectedCallback() {
+      this.cleanup?.();
+      const controller = new AbortController();
+      const motion = matchMedia('(prefers-reduced-motion: reduce)');
+      const tabs = [...this.querySelectorAll<HTMLButtonElement>('[role="tab"]')];
+      const panels = [...this.querySelectorAll<HTMLElement>('[role="tabpanel"]')];
+      const play = this.querySelector<HTMLButtonElement>('.play-control')!;
+      const text = this.querySelector<HTMLElement>('[data-agent-text]')!;
+      const cursor = this.querySelector<HTMLElement>('.typing-cursor')!;
+      const prompt = text.textContent!;
+      const starts = [0, 6_000, 10_500];
+      let elapsed = 0;
+      let last: number | null = null;
+      let frame: number | null = null;
+      let selected = 0;
+      let visible = false;
+      let paused = false;
+      let replaying = false;
+
+      const select = (index: number) => {
+        selected = index;
+        tabs.forEach((tab, i) => {
+          tab.setAttribute('aria-selected', String(index === i));
+          tab.tabIndex = index === i ? 0 : -1;
+          panels[i]!.hidden = index !== i;
+        });
+      };
+      const render = () => {
+        const t = elapsed % 15_000;
+        const index = t < starts[1]! ? 0 : t < starts[2]! ? 1 : 2;
+        if (index !== selected) select(index);
+        const length = index === 0 ? Math.min(prompt.length, Math.floor(t / 4_200 * prompt.length)) : prompt.length;
+        const value = prompt.slice(0, length);
+        if (text.textContent !== value) text.textContent = value;
+        cursor.hidden = index !== 0 || length === prompt.length;
+      };
+      const tick = (now: number) => {
+        if (last !== null) elapsed += now - last;
+        last = now;
+        render();
+        if (replaying && elapsed >= 4_200) {
+          replaying = false;
+          paused = true;
+          sync();
+          return;
+        }
+        frame = requestAnimationFrame(tick);
+      };
+      const sync = () => {
+        if (frame !== null) cancelAnimationFrame(frame);
+        frame = null;
+        last = null;
+        play.hidden = motion.matches;
+        play.textContent = paused ? 'Resume' : 'Pause';
+        play.setAttribute('aria-label', `${paused ? 'Resume' : 'Pause'} code examples`);
+        if (paused || motion.matches) { text.textContent = prompt; cursor.hidden = true; }
+        const running = visible && !document.hidden && !motion.matches && !paused;
+        this.toggleAttribute('data-running', running);
+        if (running) { render(); frame = requestAnimationFrame(tick); }
+      };
+      const choose = (index: number) => {
+        replaying = index === 0 && !motion.matches;
+        paused = !replaying;
+        elapsed = starts[index]!;
+        select(index);
+        sync();
+      };
+
+      select(0);
+      tabs.forEach((tab, index) => {
+        tab.addEventListener('click', () => choose(index), { signal: controller.signal });
+        tab.addEventListener('keydown', event => {
+          let next: number;
+          if (event.key === 'ArrowRight') next = (index + 1) % tabs.length;
+          else if (event.key === 'ArrowLeft') next = (index + tabs.length - 1) % tabs.length;
+          else if (event.key === 'Home') next = 0;
+          else if (event.key === 'End') next = tabs.length - 1;
+          else return;
+          event.preventDefault();
+          tabs[next]!.focus();
+          choose(next);
+        }, { signal: controller.signal });
+      });
+      this.addEventListener('focusin', event => {
+        if (event.target !== play) { paused = true; sync(); }
+      }, { signal: controller.signal });
+      play.addEventListener('click', () => { paused = !paused; sync(); }, { signal: controller.signal });
+      motion.addEventListener('change', sync, { signal: controller.signal });
+      document.addEventListener('visibilitychange', sync, { signal: controller.signal });
+      const observer = new IntersectionObserver(entries => {
+        visible = (entries[0]?.intersectionRatio ?? 0) >= .15;
+        sync();
+      }, { threshold: .15 });
+      observer.observe(this);
+      sync();
+      this.cleanup = () => { controller.abort(); observer.disconnect(); if (frame !== null) cancelAnimationFrame(frame); };
+    }
+
+    disconnectedCallback() { this.cleanup?.(); }
+  }
+  if (!customElements.get('counter-example')) customElements.define('counter-example', CounterExample);
+</script>

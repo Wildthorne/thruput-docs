@@ -1,0 +1,159 @@
+---
+import Bot from '../assets/bot.svg';
+import { Icon } from '@astrojs/starlight/components';
+const route = Astro.url.pathname.replace(/^\/|\/$/g, '');
+const markdownUrl = `/markdown/pages/${route || 'index'}.md`;
+const body = Astro.locals.starlightRoute.entry.body ?? '';
+const agentSection = body.split(/^## (?:Work with an agent|Use a coding agent)\s*$/m)[1]?.split(/^## /m)[0];
+const prompt = agentSection?.match(/```text\r?\n([\s\S]*?)\r?\n```/)?.[1];
+---
+
+<page-actions data-markdown-url={markdownUrl} data-local-snapshot={process.env.GROUNDHOG_DOCS_SNAPSHOT ? 'true' : undefined} data-pagefind-ignore>
+    <details>
+      <summary><Bot width="16" height="16" aria-hidden="true" /><span>Agent tools</span><Icon name="down-caret" size="1rem" /></summary>
+      <div class="options">
+        <button type="button" data-copy="page" hidden><span data-label>Copy page</span><Icon name="approve-check" size="1rem" /></button>
+        <button type="button" data-copy="link" hidden><span data-label>Copy link for an agent</span><Icon name="approve-check" size="1rem" /></button>
+        {prompt && <button type="button" data-copy="prompt" hidden><span data-label>Copy task prompt</span><Icon name="approve-check" size="1rem" /></button>}
+        <a href={markdownUrl}>View Markdown</a>
+        <a href="/start/build-with-an-agent/">Set up your agent</a>
+        <p class="feedback" role="status" aria-live="polite"></p>
+      </div>
+    </details>
+  {prompt && <template data-task-prompt>{prompt}</template>}
+  <dialog aria-labelledby="manual-copy-title" aria-describedby="manual-copy-help">
+    <div class="manual-copy">
+      <h2 id="manual-copy-title">Copy manually</h2>
+      <p id="manual-copy-help">Clipboard access is unavailable. Copy the selected text below.</p>
+      <textarea name="page-copy" aria-label="Text to copy" readonly rows="12"></textarea>
+      <form method="dialog"><button type="submit">Close</button></form>
+    </div>
+  </dialog>
+</page-actions>
+
+<script>
+  class PageActions extends HTMLElement {
+    connectedCallback() {
+      const controller = new AbortController();
+      this.cleanup?.();
+      this.cleanup = () => { controller.abort(); window.clearTimeout(timer); };
+      let timer: number | undefined;
+      let busy = false;
+      let lastAction: HTMLElement | null = null;
+      const details = this.querySelector('details')!;
+      const summary = this.querySelector('summary')!;
+      const feedback = this.querySelector<HTMLElement>('[role="status"]')!;
+      const dialog = this.querySelector('dialog')!;
+      const textarea = this.querySelector('textarea')!;
+      const buttons = this.querySelectorAll<HTMLButtonElement>('[data-copy]');
+      const labels = new Map([...buttons].map(button => [button, button.querySelector('[data-label]')!.textContent!]));
+      const setLabel = (button: HTMLButtonElement, label: string) => {
+        button.querySelector('[data-label]')!.textContent = label;
+        button.toggleAttribute('data-copied', label === 'Copied');
+      };
+      const markdownUrl = new URL(this.dataset.markdownUrl!, location.origin).href;
+      const notify = (message: string, error = false) => {
+        window.clearTimeout(timer);
+        feedback.textContent = message;
+        feedback.toggleAttribute('data-error', error);
+      };
+      buttons.forEach(button => {
+        button.hidden = false;
+        button.addEventListener('click', async () => {
+          if (busy) return;
+          busy = true;
+          lastAction = summary;
+          buttons.forEach(item => setLabel(item, labels.get(item)!));
+          buttons.forEach(item => item.setAttribute('aria-disabled', 'true'));
+          setLabel(button, 'Copying…');
+          notify('Preparing copy…');
+          try {
+            let text: string;
+            if (button.dataset.copy === 'link') text = markdownUrl;
+            else if (button.dataset.copy === 'prompt') {
+              text = this.querySelector<HTMLTemplateElement>('[data-task-prompt]')!.content.textContent!;
+              if (this.dataset.localSnapshot) text = text.replaceAll('https://docs.groundhog.dev/', `${location.origin}/`);
+            } else {
+              const response = await fetch(markdownUrl, { signal: controller.signal });
+              if (!response.ok || response.headers.get('content-type')?.includes('text/html')) {
+                throw new Error('Markdown unavailable');
+              }
+              text = await response.text();
+              if (!text.trim() || /^\s*<!doctype html/i.test(text)) throw new Error('Markdown unavailable');
+            }
+            if (!this.isConnected) return;
+            try {
+              await navigator.clipboard.writeText(text);
+              setLabel(button, 'Copied');
+              notify('Copied');
+              timer = window.setTimeout(() => {
+                setLabel(button, labels.get(button)!);
+                feedback.textContent = '';
+              }, 2_500);
+            } catch {
+              details.open = false;
+              textarea.value = text;
+              dialog.showModal();
+              textarea.focus();
+              textarea.select();
+              notify('Copy the selected text manually.');
+            }
+          } catch {
+            if (!controller.signal.aborted) notify('Could not load Markdown. Try again or use View Markdown.', true);
+          } finally {
+            busy = false;
+            if (!button.hasAttribute('data-copied')) setLabel(button, labels.get(button)!);
+            buttons.forEach(item => item.removeAttribute('aria-disabled'));
+          }
+        }, { signal: controller.signal });
+      });
+      this.addEventListener('keydown', event => {
+        if (event.key === 'Escape' && details.open) {
+          event.preventDefault();
+          details.open = false;
+          summary.focus();
+        }
+      }, { signal: controller.signal });
+      document.addEventListener('click', event => {
+        if (event.target instanceof Node && !details.contains(event.target)) details.open = false;
+      }, { signal: controller.signal });
+      this.addEventListener('focusout', event => {
+        if (event.relatedTarget instanceof Node && !this.contains(event.relatedTarget)) details.open = false;
+      }, { signal: controller.signal });
+      dialog.addEventListener('close', () => lastAction?.focus(), { signal: controller.signal });
+    }
+    private cleanup?: () => void;
+    disconnectedCallback() { this.cleanup?.(); }
+  }
+  if (!customElements.get('page-actions')) customElements.define('page-actions', PageActions);
+</script>
+
+<style>
+  page-actions { display: block; position: relative; flex-shrink: 0; font: 400 1rem/1.5 var(--sl-font); }
+  button, summary, .options a { color: var(--brand-foreground); font: inherit; cursor: pointer; }
+  button, summary { border: 1px solid var(--brand-border); border-radius: .25rem; background: var(--brand-background); padding: .375rem .75rem; }
+  [hidden] { display: none !important; }
+  button:hover, summary:hover, .options a:hover { background: var(--brand-surface); }
+  button[aria-disabled='true'] { cursor: wait; }
+  summary { display: flex; align-items: center; gap: .5rem; list-style: none; padding-inline-start: .75rem; }
+  summary::-webkit-details-marker { display: none; }
+  summary :global(svg) { flex-shrink: 0; }
+  .options { position: absolute; z-index: 10; inset-inline-start: 0; top: calc(100% + .5rem); width: min(18rem, calc(100vw - 3rem)); padding: .375rem; border: 1px solid var(--brand-border); border-radius: .375rem; background: var(--brand-background); }
+  .options button, .options a { display: block; width: 100%; text-align: start; border: 0; border-radius: .25rem; padding: .5rem .75rem; text-decoration: none; }
+  .options button { display: flex; align-items: center; gap: .5rem; }
+  .options button :global(svg) { display: none; flex-shrink: 0; }
+  .options button[data-copied] :global(svg) { display: block; }
+  .feedback { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); margin: 0; }
+  .feedback[data-error] { position: static; width: auto; height: auto; overflow: visible; clip-path: none; margin: .25rem .75rem; color: var(--brand-muted); }
+  dialog { max-width: min(44rem, calc(100vw - 2rem)); max-height: calc(100dvh - 2rem); padding: 1.5rem; border: 1px solid var(--brand-border); border-radius: .375rem; background: var(--brand-background); color: var(--brand-foreground); }
+  dialog::backdrop { background: rgb(0 0 0 / .6); }
+  .manual-copy { display: flex; flex-direction: column; gap: 1rem; }
+  .manual-copy :is(h2, p, form) { margin: 0; }
+  textarea { box-sizing: border-box; width: 100%; padding: .75rem; border: 1px solid var(--brand-border); border-radius: .25rem; background: var(--brand-surface); color: var(--brand-foreground); font: inherit; resize: vertical; }
+  textarea:focus-visible { outline-offset: -1px; }
+  @media (min-width: 40rem) {
+    page-actions { font-size: .875rem; }
+    .options { inset-inline-start: auto; inset-inline-end: 0; }
+  }
+  @media (pointer: coarse) { button, summary, .options a { min-height: 3rem; } }
+</style>

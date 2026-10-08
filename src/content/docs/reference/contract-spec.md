@@ -3,7 +3,7 @@ title: Contract Spec
 description: Canonical contract metadata, structured identities, methods, types, events, and exceptions.
 ---
 
-Source baseline: CLI 0.19.0, SDK/spec-tool 0.41.1. For usage, see
+For usage, see
 [TypeScript Bindings](/tools/typescript-bindings/) and [Build a Counter](/tutorials/build-a-counter/).
 
 ## Where the Spec Lives
@@ -93,7 +93,7 @@ binary encoding.
 | Discovery | Events must be declared by the interface or explicitly exported through supported SDK metadata |
 
 Use the generated signature rather than copying a literal from another contract.
-See [Add Events](/tutorials/add-events-to-a-contract/) for emission, filtering, and restart.
+See [Events](/contracts/events/) for emission and [Read events](/typescript/events/) for filtering and restart.
 
 ## Errors
 

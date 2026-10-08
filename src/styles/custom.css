@@ -68,12 +68,12 @@ h1, h2, h3, h4, h5, h6 { font-family: var(--sl-font-mono); font-weight: 500; let
 .sl-markdown-content h2, .sl-markdown-content h3 { letter-spacing: -.025em; }
 .sl-markdown-content pre { border-radius: .375rem; border: 1px solid var(--brand-border); }
 .expressive-code { --ec-brdRad: .375rem; --ec-brdCol: var(--brand-border); }
-.sidebar-content, starlight-toc, mobile-starlight-toc { font-family: var(--sl-font-mono); }
-.sidebar-content { font-size: .8125rem; }
-.sidebar-content a[aria-current='page'] { color: var(--sl-color-text-accent); background: var(--sl-color-accent-low); font-weight: 500; }
-.sidebar-content .large { font-weight: 500; font-size: .875rem; }
+.sidebar-content, starlight-toc, mobile-starlight-toc { font-family: var(--sl-font); }
+.sidebar-content { font-size: .9375rem; }
+.sidebar-content a[aria-current='page'] { color: var(--sl-color-text-accent); background: var(--sl-color-accent-low); }
+.sidebar-content .large { font-weight: 500; font-size: .9375rem; }
 .pagination-links a { border-radius: .375rem; box-shadow: none; }
-.pagination-links .link-title { font-family: var(--sl-font-mono); font-size: 1rem; }
+.pagination-links .link-title { font-family: var(--sl-font); font-size: 1rem; }
 
 /* Retain Starlight's dialog and keyboard behavior, with the compact site-wide trigger. */
 .site-header site-search > button {
@@ -85,12 +85,12 @@ h1, h2, h3, h4, h5, h6 { font-family: var(--sl-font-mono); font-weight: 500; let
   border-radius: .25rem;
   background: var(--brand-surface);
   color: var(--brand-foreground);
-  font: 500 .875rem/1.25rem var(--sl-font-mono);
+  font: 400 .875rem/1.25rem var(--sl-font);
 }
 .site-header site-search > button > kbd { display: none !important; }
 site-search dialog { min-height: 0; box-shadow: none; }
 #starlight__search { --pagefind-ui-font: var(--sl-font); }
-#starlight__search .pagefind-ui__search-input { font-family: var(--sl-font-mono); }
+#starlight__search .pagefind-ui__search-input { font-family: var(--sl-font); }
 #starlight__search .pagefind-ui__search-input:focus {
   border-color: var(--sl-color-text-accent);
   outline: none;
@@ -113,6 +113,20 @@ html:has(.home-page) main > .content-panel > .sl-container { max-width: none; ma
 html:has(.home-page) .sl-markdown-content { margin: 0; }
 
 @media (pointer: coarse) { .site-header site-search > button { min-width: 3rem; min-height: 3rem; } }
+@media (max-width: 49.999rem) {
+  .site-header site-search > button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--sl-menu-button-size);
+    height: var(--sl-menu-button-size);
+    min-width: var(--sl-menu-button-size);
+    min-height: var(--sl-menu-button-size);
+    padding: 0;
+  }
+  .site-header site-search > button > svg { width: 1.25rem; height: 1.25rem; }
+}
+@media (max-width: 1099px) { .site-header site-search > button > span { display: none; } }
 @media (min-width: 50rem) {
   :root { --sl-nav-height: 5.5rem; }
   html:has(.home-page) .sidebar { display: none; }

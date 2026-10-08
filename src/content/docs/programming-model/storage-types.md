@@ -5,7 +5,7 @@ description: "SDK storage types, their conflict semantics, and how to choose bet
 
 The SDK storage layer exposes the types you use to model contract state. The type you choose determines whether concurrent writes merge, conflict, or ignore each other. At the protocol level, the primitives are `NNInt`, `Bytestring`, and `RetrocausalQueue`. `Balance` and `CapacityConstraint` provide narrower APIs over the integer primitive. `Map`, `Value`, `Vector`, and `Node` provide typed composition.
 
-This page explains behavior and tradeoffs. For exact method signatures, see [Storage Types Reference](/reference/storage-types/) or [`sdk::storage` Rustdoc](https://crates.thruput.network/docs/sdk/0.34.3/doc/sdk/storage/index.html).
+This page explains behavior and tradeoffs. For exact method signatures, see [Storage Types Reference](/reference/storage-types/) or [`sdk::storage` Rustdoc](https://crates.thruput.network/docs/sdk/0.42.2/doc/sdk/storage/index.html).
 
 ## NNInt
 
@@ -21,22 +21,22 @@ pub struct Counter {
 }
 ```
 
-Concurrent increments merge automatically:
+With a snapshot value of `100`, these changes can merge:
 
 ```rust
-// Two transactions run concurrently against the same snapshot:
+// Two transactions run against a snapshot value of 100:
 self.value.strict_inc(5);    // Tx A: "add 5"
 self.value.strict_inc(-3);   // Tx B: "subtract 3"
-// Both land. Result: original + 2
+// If both transactions are admitted, the result is 102.
 ```
 
 Pass negative values to `strict_inc` to subtract. With a nonnegative base, the runtime prevents concurrent decrements from driving the value below zero. `NNInt` also permits an explicit negative `set`, which changes its commit-time floor. Use `Balance` when negative values and absolute replacement should not be part of the contract API.
 
-See [Merged Deltas](/programming-model/execution/#merged-deltas) for the contract-level model. The underlying `set_add` representation and exact commutativity rules are covered in [NNInt In Depth](/programming-model/nnint/).
+See [Merged Deltas](/programming-model/execution/#merged-deltas) for the contract-level model. The underlying `set_add` representation and exact commutativity rules are covered in [NNInt and concurrent updates](/programming-model/nnint/).
 
 ## Balance
 
-Nonnegative, zero-defaulting storage for balances, allowances, and supply. `Balance` uses `u128` amounts and exposes no signed adjustment or absolute `set`.
+Nonnegative, zero-defaulting storage for balances, allowances, and supply. `Balance` uses `i128` amounts, rejects negative inputs, and exposes no signed adjustment or absolute `set`.
 
 ```rust
 use sdk::storage::{Balance, Map};
@@ -73,7 +73,7 @@ The `try_` variants report errors that are available during contract execution, 
 
 ## Map\<K, V\>
 
-Key-value store. Different keys are fully independent and never conflict. Same-key behavior follows the value type's rules.
+Key-value store. Different keys use independent storage locations. Same-key behavior follows the value type's rules. Other shared writes or storage-funding limits can still prevent the complete transactions from landing together.
 
 ```rust
 use sdk::storage::{Balance, Map};
@@ -116,7 +116,7 @@ self.owner.set(&new_owner);    // Tx A
 self.owner.set(&other_owner);  // Tx B -- conflict, one excluded
 ```
 
-Use Bytestring for config, ownership, or metadata where you accept that concurrent writers to the same location are mutually exclusive. Not for hot paths.
+Use Bytestring for raw configuration or metadata. Writers of different values to the same location conflict; writers of identical values can coexist.
 
 ## RCQ\<T\> / RetrocausalQueue
 
@@ -225,7 +225,7 @@ Use `Value<T>` for typed single-slot storage. Use `Bytestring` when you need raw
 
 | If your write pattern is... | Use | Why |
 |-----------------------------|-----|-----|
-| Nonnegative balance, allowance, or supply | Balance | Unsigned API, zero default, and checked or lazy deltas. |
+| Nonnegative balance, allowance, or supply | Balance | Nonnegative amounts, zero default, and checked or lazy deltas. |
 | Signed delta or explicit integer base | NNInt | Signed deltas merge and `set` controls the base. |
 | Block-wide linear limit | CapacityConstraint | Concurrent transactions consume shared commit-time capacity. |
 | `INSERT INTO ... (key, value)` with unique keys | Map | Different keys are independent. |
@@ -234,16 +234,32 @@ Use `Value<T>` for typed single-slot storage. Use `Bytestring` when you need raw
 | `col = absolute_value` (raw bytes) | Bytestring | Accept that concurrent writes conflict. |
 | Append to a log or work queue | RCQ\<T\> | Inserts merge, consumers are sequential. |
 
-:::tip[Exclusive Writes]
-If you need mutex-like semantics (only one transaction can write to a storage location per block), each type exposes exclusivity differently:
+## Exclusive Writes
+
+Use exclusive writes when an operation needs sole write access to a storage location for the duration of a block. Compatible deltas normally merge; an exclusive write prevents concurrent modifications to that key.
 
 - `Value<T>::set_exclusive(&v)`: typed slot, exclusive write.
 - `Map::at_mut_exclusive(&key)`: exclusive mutator on a Map entry.
 - `NNInt` and `Bytestring` honour the **exclusive keypath flag** set on the field at storage-derivation time, or via the lower-level free functions `non_negative_int_set_exclusive` / `bytestring_set_exclusive`.
 
-Later ordinary writes to the key in the same transaction keep the lock request, and the transaction's change then holds the lock for the whole block. Only `clear_flags` withdraws the request. See [Advanced Patterns: Lock Requests](/programming-model/advanced/#lock-requests).
+```rust
+self.config.set_exclusive(&new_value);          // Value<Config>
+self.counters.at_mut_exclusive(&owner).set(v);  // Map<_, NNInt>
+```
 
-This is a blunt instrument. Prefer `Balance` or `NNInt` deltas on hot paths. Reserve exclusive writes for operations that genuinely cannot tolerate concurrent access.
-:::
+If two concurrent transactions write exclusively to the same key, one is excluded. Mixing exclusive and non-exclusive writes to the same key in the same block excludes the non-exclusive writers. Prefer `Balance` or `NNInt` deltas when the operation can tolerate concurrent updates.
 
-If `Balance` covers your state model, you do not need its lower-level representation. Read [NNInt In Depth](/programming-model/nnint/) when you need signed changes, an explicit base, or the exact `set_add` commutativity rules. For runtime reservation details, continue to [How It Works: Execution Model](/how-it-works/execution-model/).
+### Lock Requests
+
+An exclusive write requests `ExclusiveLock` after the write succeeds. Later ordinary writes to the key in the same transaction keep the request, including writes from other call frames. The admitted transaction then holds the key's exclusive lock for the whole block. `clear_flags` withdraws the request.
+
+```rust
+self.counters.at_mut_exclusive(&owner).set(0);
+self.counters.at_mut(&owner).inc(1);  // The lock request remains.
+```
+
+Leaf handles (`Value`, `NNInt`, `Balance`, and `Bytestring`) implement `Flaggable`. Import it with `use sdk::storage::Flaggable;`. `flags()` reads the flags, `set_flags(flags)` adds flags, and `clear_flags()` removes them. Setting flags requires a pending write to that key in the current call frame.
+
+The raw-key functions `storage_flags`, `set_storage_flags`, and `clear_storage_flags` provide the same operations for a `StorageKey`. A reverted frame or failed `try_invoke` discards its flag changes along with its writes. See [Storage Flags](/reference/syscalls/#storage-flags) for the host API.
+
+If `Balance` covers your state model, you do not need its lower-level representation. Read [NNInt and concurrent updates](/programming-model/nnint/) when you need signed changes, an explicit base, or the exact `set_add` commutativity rules. For runtime reservation details, continue to [Parallel Execution](/how-it-works/execution-model/).

@@ -13,7 +13,7 @@ self.balances.at_mut(&sender).decrease(amount);
 self.balances.at_mut(&receiver).lazy_increase(amount);
 ```
 
-All four operations record deltas that can merge with concurrent transactions. `increase` and `decrease` load the current balance for immediate overflow or underflow checks. `lazy_increase` and `lazy_decrease` skip that load and leave the combined bound check to reservation after contract execution. `Balance` accepts `u128` amounts, treats missing storage as zero, and exposes no absolute `set` operation.
+All four operations record deltas that can merge with concurrent transactions. `increase` and `decrease` load the current balance for immediate overflow or underflow checks. `lazy_increase` and `lazy_decrease` skip that load and leave the combined bound check to reservation after contract execution. `Balance` accepts nonnegative `i128` amounts, rejects negative amounts, treats missing storage as zero, and exposes no absolute `set` operation. Verified against SDK 0.42.2, `crates/sdk/src/storage/balance.rs`.
 
 ## NNInt
 
@@ -130,7 +130,7 @@ pub struct Registry {
 
 | If your write pattern is... | Use | Why |
 |-----------------------------|-----|-----|
-| Increase or decrease a nonnegative amount | Balance | Zero-defaulting `u128` API with checked and lazy deltas. |
+| Increase or decrease a nonnegative amount | Balance | Zero-defaulting `i128` API with nonnegative amounts and checked or lazy deltas. |
 | `col = col + delta` | NNInt | Deltas commute. Concurrent increments merge. |
 | Reserve shared aggregate capacity | CapacityConstraint | Consumption merges while the runtime enforces the remaining-capacity floor. |
 | `INSERT INTO ... (key, value)` with unique keys | Map | Different keys are independent. |

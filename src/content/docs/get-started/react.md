@@ -1,0 +1,126 @@
+---
+title: React quickstart
+description: Display live Devnet contract data in React with a typed query and a refresh action.
+---
+
+Build a React page that reads the native token's total supply from Devnet and refreshes it on demand. This experimental token has no monetary value. You do not need a wallet, the CLI, or your own contract.
+
+## 1. Create the application
+
+Use the current Node.js LTS release:
+
+```bash
+npm create vite@latest my-groundhog-ui -- --template react-ts
+cd my-groundhog-ui
+```
+
+Configure [npm package access](/typescript/setup/#give-npm-package-access) in this directory, then install the application dependencies:
+
+```bash
+npm install
+npm install @groundhogchain/react @groundhogchain/client @groundhogchain/protocol @tanstack/react-query
+```
+
+## 2. Connect the providers
+
+Replace `src/main.tsx`:
+
+```tsx
+import { createRoot } from "react-dom/client";
+import { createGroundhogClient, devnet } from "@groundhogchain/client";
+import { WalletProvider } from "@groundhogchain/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import App from "./App";
+
+const root = createRoot(document.getElementById("root")!);
+root.render(<p>Connecting to Devnet…</p>);
+
+async function start() {
+  const client = await createGroundhogClient({ cluster: devnet() });
+  const queries = new QueryClient();
+
+  root.render(
+    <QueryClientProvider client={queries}>
+      <WalletProvider client={client}>
+        <App />
+      </WalletProvider>
+    </QueryClientProvider>,
+  );
+}
+
+start().catch((error: unknown) => {
+  root.render(
+    <p role="alert">{error instanceof Error ? error.message : "Could not connect to Devnet"}</p>,
+  );
+});
+```
+
+The client and query cache are created once. `WalletProvider` makes the client available to Stellar Thruput hooks; it does not connect a wallet automatically.
+
+## 3. Display the result
+
+Replace `src/App.tsx`:
+
+```tsx
+import { formatUnits } from "@groundhogchain/client";
+import { ERC20 } from "@groundhogchain/client/contracts";
+import { HOG_ADDRESS } from "@groundhogchain/protocol";
+import { useContractView } from "@groundhogchain/react";
+
+export default function App() {
+  const supply = useContractView({
+    method: ERC20.v0_1.totalSupply,
+    contract: HOG_ADDRESS,
+    args: undefined,
+  });
+
+  return (
+    <main>
+      <h1>Native token on Devnet</h1>
+      {supply.isPending && <p>Reading the contract…</p>}
+      {supply.error && <p role="alert">{supply.error.message}</p>}
+      {supply.data && (
+        <>
+          <p>Supply: {formatUnits(supply.data.value, 7)} native tokens</p>
+          <p>Read at block: {supply.data.height.toString()}</p>
+        </>
+      )}
+      <button disabled={supply.isFetching} onClick={() => void supply.refetch()}>
+        {supply.isFetching ? "Refreshing…" : "Refresh"}
+      </button>
+    </main>
+  );
+}
+```
+
+The hook runs the typed view and exposes loading, error, and data states. Refresh makes another network read; it does not send a transaction.
+
+## 4. Open the app
+
+```bash
+npm run dev
+```
+
+Open the local URL printed by Vite. The page should show a supply value and block height. Click **Refresh** and confirm that the page finishes another read. Also check that the project builds:
+
+```bash
+npm run build
+```
+
+## Next
+
+See [Read contract data](/react/reads/) for arguments and query behavior, or [Connect a wallet](/react/wallets/) to add wallet controls. [Send transactions](/react/transactions/) covers approval and execution state.
+
+## Use a coding agent
+
+```text
+Build the Stellar Thruput React quickstart:
+https://docs.groundhog.dev/get-started/react/
+Use a React TypeScript Vite project, the latest published Stellar Thruput
+packages, and hosted Devnet. Configure package access through my environment.
+Display the native-token total supply and its read height with useContractView.
+Include loading and error states and a Refresh button. Run the build
+and verify the actual page result. No CLI, contract deployment, or wallet
+connection is needed for this read-only example. Report package or network
+errors rather than forcing incompatible dependencies or faking results.
+```

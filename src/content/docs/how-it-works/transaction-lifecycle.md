@@ -3,16 +3,25 @@ title: Transaction Lifecycle
 description: How a transaction moves from submission to committed state.
 ---
 
-This page describes how a transaction moves through the system, from client submission to committed ledger state.
+Submitting a transaction is the start of the process. A successful submission does not prove that the contract call succeeded. Check the committed receipt's execution result.
 
+## Outcomes to distinguish
 
+| Outcome | What it means |
+| --- | --- |
+| **Rejected before execution** | Admission or authorization failed; the transaction did not reach contract execution |
+| **Committed success** | The transaction is in a finalized block and its contract changes were applied |
+| **Committed abort or fault** | The failure is recorded in the block, but the contract changes are discarded |
+| **Excluded from a proposal** | The transaction did not land in that proposal; conflicting transactions return to the mempool for possible later inclusion |
+
+A pending or `unknown` status, a timeout, or an advisory `recentFailure` is not proof of a committed failure. Keep the original network and transaction hash, and resume observation instead of automatically signing a replacement. See [Track transaction results](/typescript/transaction-status/) for the application workflow.
 
 ## Overview
 
 A transaction passes through six stages:
 
 1. **Submission**: Client submits a signed transaction
-2. **Authorization**: Signatures are verified before the transaction enters the mempool
+2. **Authorization**: Signatures are verified before the transaction enters the scheduling queue
 3. **Scheduling**: The transaction is queued and selected for a block
 4. **Execution and reservation**: Contract code runs against a snapshot, then its completed delta batch is reserved against the proposal
 5. **Block Assembly**: The proposer packages results into a block proposal for consensus
@@ -20,11 +29,11 @@ A transaction passes through six stages:
 
 ## Stage 1: Submission
 
-The client signs the domain-separated preimage containing the network hash and inner transaction, then submits the signed wrapper through the JSON-RPC gateway. The network hash prevents replay on another Groundhog network. The gateway submits directly to the hogd scheduler.
+The client signs the domain-separated preimage containing the network hash and inner transaction, then submits the signed wrapper through the JSON-RPC gateway. The network hash prevents replay on another Stellar Thruput network. The gateway submits directly to the hogd scheduler.
 
 ## Stage 2: Authorization
 
-The mempool sends the transaction to the auth server, a separate process that verifies the root address, auth claim, and signatures. Pubkey claims use the public key embedded in the claim. Source-address claims use the root address's registered authorization data. This happens before the transaction enters the scheduling queue, not during execution.
+The mempool sends the transaction to the auth server, which verifies the root address, auth claim, and signatures. Pubkey claims use the public key embedded in the claim. Source-address claims use the root address's registered authorization data. This happens before the transaction enters the scheduling queue, not during execution.
 
 - If verification succeeds: the transaction enters the scheduling queue
 - If verification fails: the transaction is rejected
@@ -33,7 +42,7 @@ See [Authorization](/how-it-works/authorization/) for the signature preimage and
 
 ## Stage 3: Scheduling
 
-Verified transactions are queued by account with balance-proportional scheduling. When the coordinator asks for a block proposal, the mempool selects transactions from accounts whose HOGs have waited longest. See [Storage & Scheduling Economics](/how-it-works/storage-economics/) for how scheduling priority works.
+Verified transactions are queued by account with balance-proportional scheduling. When the coordinator asks for a block proposal, the mempool selects transactions from accounts whose token-backed capacity has waited longest. See [Compute, Capacity & Storage](/how-it-works/storage-economics/) for how scheduling priority works.
 
 ## Stage 4: Execution
 
@@ -45,9 +54,7 @@ When contract code executes:
 - It produces deltas describing how to modify state
 - It runs until termination (return, abort, or fault)
 
-**Conflict checking follows root execution.** Contract code first runs against the snapshot and accumulates a delta batch. Checked `Balance::decrease` and `NNInt::strict_inc` operations load the snapshot base so underflow can fail inside the contract. Lazy balance operations skip that load. If the root call succeeds, the executor submits the complete batch for reservation against the proposal's per-key capacity locks. An incompatible aggregate result excludes the transaction. See [Execution Model: How Conflicts Are Resolved](/how-it-works/execution-model/#how-conflicts-are-resolved) for the full mechanism.
-
-Contract calls run in parallel against the same snapshot, and completed delta batches can be reserved concurrently across executor workers.
+**Conflict checking follows root execution.** If the root call succeeds, the executor submits its completed delta batch for reservation against the proposed block. An incompatible batch is excluded. Contract execution and reservation can both proceed concurrently across executor workers. See [Parallel Execution: How Conflicts Are Resolved](/how-it-works/execution-model/#how-conflicts-are-resolved) for the mechanism and the distinction between checked and lazy operations.
 
 See [Invocation Frames](/how-it-works/invocation-frames/) for detailed execution semantics (frame lifecycle, child calls, merge/discard rules).
 
@@ -56,7 +63,7 @@ See [Invocation Frames](/how-it-works/invocation-frames/) for detailed execution
 When the root frame completes, the runtime checks its status:
 
 - **Return (success)**: the transaction's deltas are submitted for reservation. They are included only if the transaction remains admissible.
-- **Abort or Fault**: the transaction is **still included in the block**, but with no state changes. The failure is deterministic, so every validator reaches the same result, and the transaction does not need to be re-evaluated. It is not returned to the mempool.
+- **Deterministic Abort or Fault**: the failure can be included in the block with the contract's writes discarded. Protocol bookkeeping, including replay protection, is still recorded. Once committed, this is a final execution result, not a transaction waiting to be retried.
 
 This is distinct from **conflict exclusion** during reservation (Stage 4): the root frame may return successfully, but its completed delta batch can still fail reservation and be returned to the mempool for a future block. Deterministic abort and non-deterministic conflict exclusion are two different failure modes with different on-chain semantics.
 
@@ -66,18 +73,12 @@ The proposer packages the included transaction results into a consensus proposal
 
 ## Stage 6: Commit
 
-Once consensus confirms the block, each validator commits the finalized state to its DB shards. All deltas for each key are combined according to type-specific merge rules to produce the new ledger state, which becomes the snapshot for the next block.
+Once consensus confirms the block, each validator commits the verified result to its DB shards. The new ledger state becomes the snapshot for the next block.
 
-Transactions excluded during delta reservation (Stage 4) are returned to the mempool and may be re-evaluated in future blocks. Transactions that aborted or faulted deterministically remain in the block with no state effect.
+Transactions excluded during delta reservation (Stage 4) are returned to the mempool and may be re-evaluated in future blocks, subject to scheduling and expiry. Committed aborts and faults remain in the block with their contract changes discarded.
 
 ## Related Documentation
 
-For applications, successful submission means admission, not execution success.
-Inspect the committed receipt's result. `recentFailure` is advisory; an observation
-timeout, cancellation, or `unknown` status does not prove the transaction failed.
-Keep signed evidence and its original network/hash, and resume observation instead
-of automatically re-signing. See [client execution and recovery](/tools/typescript-sdk/#typed-calls-and-observation-recovery).
-
 - [Invocation Frames](/how-it-works/invocation-frames/): Execution context
 - [Authorization](/how-it-works/authorization/): How signatures are verified
-- [Contracts](/how-it-works/contracts/): Contract types and deployment
+- [Contract artifacts and addresses](/how-it-works/contracts/): Code hashes and deployment identities

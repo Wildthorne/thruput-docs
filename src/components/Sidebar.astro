@@ -5,8 +5,19 @@ const isHome = Astro.url.pathname === '/';
 ---
 
 <SiteNavigation mobile />
-{isHome ? <a class="mobile-build" href="/start/build-with-an-agent/">Start Building</a> : <DefaultSidebar />}
+{isHome ? <a class="mobile-build" href="/get-started/">Start Building</a> : <DefaultSidebar />}
+
+<script is:inline>
+  // Keep Starlight's saved disclosure state, but always reveal a deep link's page.
+  (() => {
+    let group = document.querySelector('.sidebar a[aria-current="page"]')?.closest('details');
+    while (group) {
+      group.open = true;
+      group = group.parentElement?.closest('details');
+    }
+  })();
+</script>
 
 <style>
-  .mobile-build { padding: .75rem 1rem; background: var(--brand-accent); color: #10110f; border-radius: .25rem; text-align: center; text-decoration: none; font: 500 .875rem/1.5 var(--sl-font-mono); }
+  .mobile-build { padding: .75rem 1rem; background: var(--brand-accent); color: #10110f; border-radius: .25rem; text-align: center; text-decoration: none; font: 500 1rem/1.5 var(--sl-font); }
 </style>

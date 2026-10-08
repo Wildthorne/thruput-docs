@@ -1,6 +1,6 @@
 ---
 title: XDR Protocol
-description: Encoding boundaries and protocol definitions selected by Groundhog 0.1.27.
+description: Encoding boundaries and source definitions for the Stellar Thruput protocol.
 ---
 
 ## Encodings
@@ -16,13 +16,16 @@ The Rust traits retain the names `ReadXDR` and `WriteXDR` for both encodings. Us
 
 ## Source Definitions
 
-These links use the protocol commit selected by bundle `0.1.27`.
+| Source baseline | Value |
+| --- | --- |
+| Rust protocol package | `groundhog-xdr` `0.43.0` |
+| Embedded protocol revision | `hogp/dc6e80b6472d0ed` |
 
 | Definition | Types |
 | --- | --- |
-| [transaction.x](https://github.com/groundhogchain/protocol/blob/63c9284d8d5727e8355b0b3d01e5e40f15478a89/transaction.x) | `Invocation`, `Transaction`, `SignedTransaction`, invocation outputs |
-| [types.x](https://github.com/groundhogchain/protocol/blob/63c9284d8d5727e8355b0b3d01e5e40f15478a89/types.x) | Addresses, hashes, signatures, protocol scalar types |
-| [storage_item.x](https://github.com/groundhogchain/protocol/blob/63c9284d8d5727e8355b0b3d01e5e40f15478a89/storage_item.x) | Storage items and deltas |
-| [header.x](https://github.com/groundhogchain/protocol/blob/63c9284d8d5727e8355b0b3d01e5e40f15478a89/header.x) | Proposal header |
-| [consensus.x](https://github.com/groundhogchain/protocol/blob/63c9284d8d5727e8355b0b3d01e5e40f15478a89/consensus.x) | Consensus values |
-| [groundhog_contract_spec.x](https://github.com/groundhogchain/protocol/blob/63c9284d8d5727e8355b0b3d01e5e40f15478a89/groundhog_contract_spec.x) | Contract types, methods, events, and interface metadata |
+| [transaction.x](https://github.com/groundhogchain/protocol/blob/dc6e80b6472d0eda0440eab190c24b20233c839c/transaction.x) | `Invocation`, `Transaction`, `SignedTransaction`, invocation outputs |
+| [types.x](https://github.com/groundhogchain/protocol/blob/dc6e80b6472d0eda0440eab190c24b20233c839c/types.x) | Addresses, hashes, signatures, protocol scalar types |
+| [storage_item.x](https://github.com/groundhogchain/protocol/blob/dc6e80b6472d0eda0440eab190c24b20233c839c/storage_item.x) | Storage items and deltas |
+| [header.x](https://github.com/groundhogchain/protocol/blob/dc6e80b6472d0eda0440eab190c24b20233c839c/header.x) | Proposal header |
+| [consensus.x](https://github.com/groundhogchain/protocol/blob/dc6e80b6472d0eda0440eab190c24b20233c839c/consensus.x) | Consensus values |
+| [groundhog_contract_spec.x](https://github.com/groundhogchain/protocol/blob/dc6e80b6472d0eda0440eab190c24b20233c839c/groundhog_contract_spec.x) | Contract types, methods, events, and interface metadata |

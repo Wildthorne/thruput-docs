@@ -1,23 +1,23 @@
 ---
 title: Storage Types
-description: API reference for Groundhog storage types.
+description: API reference for Stellar Thruput storage types.
 ---
-
-API reference for the SDK storage types. For conflict semantics, usage guidance, and when to choose each type, see [Programming Model: Storage Types](/programming-model/storage-types/). For generated Rustdoc, see [`sdk::storage`](https://crates.thruput.network/docs/sdk/0.34.3/doc/sdk/storage/index.html) or [Rust API Docs](/tools/rust-api-docs/).
-
-The SDK encodes typed storage values and map keys with CXS. Its serialization traits retain the names `ReadXDR` and `WriteXDR`.
-
-Rustdoc shortcuts:
 
 | Area | Links |
 |------|-------|
-| Storage types | [`Balance`](https://crates.thruput.network/docs/sdk/0.34.3/doc/sdk/storage/balance/struct.Balance.html), [`NNInt`](https://crates.thruput.network/docs/sdk/0.34.3/doc/sdk/storage/nnint/struct.NNInt.html), [`CapacityConstraint`](https://crates.thruput.network/docs/sdk/0.34.3/doc/sdk/storage/capacity_constraint/struct.CapacityConstraint.html), [`Map`](https://crates.thruput.network/docs/sdk/0.34.3/doc/sdk/storage/map/struct.Map.html), [`Vector`](https://crates.thruput.network/docs/sdk/0.34.3/doc/sdk/storage/vector/struct.Vector.html), [`Value`](https://crates.thruput.network/docs/sdk/0.34.3/doc/sdk/storage/value/struct.Value.html), [`Bytestring`](https://crates.thruput.network/docs/sdk/0.34.3/doc/sdk/storage/bytestring/struct.Bytestring.html), [`RCQ`](https://crates.thruput.network/docs/sdk/0.34.3/doc/sdk/storage/rcq/struct.RCQ.html), [`Node`](https://crates.thruput.network/docs/sdk/0.34.3/doc/sdk/storage/node/struct.Node.html) |
-| Borrow guards | [`SlotRef`](https://crates.thruput.network/docs/sdk/0.34.3/doc/sdk/storage/slot/struct.SlotRef.html), [`SlotMut`](https://crates.thruput.network/docs/sdk/0.34.3/doc/sdk/storage/slot/struct.SlotMut.html), [`DisjointMut`](https://crates.thruput.network/docs/sdk/0.34.3/doc/sdk/storage/map/struct.DisjointMut.html) |
-| Traits and paths | [`Deletable`](https://crates.thruput.network/docs/sdk/0.34.3/doc/sdk/storage/deletable/trait.Deletable.html), [`StorageType`](https://crates.thruput.network/docs/sdk/0.34.3/doc/sdk/storage/node/trait.StorageType.html), [`Keypath`](https://crates.thruput.network/docs/sdk/0.34.3/doc/sdk/storage/keypath/struct.Keypath.html) |
+| Type choice and conflict semantics | [Storage guidance](/programming-model/storage-types/) |
+| Generated type, guard, and trait APIs | [`sdk::storage`](https://crates.thruput.network/docs/sdk/0.42.2/doc/sdk/storage/index.html), [Rust API Docs](/tools/rust-api-docs/) |
+| Encoding | CXS; serialization traits retain the names `ReadXDR` and `WriteXDR` |
 
 ## NNInt
 
-Integer storage with signed changes, an explicit `set`, and a commit-time floor. Concurrent changes can combine.
+| Property | Value |
+| --- | --- |
+| Data model | Signed changes, explicit `set`, and a commit-time floor |
+| Decrement | Negative `inc` or `strict_inc` argument |
+| Exclusive writes | Keypath flag, or `non_negative_int_set_exclusive` in `sdk::sys_exn::nnint`; no handle `set_exclusive` method |
+| Traits | `Deletable` |
+| Usage | [Merged deltas](/programming-model/execution/#merged-deltas), [NNInt and concurrent updates](/programming-model/nnint/) |
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
@@ -28,34 +28,37 @@ Integer storage with signed changes, an explicit `set`, and a commit-time floor.
 | `strict_inc` | `fn strict_inc(&mut self, increment: i128)` | Add `increment`, loading the current base for early underflow detection. Aborts immediately if the result would be negative. |
 | `try_strict_inc` | `fn try_strict_inc(&mut self, increment: i128) -> Result<(), LibraryExn>` | Checked increment that reports overflow, underflow, or storage failure instead of aborting. Leaves storage unmodified on `Err`. |
 
-Pass a negative value to `inc` or `strict_inc` to decrement. Use `Balance` for ordinary balances and allowances. See [Merged Deltas](/programming-model/execution/#merged-deltas) for the contract-level model and [NNInt In Depth](/programming-model/nnint/) for the underlying rules.
-
-Exclusivity is controlled by the **keypath flag** set at storage-derivation time, not by a `set_exclusive` method. For ad-hoc exclusive writes, use the free function `non_negative_int_set_exclusive` from `sdk::sys_exn::nnint`.
-
-Implements `Deletable`.
-
 ## Balance
 
-Nonnegative, zero-defaulting `u128` storage over the same mergeable representation as `NNInt`. Represents values from `0` through `i128::MAX`.
+| Property | Value |
+| --- | --- |
+| Representation | `i128`, backed by NNInt |
+| Range | `0..=i128::MAX`; `Balance::MAX` is `i128::MAX` |
+| Missing value | Zero |
+| Negative amount | Rejected with `NonNegativeIntUnderflow` |
+| Operations | No absolute `set` or signed adjustment |
+| Traits | `Deletable` |
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
-| `get` | `fn get(&self) -> u128` | Read the balance. A never-written location returns zero. |
-| `try_get` | `fn try_get(&self) -> Result<u128, LibraryExn>` | Read without aborting. A never-written location returns `Ok(0)`. |
-| `increase` | `fn increase(&mut self, amount: u128)` | Load and increase the balance. Aborts immediately on overflow. |
-| `try_increase` | `fn try_increase(&mut self, amount: u128) -> Result<(), LibraryExn>` | Checked increase that reports failure and leaves storage unmodified on `Err`. |
-| `decrease` | `fn decrease(&mut self, amount: u128)` | Load and decrease the balance. Aborts immediately if funds are insufficient. |
-| `try_decrease` | `fn try_decrease(&mut self, amount: u128) -> Result<(), LibraryExn>` | Checked decrease that reports failure and leaves storage unmodified on `Err`. |
-| `lazy_increase` | `fn lazy_increase(&mut self, amount: u128)` | Record an increase without loading the committed balance. Aggregate overflow is checked during delta reservation after contract execution. |
-| `try_lazy_increase` | `fn try_lazy_increase(&mut self, amount: u128) -> Result<(), LibraryExn>` | Lazy increase that reports immediate conversion or accumulated-delta overflow. |
-| `lazy_decrease` | `fn lazy_decrease(&mut self, amount: u128)` | Record a decrease without loading the committed balance. Aggregate sufficiency is checked during delta reservation after contract execution. |
-| `try_lazy_decrease` | `fn try_lazy_decrease(&mut self, amount: u128) -> Result<(), LibraryExn>` | Lazy decrease that reports immediate conversion or accumulated-delta underflow. |
-
-`Balance::MAX` is `i128::MAX as u128`. `Balance` exposes no absolute `set` or signed-adjustment method. Implements `Deletable`.
+| `get` | `fn get(&self) -> i128` | Read the balance. A never-written location returns zero. |
+| `try_get` | `fn try_get(&self) -> Result<i128, LibraryExn>` | Read without aborting. A never-written location returns `Ok(0)`. |
+| `increase` | `fn increase(&mut self, amount: i128)` | Load and increase the balance. Aborts immediately on overflow. |
+| `try_increase` | `fn try_increase(&mut self, amount: i128) -> Result<(), LibraryExn>` | Checked increase that leaves storage unmodified on `Err`. |
+| `decrease` | `fn decrease(&mut self, amount: i128)` | Load and decrease the balance. Aborts immediately if funds are insufficient. |
+| `try_decrease` | `fn try_decrease(&mut self, amount: i128) -> Result<(), LibraryExn>` | Checked decrease that leaves storage unmodified on `Err`. |
+| `lazy_increase` | `fn lazy_increase(&mut self, amount: i128)` | Record an increase without loading the committed balance. Aggregate overflow is checked during reservation. |
+| `try_lazy_increase` | `fn try_lazy_increase(&mut self, amount: i128) -> Result<(), LibraryExn>` | Report a negative amount or accumulated-delta overflow. |
+| `lazy_decrease` | `fn lazy_decrease(&mut self, amount: i128)` | Record a decrease without loading the committed balance. Aggregate sufficiency is checked during reservation. |
+| `try_lazy_decrease` | `fn try_lazy_decrease(&mut self, amount: i128) -> Result<(), LibraryExn>` | Report a negative amount or accumulated-delta underflow. |
 
 ## CapacityConstraint
 
-Commit-time capacity for a contract-defined linear constraint. Changes are staged on the handle and written when the handle is flushed or dropped.
+| Property | Value |
+| --- | --- |
+| Purpose | Commit-time capacity for a contract-defined linear constraint |
+| Flush | Staged changes are written on flush or drop |
+| Traits | `Deletable` |
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
@@ -68,11 +71,14 @@ Commit-time capacity for a contract-defined linear constraint. Changes are stage
 | `flush` | `fn flush(&mut self)` | Merge staged changes into pending storage immediately. |
 | `try_flush` | `fn try_flush(&mut self) -> Result<(), LibraryExn>` | Flush staged changes and report failure. On error, changes remain staged and drop retries the flush. |
 
-Implements `Deletable`.
-
 ## Map\<K, V\>
 
-Key-value map. `K` must implement `WriteXDR`. `V` must implement `StorageType`.
+| Property | Value |
+| --- | --- |
+| Bounds | `K: WriteXDR`, `V: StorageType` |
+| Enumeration | Not supported; no `keys()` or iterator |
+| Deletion | Does not implement `Deletable` |
+| Disjoint access | Compares derived keypaths, not `PartialEq`; duplicate slots panic |
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
@@ -83,21 +89,22 @@ Key-value map. `K` must implement `WriteXDR`. `V` must implement `StorageType`.
 | `at_disjoint_unchecked_mut` | `unsafe fn at_disjoint_unchecked_mut<const N: usize>(&mut self, keys: [&K; N]) -> DisjointMut<'_, Self, V, N>` | Mutably borrow N elements without duplicate checking. Caller must ensure all keys are disjoint. |
 | `keypath` | `fn keypath(&self) -> &Keypath` | Reference to the map's root keypath. |
 
-`at_disjoint_mut` compares derived storage keypaths, so `K` does not need `PartialEq`. It panics when two supplied keys address the same storage slot.
-
-Maps do not support enumeration. No `keys()` method, no iteration.
-
-Does not implement `Deletable` (cannot enumerate entries).
-
 ### DisjointMut\<Owner, S, N\>
 
-Borrow guard returned by `at_disjoint_mut`. Holds an exclusive borrow on the map. Implements `Deref<Target = [S; N]>` and `DerefMut`, so you can index into it directly.
+| Property | Value |
+| --- | --- |
+| Origin | `at_disjoint_mut` |
+| Borrow | Exclusive borrow of the parent map |
+| Traits | `Deref<Target = [S; N]>`, `DerefMut`; supports direct indexing |
 
 ## Vector\<S\>
 
-Indexed collection. `S` must implement `StorageType`. Built on `Map<u32, S>` internally, with a separately stored length.
-
-Slots are sparse-capable: deleting element storage does not shrink `len`, so an in-bounds index does not guarantee the slot has backing data.
+| Property | Value |
+| --- | --- |
+| Representation | `Map<u32, S>` and a separate length; `S: StorageType` |
+| Sparse slots | Deleting element storage does not shrink `len`; an in-bounds slot can be missing |
+| Iterators | `Iterator`, `ExactSizeIterator`, `DoubleEndedIterator`; `IntoIterator` for shared and mutable references |
+| Deletion | `Deletable` when `S: Deletable`; deletes elements, then length |
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
@@ -112,15 +119,13 @@ Slots are sparse-capable: deleting element storage does not shrink `len`, so an 
 | `iter_mut` | `fn iter_mut(&mut self) -> VectorIterMut<'_, S>` | Mutable iterator. Yields `SlotMut` handles. Exclusive borrow on the vector. |
 | `keypath` | `fn keypath(&self) -> &Keypath` | Reference to the vector's root keypath. |
 
-Both `VectorIter` and `VectorIterMut` implement `Iterator`, `ExactSizeIterator`, and `DoubleEndedIterator`. Supports `&vec` and `&mut vec` via `IntoIterator`.
-
-Implements `Deletable` when `S: Deletable` (deletes all elements then the length).
-
 ## Value\<T\>
 
-A typed storage slot for serialized values. All operations are immediate syscalls.
-
-`T` must implement `WriteXDR` for writes and `ReadXDR` for reads.
+| Property | Value |
+| --- | --- |
+| Data | One serialized typed value |
+| Bounds | `T: WriteXDR` for writes, `T: ReadXDR` for reads |
+| Traits | `Deletable` |
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
@@ -133,11 +138,13 @@ A typed storage slot for serialized values. All operations are immediate syscall
 | `load_mut` | `fn load_mut(&mut self) -> ValueMut<'_, T>` | Load the value and return a mutable guard. Flushes back to storage on drop. Requires `T: WriteXDR + ReadXDR`. |
 | `key` | `fn key(&self) -> &StorageKey` | Reference to the value's resolved storage key. |
 
-Implements `Deletable`.
-
 ### ValueMut\<T\>
 
-Mutable guard returned by `load_mut`. Implements `Deref<Target = T>` and `DerefMut`. A guard that receives mutable access writes back on drop. A read-only guard performs no write.
+| Property | Value |
+| --- | --- |
+| Origin | `load_mut` |
+| Traits | `Deref<Target = T>`, `DerefMut` |
+| Drop | Writes back after mutable access; a clean guard does not write |
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
@@ -146,7 +153,11 @@ Mutable guard returned by `load_mut`. Implements `Deref<Target = T>` and `DerefM
 
 ## Bytestring
 
-Arbitrary byte data. Raw bytes in, raw bytes out.
+| Property | Value |
+| --- | --- |
+| Data | Raw bytes |
+| Exclusive writes | Keypath flag, or `bytestring_set_exclusive` in `sdk::sys_exn::bytestring`; no handle `set_exclusive` method |
+| Traits | `Deletable` |
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
@@ -158,15 +169,14 @@ Arbitrary byte data. Raw bytes in, raw bytes out.
 | `get_sized` | `fn get_sized<const N: usize>(&self) -> [u8; N]` | Read into a fixed-size array. Aborts if length does not match `N`. |
 | `set` | `fn set(&mut self, buf: &[u8])` | Write bytes. Uses the keypath's locking mode (exclusive if the keypath flag is set). |
 
-Exclusivity is controlled by the keypath flag, not by a `set_exclusive` method. For ad-hoc exclusive writes, use the free function `bytestring_set_exclusive` from `sdk::sys_exn::bytestring`.
-
-Implements `Deletable`.
-
 ## RCQ\<T\>
 
-Multi-producer queue. Items of type `T` are CXS-encoded on insert and decoded on consume. Inserts commute; consumes are sequential.
-
-The typed wrapper lives in `sdk::storage`. Lower-level free functions (operating on raw `StorageKey` values) are available in `sdk::sys_exn::rcq` for cases where you want byte-level control.
+| Property | Value |
+| --- | --- |
+| Data | CXS-encoded `T`; multi-producer queue |
+| Concurrency | Inserts commute; consumes are sequential |
+| Traits | `StorageType`, `Deletable` |
+| Modules | Typed wrapper in `sdk::storage`; raw-key functions in `sdk::sys_exn::rcq` |
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
@@ -186,8 +196,6 @@ The typed wrapper lives in `sdk::storage`. Lower-level free functions (operating
 | `try_peek_sized` | `fn try_peek_sized<const N: usize>(&self) -> Result<[u8; N], LibraryExn>` | Fixed-size peek without aborting. |
 | `key` | `fn key(&self) -> &StorageKey` | Reference to the queue's resolved storage key. |
 
-Implements `StorageType` and `Deletable`.
-
 ### Lower-level free functions (`sdk::sys_exn::rcq`)
 
 | Function | Signature | Description |
@@ -204,28 +212,36 @@ Implements `StorageType` and `Deletable`.
 
 ## Slot Types
 
-`SlotRef` and `SlotMut` are borrow guards returned by `Map` and `Vector` access methods. They tie the lifetime of the accessed element to the parent collection.
-
 | Type | Implements | Description |
 |------|------------|-------------|
 | `SlotRef<'a, Owner, S>` | `Deref<Target = S>` | Read-only handle. Holds a shared borrow on the parent. |
 | `SlotMut<'a, Owner, S>` | `Deref<Target = S>` + `DerefMut` | Mutable handle. Holds an exclusive borrow on the parent. |
 
-Use `*slot` or field access directly through the deref. No explicit "unwrap" needed.
+| Access | Lifetime | Syntax |
+| --- | --- | --- |
+| Map or vector element | Tied to parent collection | `*slot` or direct field access; no unwrap |
 
 ## Node\<T\>
 
-Wrapper for compound storage field groups (structs with multiple storage fields). Pairs a `T: From<Keypath>` with its root keypath. Implements `Deref<Target = T>` and `DerefMut` for field access.
+| Property | Value |
+| --- | --- |
+| Data | Compound storage field group and its root keypath |
+| Bound | `T: From<Keypath>` |
+| Access | `Deref<Target = T>`, `DerefMut` |
+| Collection support | Implements `StorageType` for use in maps and vectors |
+| Deletion | `Deletable` when `T: Deletable`; delegates to inner fields |
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
 | `keypath` | `fn keypath(&self) -> &Keypath` | Reference to the node's root keypath. |
 
-Implements `StorageType`, so it can be used as a value type in `Map` and `Vector`. Implements `Deletable` when `T: Deletable` (delegates to the inner fields).
-
 ## Deletable Trait
 
-Trait for storage types whose data can be fully deleted. Leaf types (`Balance`, `NNInt`, `CapacityConstraint`, `Value`, and `Bytestring`) delete their single storage key. Compound types (`Node` and `Vector`) implement this recursively when their elements are `Deletable`. `Map` does not implement `Deletable` because it cannot enumerate its entries.
+| Implementor | Behavior |
+| --- | --- |
+| `Balance`, `NNInt`, `CapacityConstraint`, `Value`, `Bytestring` | Delete one key |
+| `Node`, `Vector` | Delete recursively when elements implement `Deletable` |
+| `Map` | Not implemented; entries cannot be enumerated |
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
@@ -234,7 +250,12 @@ Trait for storage types whose data can be fully deleted. Leaf types (`Balance`, 
 
 ## Flaggable Trait
 
-Reads and changes the storage flags the current transaction requests for a leaf handle's key. Implemented by `Value`, `NNInt`, `Balance`, and `Bytestring`. `StorageFlags` is an alias of `StorageDeltaFlags`. `ExclusiveLock` is the only flag.
+| Property | Value |
+| --- | --- |
+| Implementors | `Value`, `NNInt`, `Balance`, `Bytestring` |
+| Scope | Current transaction's requested flags for a leaf key |
+| Type | `StorageFlags` aliases `StorageDeltaFlags` |
+| Flag | `ExclusiveLock` |
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
@@ -242,7 +263,7 @@ Reads and changes the storage flags the current transaction requests for a leaf 
 | `set_flags` | `fn set_flags(&mut self, flags: StorageFlags)` | Add `flags` (bitwise OR). Throws unless a write to the key is pending in the current call frame. |
 | `clear_flags` | `fn clear_flags(&mut self)` | Remove every flag. Does nothing if the key has no pending write. |
 
-The same operations on a raw `StorageKey`, re-exported at the crate root from `sdk::sys_exn::flags`:
+### Raw-key functions
 
 | Function | Signature | Description |
 |----------|-----------|-------------|
@@ -250,8 +271,8 @@ The same operations on a raw `StorageKey`, re-exported at the crate root from `s
 | `set_storage_flags` | `fn set_storage_flags(key: &StorageKey, flags: StorageDeltaFlags)` | Add flags. Throws if no write is pending or a flag is unknown. |
 | `clear_storage_flags` | `fn clear_storage_flags(key: &StorageKey)` | Remove every flag. |
 
-`sdk::sys_result::flags` has non-throwing versions that return `Result`. See [Advanced Patterns: Lock Requests](/programming-model/advanced/#lock-requests) for usage.
-
----
-
-[Programming Model: Storage Types](/programming-model/storage-types/) for conflict semantics and usage guidance.
+| Module | Behavior |
+| --- | --- |
+| `sdk::sys_exn::flags` | Throwing versions, re-exported at crate root |
+| `sdk::sys_result::flags` | Non-throwing versions returning `Result` |
+| Usage | [Lock requests](/programming-model/storage-types/#lock-requests) |

@@ -1,19 +1,19 @@
 ---
-title: Contracts
-description: Contract artifacts, deployment, and address derivation in Groundhog.
+title: Contract artifacts and addresses
+description: Understand compiled artifacts, code hashes, deployment addresses, and contract immutability.
 ---
 
-An address normally needs deployed code to receive a contract call. An undeployed pubkey account can use the configured DefaultWallet fallback for its root invocation. See [Authorization](/how-it-works/authorization/#pubkey-accounts).
+An artifact is compiled contract code. Its code hash identifies that code; a deployment address identifies one instance with its own storage. The same artifact can be deployed at multiple addresses.
 
-The root invocation of a transaction is specified by a contract address, an 8-byte entrypoint ID, and method arguments. Each invocation creates an [invocation frame](/how-it-works/invocation-frames/) that tracks execution state and storage modifications.
+This page explains those identities and the rules of deployment. For deployment commands, see [Deploy and call](/cli/deploy-and-call/).
 
-The normal user-deployed contract path is RV32, Groundhog's 32-bit RISC-V contract target. The protocol also supports native precompiled contracts.
+User contracts compile to RV32, Stellar Thruput's 32-bit RISC-V contract target. Native system contracts serve separate purposes, described below.
 
 ## Contract Types
 
 ### RV32 Contracts
 
-RV32 contracts are the default user contract type. `groundhog build` compiles the contract's RV32 entrypoint wrapper for `riscv32im-unknown-none-elf`, lowers that ELF into a deployable `.rv32a` artifact, and finalizes its contract-spec sidecars.
+`groundhog build` compiles the contract's RV32 entrypoint wrapper for `riscv32im-unknown-none-elf`, lowers that ELF into a deployable `.rv32a` artifact, and finalizes its contract-spec sidecars.
 
 For a crate named `counter`, the default build writes:
 
@@ -26,7 +26,7 @@ target/groundhog/counter.spec.json
 
 The `.rv32a` file is the executable contract artifact. `groundhog deploy` wraps those bytes in the protocol's `Contract::kRv32` variant before signing and submitting the deploy transaction.
 
-The executor accepts contract code blobs up to 256 KiB. The complete signed transaction also has a 2 MB encoded-size bound, so a deployment transaction must satisfy both limits.
+Deployment must satisfy the network's limits on attached contract size, RV32 code, guest memory, and new contracts per transaction. Client and gateway submission limits also apply. Use the selected network's configuration rather than assuming a fixed maximum.
 
 #### Entrypoints
 
@@ -38,18 +38,18 @@ Entrypoint IDs can be arbitrary 8-byte values at the protocol layer. The SDK pro
 
 #### Artifact Shape
 
-Most developers should let the [Groundhog CLI](/tools/groundhog-cli/) produce RV32 artifacts. Under the hood, the RV32 lowerer:
+Most developers should let the [Groundhog CLI](/cli/build-and-test/) produce RV32 artifacts. Under the hood, the RV32 lowerer:
 
 - Parses the `riscv32im-unknown-none-elf` contract binary.
-- Validates the layout expected by the Groundhog RV32 runtime.
+- Validates the layout expected by the Stellar Thruput RV32 runtime.
 - Packs code, initial memory, metadata, and section digests into the `.rv32a` artifact.
 - Self-verifies the artifact before writing it.
 
-The node executes the lowered artifact through the RV32 runtime. Contract state does not live in guest memory. Durable state must be written through Groundhog storage APIs.
+The node executes the lowered artifact through the RV32 runtime. Contract state does not live in guest memory. Durable state must be written through Stellar Thruput storage APIs.
 
 ### Native Precompiled Contracts
 
-Native precompiled contracts are implemented directly inside the Groundhog runtime. They are used for trusted system behavior, such as the native token contract, and can have permissions that user-deployed guest contracts do not have.
+Native precompiled contracts are implemented directly inside the Stellar Thruput runtime. They are used for trusted system behavior, such as the native token contract, and can have permissions that user-deployed guest contracts do not have.
 
 Users cannot deploy native contracts. Network configuration assigns system contract addresses; implementations are identified by values from `HogexecPrecompiledNativeContracts`.
 
@@ -59,16 +59,7 @@ Contracts are deployed by the DeployContract [system call](/reference/syscalls/)
 
 ### Contract Identification
 
-Contracts are identified by the SHA256 hash of the XDR-encoded `Contract` union:
-
-```rust
-pub enum Contract {
-    kNative { native_contract_id: HogexecPrecompiledNativeContracts },
-    kRv32 { rv32_contract: ContractBlob },
-}
-```
-
-For RV32 contracts, the deploy hash is:
+Contracts are identified by the SHA256 hash of the XDR-encoded `Contract` union. For an RV32 artifact, the deploy hash is:
 
 ```txt
 SHA256(XDR(Contract::kRv32 {
@@ -203,7 +194,7 @@ The metadata is set during deployment and persists for the lifetime of the contr
 
 ## Deployment Concurrency
 
-Multiple transactions may deploy the same contract to the same address in the same block. Groundhog does not consider concurrent deployments of the same contract to the same address to be in conflict. Collision resistance of SHA256 implies that different contracts cannot be deployed to the same address.
+Multiple transactions may deploy the same contract to the same address in the same block. Stellar Thruput does not consider concurrent deployments of the same contract to the same address to be in conflict. Collision resistance of SHA256 implies that different contracts cannot be deployed to the same address.
 
 If a contract requires one-time initialization, implement that guard in contract storage.
 
@@ -213,9 +204,9 @@ Once a contract is deployed to an address, that address's `AddressMetadata` cann
 
 ## Related Documentation
 
-- [Groundhog CLI](/tools/groundhog-cli/): RV32 builds, local nodes, deployment, and codegen
+- [Groundhog CLI](/cli/): RV32 builds, local nodes, deployment, and codegen
 - [Invocation Frames](/how-it-works/invocation-frames/): execution context and call stack management
 - [Syscalls](/reference/syscalls/): system calls available to contracts
 - [SDK Macros](/reference/sdk-macros/): SDK entrypoint IDs and generated clients
 - [Contract Spec](/reference/contract-spec/): generated method, type, event, and error metadata
-- [Architecture](/how-it-works/architecture/): the big-picture design
+- [System Overview](/how-it-works/architecture/): the component map

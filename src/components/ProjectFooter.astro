@@ -1,0 +1,39 @@
+---
+const groups = [
+  { title: 'Build', links: [
+    ['Quickstarts', '/get-started/'], ['CLI', '/cli/'], ['Smart contracts', '/contracts/'], ['Application guides', '/guides/'],
+  ] },
+  { title: 'Learn', links: [
+    ['Understand Stellar Thruput', '/architecture/'], ['Execution model', '/how-it-works/execution-model/'], ['Capacity and storage', '/how-it-works/storage-economics/'], ['Developer tools', '/tools/faucet/'],
+  ] },
+  { title: 'Connect', links: [
+    ['GitHub community', 'https://github.com/groundhogchain'], ['Documentation feedback', 'https://github.com/groundhogchain/developers-site/issues'], ['Contribute to the docs', 'https://github.com/groundhogchain/developers-site'],
+  ] },
+  { title: 'Project', links: [
+    ['CLI source', 'https://github.com/groundhogchain/groundhog-rpc'], ['CLI releases', 'https://github.com/groundhogchain/groundhog-rpc/releases'], ['Agent skill', 'https://github.com/groundhogchain/agent-skills'],
+  ] },
+];
+---
+<footer class="project-footer">
+  <div class="footer-content">
+    <div class="footer-intro"><p class="footer-name">Stellar Thruput</p><p>A blockchain for abundant compute</p><p class="preview">Technology preview · alpha-pre.1</p></div>
+    <nav aria-label="Footer" class="footer-groups">
+      {groups.map(group => <div><h2>{group.title}</h2><ul role="list">{group.links.map(([label, href]) => <li><a href={href}>{label}</a></li>)}</ul></div>)}
+    </nav>
+  </div>
+</footer>
+<style>
+  .project-footer { padding-block: 3rem; font-family: var(--sl-font); }
+  .footer-content { display: flex; flex-direction: column; gap: 2.5rem; }
+  .footer-intro { display: flex; flex-direction: column; gap: .5rem; }
+  .footer-intro p { margin: 0; color: var(--brand-muted); }
+  .footer-intro .footer-name { color: var(--brand-foreground); font: 500 1.25rem var(--sl-font-mono); }
+  .preview { font-size: .875rem; }
+  .footer-groups { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2rem; }
+  h2 { margin: 0 0 .875rem; color: var(--brand-foreground); font: 500 1rem var(--sl-font); letter-spacing: normal; }
+  ul { display: flex; flex-direction: column; gap: .625rem; margin: 0; padding: 0; list-style: none; }
+  a { color: var(--brand-muted); text-decoration: none; }
+  a:hover { color: var(--sl-color-text-accent); text-decoration: underline; text-underline-offset: .2em; }
+  @media (min-width: 50rem) { .footer-groups { grid-template-columns: repeat(4, minmax(0, 1fr)); font-size: .9375rem; } }
+  @media (min-width: 80rem) { .footer-content { flex-direction: row; gap: 4rem; } .footer-intro { flex: 1; } .footer-groups { flex: 3; } }
+</style>
