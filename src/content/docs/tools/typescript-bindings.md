@@ -54,13 +54,16 @@ const supply = await hog.totalSupply.view({ args: undefined });
 | --- | --- |
 | `method.invocation(contract, gasLimit, args)` | Build calldata and the target invocation |
 | `method.call({ contract, gasLimit, args })` | Retain result and exception decoders with the invocation |
-| `method.view({ client, contract, args })` | Read a typed value with height and events |
+| `method.view({ client, contract, args, minHeight?, signal? })` | Read a typed value with height, gas use, and events; optional freshness floor |
 | `method.viewOutcome(...)` | Return a typed return/abort/fault outcome |
+| `method.viewRequest({ contract, args, caller? })` | Prepare an independent read with its decoder for `client.readViews`; no I/O, and freshness belongs to the group |
 | `method.decodeArgs(bytes)` | Decode complete calldata |
 | `method.decodeReturn(bytes)` / `decodeException(bytes)` | Decode known method output |
 | `method.decodeReceipt(receipt)` / `decodeReceiptOutcome(receipt)` | Decode a receipt for that root method |
 
 Direct descriptor calls can omit absent arguments. Bound argumentless views use `{ args: undefined }`. Public argument names use camelCase; ABI names remain in metadata. Contract integers use `bigint`.
+
+Existing generated bindings gain `viewRequest()` through the client runtime; this feature needs no new codegen metadata. See [shared-snapshot reads](/typescript/reads/#read-related-values-from-one-snapshot) for grouped calls and [minimum heights](/typescript/reads/#read-after-confirmation) for single reads.
 
 ## Execute and Decode
 

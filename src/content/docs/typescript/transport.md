@@ -42,7 +42,7 @@ Batching is off by default. `batch: true` uses the defaults shown. Concurrent re
 - Responses match by request ID, not array position.
 - Per-call RPC errors remain separate. HTTP or malformed-batch failures reject affected requests.
 - Cancellation removes one caller; canceling every caller can cancel the shared request.
-- Batching does not provide a shared state snapshot or an atomic transaction. Await dependent reads separately.
+- HTTP batching does not provide a shared state snapshot or an atomic transaction. Use [shared-snapshot reads](/typescript/reads/#read-related-values-from-one-snapshot) when related contract values must come from one state; awaiting separate reads does not make their snapshots match.
 
 Server [array and byte limits](/reference/json-rpc-api/#json-rpc-arrays) still apply.
 

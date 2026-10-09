@@ -5,7 +5,7 @@ description: Stellar Thruput JSON-RPC methods, wire types, and error codes.
 
 | API property | Value |
 | --- | --- |
-| Wire format | `9.0.0` |
+| Wire format | `11.1.0` |
 | Compatibility | Breaking wire changes increase the major version of `groundhog_version.wireFormat` |
 | Schema | [Generated OpenRPC specification](https://github.com/groundhogchain/groundhog-rpc/blob/main/crates/json-rpc/open-rpc-spec/snapshots/groundhog-spec.json) for method signatures and field types |
 
@@ -153,11 +153,17 @@ Get the current committed chain tip.
 | Property | Contract |
 | --- | --- |
 | Parameters | None |
-| Result | `NetworkConfigParams`, the execution parameters explicitly stated by the chain |
+| Result | `ChainConfig`: explicitly stated execution parameters, plus optional authoritative `execution` context |
 | Optional integer fields | `maxSha256Buffers`, `maxCrossInvokeDepth`, `maxNewContractsPerTx`, `maxBytestringLen`, `maxContractSizeBytes`, `maxSavepointDepth`, `maxAuthTokenDepth`, `maxRv32CodeBytes`, `maxRv32MemoryBytes` |
 | Integer encoding | These bounds are `u32` JSON numbers |
 | Missing field | Unspecified by this config, not zero and not an SDK-selected default |
-| Scope | Configured execution limits; not a general storage-cost estimator or a complete list of effective runtime defaults |
+| `execution.observedTip` | Committed `height` and `blockHash` read together with the rules |
+| `execution.configHash` | Configuration and storage-model commitment for that reading |
+| `execution.effectiveLimits` | Runtime-resolved limits; omitted fields are unavailable, not zero |
+| `execution.storageCosts` | `baseDataItemCost`, `bytestringCostPerByte`, `baseContractDeploymentCost`, `contractDeploymentCostPerByte`, `authPerKeyCost`, `rcqCostPerEntry`, `replayCacheCostPerEntry`, and `balanceCost`, in native-token base units as decimal strings |
+| Reading freshness | `execution` is fetched during the request without stale-cache fallback; later transaction inclusion may use newer rules |
+| Missing `execution` | Backend cannot supply authoritative rules; do not infer zero prices from its absence |
+| Usage | [Estimate deployment funding](/cli/deploy-and-call/#estimate-deployment-funding) |
 
 ### `groundhog_serverLimits`
 
@@ -171,6 +177,9 @@ Get the current committed chain tip.
 | `maxEventsPerPage` | Maximum event-query `limit`; `u32` JSON number |
 | `maxTransactionsPerPage` | Maximum address-transaction-query `limit`; `u32` JSON number |
 | `maxCursorBytes` | Maximum pagination cursor size in bytes; `u64` decimal string |
+| `viewBatch` | Optional batch-limit object; omitted when shared-read limits are not advertised |
+| `viewBatch.maxCalls`, `viewBatch.maxCalldataBytes`, `viewBatch.maxResponseBytes` | `u32` JSON numbers; the response bound covers encoded backend results, including events, before JSON encoding |
+| `viewBatch.maxGas`, `viewBatch.timeoutMs` | `u64` decimal strings; aggregate gas budget per attempt and response-wait limit; per-call view and transport limits also apply |
 | Consensus limits | Reported separately by `groundhog_chainConfig` |
 
 ### `groundhog_networkInfo`
@@ -243,7 +252,7 @@ Get wire, implementation, build, and packaging-platform versions.
 
 | Response field | Contract |
 | --- | --- |
-| `wireFormat` | Wire-format SemVer, `"9.0.0"` for this contract; clients may use it for compatibility checks |
+| `wireFormat` | Wire-format SemVer, `"11.1.0"` for this contract; clients may use it for compatibility checks |
 | `implementation` | Diagnostic implementation version |
 | `commitHash` | Diagnostic build commit or `null` |
 | `platformVersion` | Optional packaging-platform version, independent of validated release identity |
@@ -261,6 +270,7 @@ Execute a read-only contract invocation against committed state. The invocation 
 | `request.calldata` | bytes | `0x`-prefixed call input |
 | `request.caller` | address | Optional simulated caller |
 | `request.gasLimit` | `u64` decimal string | Optional positive gas budget, at most `serverLimits.maxViewGas`; omission selects that maximum |
+| `request.minHeight` | signed 64-bit decimal string | Optional nonnegative minimum committed snapshot height; not an exact-height selector |
 
 | Response field or case | Contract |
 | --- | --- |
@@ -269,7 +279,30 @@ Execute a read-only contract invocation against committed state. The invocation 
 | `height` | Committed snapshot height as a signed 64-bit decimal string; requests cannot select a past height |
 | `gasUsed` | Required `u64` decimal string for gas consumed by the root and child invocations; equals the selected limit on an out-of-gas fault |
 | Invalid gas limit | Zero or above the endpoint maximum returns invalid params (`-32602`) |
+| Snapshot below `minHeight` | `-32011` with `{ requested, observed }` decimal-string heights; does not wait or request a refresh |
 | No view backend | Returns `-32052` |
+
+### `groundhog_viewBatch`
+
+| Parameter | Contract |
+| --- | --- |
+| `request.calls` | Nonempty ordered array of independent calls, within the endpoint's advertised batch limits |
+| Each call | Required `contract`, 8-byte `entrypoint`, and `calldata`; optional `caller` and positive `gasLimit`, encoded as for `groundhog_view` |
+| `request.minHeight` | Optional nonnegative signed 64-bit decimal string; freshness applies to the group, never an individual call |
+
+| Response field or case | Contract |
+| --- | --- |
+| `height` | One committed snapshot height as a signed 64-bit decimal string |
+| `results` | Exactly one result per call, in input order; each contains `output`, `events`, and `gasUsed` |
+| `output` | `return`, `abort`, or `fault`, using the single-view output shape |
+| `gasUsed` | Per-call consumed gas as a `u64` decimal string |
+| Isolation | All calls read the same snapshot; simulated writes do not pass between calls |
+| Contract abort or fault | Per-call outcome, not a whole-group RPC failure |
+| Insufficient snapshot height | `-32011` with `{ requested, observed }`; no waiting or request-driven refresh |
+| Invalid request or exceeded input limits | Invalid params (`-32602`) |
+| Exhausted snapshot retries, deadline, or malformed/incomplete response | Fail the group rather than return mixed or partial results; backend work can outlive the response deadline |
+| Unsupported backend | `-32052`; a server without the method can return standard `Method not found` (`-32601`) |
+| Usage | [Read related values from one snapshot](/typescript/reads/#read-related-values-from-one-snapshot) |
 
 ### `groundhog_getBalance`
 
@@ -413,6 +446,7 @@ Standard JSON-RPC 2.0 errors apply. The gateway also defines:
 | `-32001` | TX_REJECTED | Scheduler or airdrop backend rejected the transaction |
 | `-32002` | TX_NOT_FOUND | Transaction not found |
 | `-32010` | BLOCK_NOT_FOUND | Block not found at the requested height |
+| `-32011` | VIEW_HEIGHT_UNAVAILABLE | Selected view snapshot is below `minHeight`; `data` carries `requested` and `observed` decimal-string heights |
 | `-32050` | BACKEND_UNAVAILABLE | Required backend is unavailable |
 | `-32051` | BACKEND_TIMEOUT | Backend did not respond before the deadline |
 | `-32052` | NOT_IMPLEMENTED | Method is not implemented by the backend |

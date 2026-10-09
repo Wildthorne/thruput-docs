@@ -69,12 +69,18 @@ The native tests exercise contract logic and underflow handling. The artifact te
 
 ```bash
 groundhog build
-groundhog deploy --profile devnet --fund 10 \
+groundhog deploy --estimate --profile devnet
+```
+
+Add **10 native test tokens** to the reported minimum funding in whole-token units as an example allowance for initializer storage and later writes. This is a budget, not an exact estimate of those writes or a universal requirement. Replace `TOTAL_FUNDING` with the decimal sum. The minimum alone covers only the first balance-item deposit and deployment collateral, leaving no free contract balance. See [Estimate deployment funding](/cli/deploy-and-call/#estimate-deployment-funding).
+
+```bash
+groundhog deploy --profile devnet --fund TOTAL_FUNDING \
   --init initialize --init-arg 10
 groundhog view counter get --profile devnet
 ```
 
-Funding, deployment, and initialization happen in one transaction. `10` native tokens is an example allocation, not a fixed deployment fee. Your new counter should read `10`.
+Funding, deployment, and initialization happen in one transaction. The sender still needs its own storage and scheduling capacity. Your new counter should read `10`.
 
 Save the printed deployment address. Part 2 uses this address and the contract spec produced by the build.
 
@@ -95,8 +101,10 @@ For isolated local work, follow [Run a local node](/cli/local-node/) and use its
 Follow Build a counter, part 1:
 https://docs.groundhog.dev/tutorials/build-a-counter/
 Start with groundhog new counter --template counter, without cloning an examples repo.
-Run the native and RV32 checks, build, and deploy using my
-configured Devnet account. Report the actual address, transaction hash,
+Run the native and RV32 checks, build, and read the deployment estimate.
+Add the documented storage allowance to the minimum and deploy with that
+explicit total using my configured Devnet account. Initialize atomically to 10.
+Report the actual address, transaction hash,
 and read value. Keep the generated dependency configuration and report
 failed checks rather than inventing results.
 ```
