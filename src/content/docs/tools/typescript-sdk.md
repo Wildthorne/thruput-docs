@@ -28,6 +28,7 @@ description: TypeScript client entry points, common operations, and links to foc
 | `mainnet(options)` | Requires an explicit endpoint |
 | `defineCluster(descriptor)` | Custom name, endpoint, hash pin, and expected capabilities |
 | `getChainTip()` / `getVersion()` | Current tip and release/wire identity |
+| `getChainConfig()` | Stated limits plus optional `execution` with `observedTip`, `configHash`, runtime-resolved limits, and exact `bigint` storage prices; absent execution context is not zero cost |
 | Usage | [Connect to a network](/typescript/connect/) |
 
 ## Exact Amounts and Common Types
@@ -110,8 +111,14 @@ description: TypeScript client entry points, common operations, and links to foc
 | API | Result / behavior |
 | --- | --- |
 | `getContract({ binding, address, client })` | Bound method collection |
-| `method.view(options)` | Typed value, height, and events |
-| `method.viewOutcome(options)` | `return`, `abort`, or `fault` |
+| `method.view(options)` | Typed value, height, gas use, and events; supports `minHeight` and `signal` |
+| `method.viewOutcome(options)` | `return`, `abort`, or `fault`; also supports `minHeight` |
+| `method.viewRequest({ contract, args?, caller? })` | Prepare a typed read without I/O; arguments follow the method's generated types |
+| `client.readViews({ calls, minHeight? }, options?)` | Tuple-typed outcomes in input order at one shared `height`; no splitting or separate-read fallback |
+| `client.view(request, options?)` / `client.viewBatch({ calls, minHeight? }, options?)` | Raw single/grouped simulations; `minHeight` goes on the single request or whole group |
+| `minHeight` | Optional nonnegative `bigint` freshness floor; no waiting, forced refresh, or automatic client retry |
+| `(await client.getServerLimits()).viewBatch` | Optional advertised batch limits |
+| `ViewHeightUnavailable` (`-32011`) | RPC freshness error with requested and observed heights; not a contract outcome |
 | `ContractViewError` | Contract abort or fault |
 | `ContractDecodeError` | Malformed contract data |
 | Usage | [Read contract data](/typescript/reads/), [bindings](/tools/typescript-bindings/) |

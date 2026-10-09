@@ -30,23 +30,27 @@ These commands run on your machine. You do not need to start a local blockchain.
 ## 3. Deploy to Devnet
 
 ```bash
-groundhog deploy --profile devnet --fund 10
+groundhog deploy --estimate --profile devnet
 ```
 
-Confirm the deployment. The CLI prints the contract address and saves the alias `my-counter` in the project's Devnet profile.
+Read the reported minimum funding in whole native tokens. Add **10 native test tokens** as this walkthrough's storage allowance, then replace `TOTAL_FUNDING` below with that decimal total. The allowance is an example budget, not an estimate of initializer writes or a universal requirement. These tokens have no monetary value. See [deployment estimates](/cli/deploy-and-call/#estimate-deployment-funding) for the breakdown.
 
-`--fund 10` transfers 10 native test tokens to the contract for this example's storage. These tokens have no monetary value. This is a funding amount, not a fixed deployment fee.
+```bash
+groundhog deploy --profile devnet --fund TOTAL_FUNDING \
+  --init initialize --init-arg 10
+```
+
+Confirm the deployment. Funding, deployment, and initialization happen atomically. The CLI prints the contract address and saves the alias `my-counter` in the project's Devnet profile. The sender also needs its own storage and scheduling capacity.
 
 ## 4. Change the counter
 
-Initialize this new counter, then increase it:
+Increase the counter initialized during deployment:
 
 ```bash
-groundhog call my-counter initialize 10 --profile devnet
 groundhog call my-counter increment 5 --profile devnet
 ```
 
-Confirm each call and wait for success. Run `initialize` only once for this walkthrough; this example method adds the initial amount rather than enforcing one-time initialization.
+Confirm the call and wait for success. Do not initialize again: this example method adds the initial amount rather than enforcing one-time initialization.
 
 ## 5. Read the result
 
@@ -69,8 +73,9 @@ Use the latest CLI, install the groundhog skill for this project, and read
 groundhog skill show contracts. Scaffold with --template counter. Check CLI setup and
 Devnet funding first. Scaffold my-counter, preserve its generated
 dependency and compiler settings, then build and test it.
-Deploy to Devnet with the documented contract funding, initialize
-the new counter to 10, increment by 5, and verify that its view returns 15.
+Read the deployment estimate and add the documented storage allowance to its
+minimum. Deploy with that explicit total and initialize atomically to 10,
+increment by 5, and verify that the view returns 15.
 Do not start a local node or repeat initialization on an existing counter.
 Report the actual build, test, deployment, and read results separately.
 ```

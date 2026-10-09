@@ -3,7 +3,34 @@ title: Deploy and call
 description: Deploy an artifact, fund its storage, call methods, and read committed state.
 ---
 
-Run these commands in a contract project with a built artifact and a funded account. Select the intended [profile](/cli/configuration/) explicitly. The examples use Devnet and the scaffolded counter's methods.
+Run these commands in a contract project with a built artifact. Deployment and calls need a funded account; estimating needs no signing key. Select the intended [profile](/cli/configuration/) explicitly. The examples use Devnet and the scaffolded counter's methods.
+
+## Estimate deployment funding
+
+```bash
+groundhog build
+groundhog deploy --estimate --profile devnet
+groundhog deploy --estimate --profile devnet --json
+```
+
+The estimate reads the network's authoritative execution rules and storage prices without signing or submitting. It checks the artifact, code, and memory limits and assumes a fresh, unfunded contract address. Unlike `--dry-run`, it does not prepare a signed transaction.
+
+| Report field | Meaning |
+| --- | --- |
+| `balanceDepositRaw`, `deploymentCostRaw` | First balance-item deposit and code collateral, in native-token base units |
+| `minimumFundingRaw`, `minimumFundingHog` | Their sum, as an integer base-unit string and a whole-token decimal string respectively; one native token has 10,000,000 base units |
+| `initializerFundingRaw` | `null` when an initializer is requested, because its storage is not estimated; `"0"` when none is requested |
+| `execution` | Observed committed tip, configuration hash, effective limits, and storage prices |
+
+Missing authoritative rules or prices produce an error, not a zero-cost estimate. The reading applies at its reported configuration; prices can change before inclusion. Re-estimate after rebuilding or changing networks.
+
+For deployment without initialization, the CLI can read and transfer the minimum directly:
+
+```bash
+groundhog deploy --profile devnet --fund minimum
+```
+
+The minimum leaves **zero free contract balance** for further storage. It excludes initializer writes, later storage growth, the sender's replay storage, and the sender's scheduling capacity. `--fund minimum` cannot be combined with `--init`. Use an explicit total amount when initialization or later calls need storage, as in the [counter guide](/tutorials/build-a-counter/#build-deploy-and-initialize).
 
 ## Deploy an artifact
 
@@ -14,7 +41,7 @@ groundhog deploy --profile devnet --fund 10
 
 Confirm the deployment. The CLI waits for its result, prints the deployed address, and saves an alias using the package name. For a project named `my-counter`, later commands can use that alias instead of the address.
 
-Native deployment requires an explicit `--fund` amount. It transfers native tokens from the sender to the new contract to cover deployment and state storage. `10` is an example allocation, not a fixed fee or minimum.
+Numeric `--fund` transfers exactly that many native tokens from the sender to the new contract. Set it to the estimated minimum plus an allowance for contract storage. `10` above illustrates the syntax; choose your total from the current estimate rather than treating it as a fixed fee or minimum.
 
 At a workspace root, use `-p PACKAGE`. Use `--artifact PATH` to select an artifact directly and `--alias NAME` when you want a specific alias.
 

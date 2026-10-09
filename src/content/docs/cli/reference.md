@@ -83,6 +83,8 @@ description: Groundhog CLI commands, common options, and links to task instructi
 | Command or option | Purpose | Usage |
 | --- | --- | --- |
 | `deploy --fund AMOUNT` | Deploy and fund a contract with native tokens | [Deploy and call](/cli/deploy-and-call/) |
+| `deploy --estimate [--json]` | Read deployment collateral and configuration context without loading a signing key or submitting | [Estimate funding](/cli/deploy-and-call/#estimate-deployment-funding) |
+| `deploy --fund minimum` | Fund a fresh deployment's balance-item deposit and code collateral; leaves no free balance and cannot include initialization | [Minimum funding](/cli/deploy-and-call/#estimate-deployment-funding) |
 | `deploy --init METHOD --init-arg VALUE` | Initialize atomically with deployment | [Initialization](/cli/deploy-and-call/#include-initialization) |
 | `deploy --artifact PATH --alias NAME` | Select an artifact and saved alias | [Deployment](/cli/deploy-and-call/#deploy-an-artifact) |
 | `call CONTRACT METHOD [ARGS...]` | Submit a signed contract invocation | [Calls](/cli/deploy-and-call/#submit-a-call) |
