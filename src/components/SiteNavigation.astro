@@ -5,9 +5,8 @@ const { mobile = false } = Astro.props;
 const isHome = Astro.url.pathname === '/';
 const links = [
   { label: 'About', href: '/architecture/' },
-  { label: 'Get Started', href: '/get-started/' },
   { label: 'Documentation', href: process.env.GROUNDHOG_DOCS_SNAPSHOT ? '/start/' : '/docs/' },
-  { label: 'Community', href: 'https://github.com/groundhogchain' },
+  { label: 'Community', href: 'https://github.com/thruputchain' },
 ];
 ---
 

@@ -111,7 +111,6 @@ test('mobile homepage navigation and docs sidebar/theme', async ({ page }, testI
   await page.emulateMedia({ colorScheme: 'dark' });
   const links = [
     ['About', '/docs/architecture/'],
-    ['Get Started', '/docs/get-started/'],
     ['Documentation', '/docs/get-started/'],
   ];
   for (const [name, href] of links) {
@@ -127,7 +126,7 @@ test('mobile homepage navigation and docs sidebar/theme', async ({ page }, testI
   await page.goto(origin);
   await page.getByRole('button', { name: 'Menu', exact: true }).click();
   await expect(page.locator('.sidebar .site-navigation').getByRole('link', { name: 'Community', exact: true }))
-    .toHaveAttribute('href', 'https://github.com/groundhogchain');
+    .toHaveAttribute('href', 'https://github.com/thruputchain');
   await page.locator('.sidebar').getByRole('link', { name: 'Start Building', exact: true }).click();
   await expect(page).toHaveURL(origin + '/docs/get-started/');
   await page.getByRole('button', { name: 'Menu', exact: true }).click();
@@ -193,7 +192,7 @@ test('system theme follows docs until a manual toggle persists across the dark h
   await page.emulateMedia({ colorScheme: 'dark' });
   await page.emulateMedia({ colorScheme: 'light' });
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
-  await page.getByRole('link', { name: 'Get Started', exact: true }).click();
+  await page.getByRole('link', { name: 'Start Building', exact: true }).click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
   await page.emulateMedia({ colorScheme: 'dark' });
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
@@ -208,7 +207,7 @@ test('system theme follows docs until a manual toggle persists across the dark h
   await page.getByRole('link', { name: 'Stellar Thruput homepage' }).click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   expect(await page.evaluate(() => localStorage.getItem('starlight-theme'))).toBe('light');
-  await page.getByRole('link', { name: 'Get Started', exact: true }).click();
+  await page.getByRole('link', { name: 'Start Building', exact: true }).click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
 });
 
