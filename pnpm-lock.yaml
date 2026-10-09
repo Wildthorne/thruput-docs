@@ -11,6 +11,12 @@ importers:
       '@astrojs/check':
         specifier: ^0.9.9
         version: 0.9.9(prettier@3.8.1)(typescript@5.9.3)
+      '@astrojs/markdown-remark':
+        specifier: 7.2.0
+        version: 7.2.0
+      '@astrojs/sitemap':
+        specifier: 3.7.2
+        version: 3.7.2
       '@astrojs/starlight':
         specifier: ^0.39.3
         version: 0.39.3(astro@6.4.5(@types/node@24.12.2)(rollup@4.59.0)(yaml@2.9.0))(typescript@5.9.3)

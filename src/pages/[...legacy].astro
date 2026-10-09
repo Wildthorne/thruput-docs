@@ -1,0 +1,36 @@
+---
+import type { AstroComponentFactory } from 'astro/runtime/server/index.js';
+interface Props { href?: string; Component?: AstroComponentFactory }
+import { getCollection } from 'astro:content';
+import LegacyRedirect from '../components/LegacyRedirect.astro';
+import { docsPrefix, logicalDocsPath } from '../../scripts/docs-routing.mjs';
+
+export async function getStaticPaths() {
+  // Reuse the existing fragment maps for both old root and hosted docs URLs.
+  const retired = import.meta.glob<AstroComponentFactory>([
+    './reference/cross-contract-calls.astro', './reference/error-handling.astro',
+    './programming-model/advanced.astro', './tools/groundhog-cli.astro',
+    './tutorials/develop-on-devnet.astro', './tutorials/develop-locally.astro',
+    './tutorials/build-a-swap.astro', './tutorials/design-a-swap.astro',
+    './tutorials/add-events-to-a-contract.astro',
+  ], { eager: true, import: 'default' });
+  const paths: { params: { legacy: string }, props: Props }[] = [
+    { params: { legacy: `${docsPrefix.slice(1)}${docsPrefix ? '/' : ''}start` }, props: { href: '/architecture/' } },
+    { params: { legacy: `${docsPrefix.slice(1)}${docsPrefix ? '/' : ''}start/getting-started` }, props: { href: '/get-started/contract/' } },
+  ];
+  if (docsPrefix) {
+    paths.push({ params: { legacy: 'docs' }, props: { href: '/get-started/' } });
+    for (const entry of await getCollection('docs', entry => entry.id !== '404')) {
+      paths.push({ params: { legacy: logicalDocsPath(`/${entry.id}`).slice(1) }, props: { href: `/${entry.id}/` } });
+    }
+    paths.push({ params: { legacy: 'start' }, props: { href: '/architecture/' } });
+    paths.push({ params: { legacy: 'start/getting-started' }, props: { href: '/get-started/contract/' } });
+    for (const [file, Component] of Object.entries(retired)) {
+      paths.push({ params: { legacy: `docs/${file.slice(2, -6)}` }, props: { Component } });
+    }
+  }
+  return paths;
+}
+const { href, Component } = Astro.props;
+---
+{Component ? <Component /> : <LegacyRedirect href={href!} />}

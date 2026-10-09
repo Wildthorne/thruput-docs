@@ -1,13 +1,13 @@
 import { expect, test } from '@playwright/test';
 
 const origin = 'http://127.0.0.1:4322';
-const path = '/tutorials/work-with-groundhog-from-typescript/';
+const path = '/docs/tutorials/work-with-groundhog-from-typescript/';
 const markdown = '/markdown/pages/tutorials/work-with-groundhog-from-typescript.md';
 
 for (const name of ['cli', 'contract', 'typescript', 'react']) {
   test(`copies the ${name} quickstart prompt from its coding-agent section`, async ({ page, context }) => {
     await context.grantPermissions(['clipboard-read', 'clipboard-write']);
-    await page.goto(`${origin}/get-started/${name}/`);
+    await page.goto(`${origin}/docs/get-started/${name}/`);
     const prompt = await page.locator('#use-a-coding-agent').evaluate(heading => {
       const section = heading.closest('.sl-heading-wrapper') ?? heading;
       for (let node = section.nextElementSibling; node; node = node.nextElementSibling) {
@@ -16,7 +16,7 @@ for (const name of ['cli', 'contract', 'typescript', 'react']) {
       }
       return '';
     });
-    expect(prompt).toContain(`/get-started/${name}/`);
+    expect(prompt).toContain(`/docs/get-started/${name}/`);
     await page.locator('page-actions summary').click();
     await page.getByRole('button', { name: 'Copy task prompt' }).click();
     await expect(page.locator('page-actions').getByRole('status')).toHaveText('Copied');
@@ -31,7 +31,7 @@ test('copies the exported page, Markdown link, and existing task prompt', async 
   const response = await request.get(origin + markdown);
   expect(response.ok()).toBe(true);
   const exported = await response.text();
-  expect(exported).toContain('Source: <https://docs.groundhog.dev' + path + '>');
+  expect(exported).toContain('Source: <https://thruput.network' + path + '>');
   expect(exported).toContain('groundhog codegen ts');
   expect(exported).not.toContain('Copy page');
   const more = actions.locator('summary');
@@ -64,8 +64,8 @@ test('copies the exported page, Markdown link, and existing task prompt', async 
   await expect(actions.locator('[data-copy="prompt"]')).toHaveText('Copied');
   await expect(actions.locator('[data-copy="prompt"]')).toHaveText('Copy task prompt');
   await expect(actions.getByRole('link', { name: 'View Markdown' })).toHaveAttribute('href', markdown);
-  await expect(actions.getByRole('link', { name: 'Set up your agent' })).toHaveAttribute('href', '/start/build-with-an-agent/');
-  await page.goto(origin + '/typescript/reads/');
+  await expect(actions.getByRole('link', { name: 'Set up your agent' })).toHaveAttribute('href', '/docs/start/build-with-an-agent/');
+  await page.goto(origin + '/docs/typescript/reads/');
   await page.locator('page-actions summary').click();
   await expect(page.getByRole('button', { name: 'Copy task prompt' })).toHaveCount(0);
 });
@@ -146,6 +146,6 @@ test('Markdown and setup links work without JavaScript', async ({ browser }) => 
     await expect(actions.getByRole('button', { name: 'Copy link for an agent' })).not.toBeVisible();
     await expect(actions.getByRole('link', { name: 'View Markdown' })).toBeVisible();
     await actions.getByRole('link', { name: 'Set up your agent' }).click();
-    await expect(page).toHaveURL(origin + '/start/build-with-an-agent/');
+    await expect(page).toHaveURL(origin + '/docs/start/build-with-an-agent/');
   } finally { await context.close(); }
 });

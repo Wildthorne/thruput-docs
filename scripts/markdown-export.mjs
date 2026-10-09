@@ -1,3 +1,4 @@
+import { logicalDocsPath } from './docs-routing.mjs';
 import { execFileSync } from 'node:child_process';
 import { copyFile, mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { dirname, resolve, relative, posix } from 'node:path';
@@ -12,7 +13,7 @@ const options = { extensions: [gfmToMarkdown()], bullet: '-', fences: true };
 const heading = (depth, value) => toMarkdown({ type: 'heading', depth, children: [{ type: 'text', value }] }, options);
 const listLink = (label, url) => toMarkdown({ type: 'link', url, children: [{ type: 'text', value: label }] }, options).trim();
 const relativeLink = (from, to) => posix.relative(posix.dirname(from), to);
-const markdownPath = url => `markdown/pages/${new URL(url).pathname.replace(/^\/|\/$/g, '') || 'index'}.md`;
+const markdownPath = url => `markdown/pages/${logicalDocsPath(new URL(url).pathname).replace(/^\/|\/$/g, '') || 'index'}.md`;
 const normalizedRoute = url => {
   const result = new URL(url);
   result.search = '';
@@ -133,7 +134,7 @@ export async function exportMarkdown({ directory, site, snapshot, sections = [],
     const order = new Map(entries.map((slug, index) => [normalizedRoute(new URL(slug, site)), index]));
     return { ...section, pages: [...pages.values()]
       .filter(page => page.section.id === section.id)
-      .sort((a, b) => (order.get(a.url) ?? entries.length) - (order.get(b.url) ?? entries.length)) };
+      .sort((a, b) => (order.get(normalizedRoute(new URL(logicalDocsPath(new URL(a.url).pathname), site))) ?? entries.length) - (order.get(normalizedRoute(new URL(logicalDocsPath(new URL(b.url).pathname), site))) ?? entries.length)) };
   }).filter(section => section.pages.length);
   const orderedPages = grouped.flatMap(section => section.pages);
   const index = from => `# Stellar Thruput documentation\n\n${provenance(snapshot)}` +

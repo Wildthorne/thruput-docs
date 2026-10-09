@@ -1,10 +1,12 @@
 ---
+import { docsPath } from '../../scripts/docs-routing.mjs';
 interface Props {
   href: string;
   fragmentRoutes?: Record<string, string>;
 }
 
-const { href, fragmentRoutes = {} } = Astro.props;
+const href = docsPath(Astro.props.href);
+const fragmentRoutes = Object.fromEntries(Object.entries(Astro.props.fragmentRoutes ?? {}).map(([hash, path]) => [hash, docsPath(path)]));
 ---
 
 <!doctype html>

@@ -1,17 +1,17 @@
 import { defineConfig } from "astro/config";
+import { unified } from "@astrojs/markdown-remark";
+import canonicalSitemap from "./scripts/canonical-sitemap.mjs";
 import starlight from "@astrojs/starlight";
 import { sidebar, sections, sectionForPath } from "./src/navigation.ts";
+import { remarkDocsRoutes } from "./scripts/docs-routing.mjs";
 import markdownExport from "./scripts/markdown-export.mjs";
 
 export default defineConfig({
-  site: "https://docs.groundhog.dev",
+  site: "https://thruput.network",
+  markdown: { processor: unified({ remarkPlugins: [remarkDocsRoutes] }) },
 
-  // Keep legacy entry points working as their content is consolidated.
-  redirects: {
-    "/start": "/architecture/",
-    "/start/getting-started": "/get-started/contract/",
-  },
   integrations: [
+    canonicalSitemap(),
     starlight({
       title: "Stellar Thruput",
       routeMiddleware: "./src/route-middleware.ts",

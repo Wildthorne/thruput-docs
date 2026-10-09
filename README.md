@@ -1,6 +1,23 @@
 # Stellar Thruput Developer Docs
 
-Developer documentation for the [Stellar Thruput](https://groundhog.dev) blockchain. Built with [Astro](https://astro.build) + [Starlight](https://starlight.astro.build).
+Developer documentation for the [Stellar Thruput](https://thruput.network) blockchain. Built with [Astro](https://astro.build) + [Starlight](https://starlight.astro.build).
+
+## Hosted routing
+
+The landing page is at `https://thruput.network/`. Documentation lives under
+`/docs/`, with `/docs/` opening Get Started. `www.thruput.network` redirects to
+the apex domain. The old docs domains and page URLs remain redirects, including
+legacy heading mappings. Caddy keeps the existing password gate on every route
+except `/health`.
+
+Markdown, `llms.txt`, and agent guide downloads keep their root URLs. Offline
+snapshots retain their original page paths for compatibility with the CLI.
+
+After `pnpm build`, test the production host routing with a local Caddy binary:
+
+```sh
+node scripts/smoke-host-routing.mjs /path/to/caddy
+```
 
 ## Development
 
@@ -201,7 +218,8 @@ for snapshot export verification.
 Markdown links resolve relative to their files. Legacy page and fragment
 redirects are resolved during export. The build checks those targets, then
 reparses the output to check file and fragment links. Broken links fail the
-build. Code blocks are left unchanged, including URLs inside examples.
+build. Snapshot code blocks are left unchanged, including URLs inside examples.
+Hosted pages update links to the documentation domain.
 
 The whole `markdown/` tree can be copied away from the website. With a CLI
 that supports Markdown export, use:

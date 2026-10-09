@@ -1,8 +1,9 @@
 import { expect, test } from '@playwright/test';
+import { docsText } from '../scripts/docs-routing.mjs';
 import { readFileSync } from 'node:fs';
 
 const origin = 'http://127.0.0.1:4322';
-const prompt = readFileSync(new URL('../src/content/docs/start/build-with-an-agent.md', import.meta.url), 'utf8').match(/```text\r?\n([\s\S]*?)\r?\n```/)![1];
+const prompt = docsText(readFileSync(new URL('../src/content/docs/start/build-with-an-agent.md', import.meta.url), 'utf8').match(/```text\r?\n([\s\S]*?)\r?\n```/)![1]);
 
 for (const width of [320, 1280]) {
   test(`prompt preview is complete, keyboard accessible, and copyable at ${width}px`, async ({ page, context }, info) => {
@@ -28,7 +29,7 @@ for (const width of [320, 1280]) {
     await dialog.getByRole('button', { name: 'Copy prompt', exact: true }).click();
     await expect(dialog.getByRole('button', { name: 'Copied', exact: true })).toBeVisible();
     expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(prompt);
-    await expect(dialog.getByRole('link', { name: /Follow the guided quickstart/ })).toHaveAttribute('href', '/get-started/contract/');
+    await expect(dialog.getByRole('link', { name: /Follow the guided quickstart/ })).toHaveAttribute('href', '/docs/get-started/contract/');
     await page.screenshot({ path: info.outputPath('prompt-preview.png') });
     await page.keyboard.press('Escape');
     await expect(dialog).not.toBeVisible();
@@ -43,7 +44,7 @@ test('homepage preserves technical content and prompt in Markdown without UI con
   const response = await request.get(origin + '/markdown/pages/index.md');
   expect(response.ok()).toBe(true);
   const markdown = await response.text();
-  for (const text of ['Stellar Thruput is a moonshot project', 'No decisions have been made about mainnet', 'compatible increments', '100', '+5', '+3', '+2', '110', 'No conventional gas fees', 'no monetary value', 'native tokens', 'strict_inc(amount as i128)', prompt]) expect(markdown).toContain(text);
+  for (const text of ['Stellar Thruput is a moonshot inspired by', 'It looks a decade ahead', 'Example: Three payments', 'Parallel execution. Unordered transactions.', 'Shared balances without overspending.', 'Blocks still form an ordered history', 'More compute. More throughput.', 'capacity constraint', '100', '−30', '−40', '−50', 'Admitted', 'Excluded', 'No conventional gas fees', 'available capacity allows', 'native tokens', 'One validator.', 'Many machines.', 'high performance RPC system', 'Extending it to state', '700K', '2.95M', 'Multi-machine values are estimates', 'strict_inc(amount as i128)', prompt]) expect(markdown).toContain(text);
   expect(markdown).not.toContain('Close prompt preview');
   expect(markdown).not.toContain('Preview setup prompt');
 });

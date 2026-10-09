@@ -1,4 +1,5 @@
 ---
+import { docsPath } from '../../scripts/docs-routing.mjs';
 import Search from '@astrojs/starlight/components/Search.astro';
 import SiteNavigation from './SiteNavigation.astro';
 import ThemeSelect from './ThemeSelect.astro';
@@ -10,7 +11,7 @@ import BrandIdentity from './BrandIdentity.astro';
   <SiteNavigation />
   <div class="header-actions">
     <Search />
-    <a class="build-link" href="/get-started/">Start Building</a>
+    <a class="build-link" href={docsPath('/get-started/')}>Start Building</a>
     {Astro.url.pathname !== '/' && <div class="desktop-theme"><ThemeSelect /></div>}
   </div>
 </div>
