@@ -32,8 +32,28 @@ async function filesAt(directory) {
   return files.sort();
 }
 
+/** Hosted builds may contain source files without a Git checkout. */
+export function buildProvenance(root, agentGuideCliVersion, env = process.env) {
+  if (env.GROUNDHOG_DOCS_SNAPSHOT) return JSON.parse(env.GROUNDHOG_DOCS_SNAPSHOT);
+  const git = (...args) => {
+    try {
+      return execFileSync('git', args, { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+    } catch {
+      return null;
+    }
+  };
+  const railwayRevision = env.RAILWAY_GIT_COMMIT_SHA?.trim();
+  const sourceRevision = git('rev-parse', 'HEAD') ??
+    (/^[0-9a-f]{40}$/i.test(railwayRevision ?? '') ? railwayRevision.toLowerCase() : null);
+  const status = git('status', '--porcelain', '--untracked-files=normal');
+  return { schemaVersion: 1, sourceRevision, sourceDirty: status === null ? null : status !== '', agentGuideCliVersion };
+}
+
 function provenance(snapshot) {
-  return `Documentation source: \`${snapshot.sourceRevision}\`${snapshot.sourceDirty ? ' (uncommitted preview)' : ''}.\n\n` +
+  const source = snapshot.sourceRevision
+    ? `Documentation source: \`${snapshot.sourceRevision}\`${snapshot.sourceDirty === true ? ' (uncommitted preview)' : snapshot.sourceDirty === false ? '' : ' (working-tree status unavailable)'}.`
+    : 'Documentation source revision unavailable for this build.';
+  return `${source}\n\n` +
     `Included standalone agent guide: CLI ${snapshot.agentGuideCliVersion}. This is not a version guarantee for every example. Hosted docs may be newer than this snapshot.\n\n`;
 }
 
@@ -160,12 +180,8 @@ export default function markdownExport({ sections, sectionForPath }) {
       'astro:config:done': ({ config: resolved }) => { config = resolved; },
       'astro:build:done': async ({ dir, logger }) => {
         const root = fileURLToPath(config.root);
-        const git = (...args) => execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim();
         const guide = JSON.parse(await readFile(resolve(root, 'public/agents/current.json'), 'utf8'));
-        const snapshot = process.env.GROUNDHOG_DOCS_SNAPSHOT ? JSON.parse(process.env.GROUNDHOG_DOCS_SNAPSHOT) : {
-          schemaVersion: 1, sourceRevision: git('rev-parse', 'HEAD'),
-          sourceDirty: git('status', '--porcelain', '--untracked-files=normal') !== '', agentGuideCliVersion: guide.version,
-        };
+        const snapshot = buildProvenance(root, guide.version);
         const count = await exportMarkdown({ directory: fileURLToPath(dir), site: config.site,
           snapshot, sections, sectionForPath });
         logger.info(`Exported ${count} Markdown pages, section bundles, and llms indexes.`);
