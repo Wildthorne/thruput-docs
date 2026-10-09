@@ -11,6 +11,20 @@ pnpm build         # Production build to dist/
 pnpm preview       # Preview production build locally
 ```
 
+### Hosted builds without Git
+
+The normal site build also works from a source archive without `.git` or the Git
+executable. Markdown exports use Git revision and working-tree status when
+available, otherwise Railway's `RAILWAY_GIT_COMMIT_SHA` for GitHub-triggered
+deployments. If no valid revision is supplied, the export says it is unavailable.
+Unavailable revision/status fields are `null` in the hosted Markdown manifest;
+a deployment commit alone does not establish a clean working tree.
+
+`node scripts/smoke-gitless-build.mjs` checks full site builds with and without
+Railway commit metadata in a temporary copy that has no Git checkout.
+Release snapshot builds below still require a Git checkout and keep their
+strict source-identity and packaging checks.
+
 ## Documentation snapshot workflow
 
 The site is the producer for `groundhog docs`. Its normal Astro/Starlight build
