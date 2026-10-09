@@ -41,16 +41,8 @@ const steps = [
             <DotField />
             <div class="home-container hero-content">
                 <h1 id="_top">
-                    The blockchain built <br />
-                    <span class="hero-final-line">
-                        for{" "}
-                        <span class="abundance">
-                            abundance
-                            <span class="hero-cursor" aria-hidden="true">
-                                _
-                            </span>
-                        </span>
-                    </span>
+                    Blockchain technology <br />
+                    <span class="hero-final-line">built for <span class="abundance">abundance<span class="hero-cursor" aria-hidden="true">_</span></span></span>
                 </h1>
                 <p class="hero-description">
                     Parallel execution. Unordered transactions. <br />
@@ -88,10 +80,11 @@ const steps = [
                         need.
                     </p>
                     <p>
-                        Its starting point is blocks of unordered transactions.
-                        Typed storage lets compatible
-                        changes combine, while the runtime enforces constraints
-                        across the block.
+                        Thruput removes transaction order within each block to
+                        unlock parallel execution, even across shared balances.
+                        Typed storage lets compatible changes combine, while
+                        the runtime enforces application constraints and
+                        prevents overspending.
                     </p>
                     <p>
                         Example: Three payments read the same starting balance of 100.
@@ -119,16 +112,16 @@ const steps = [
                     <h2 id="differences">More compute. More throughput.</h2>
                     <p>
                         The bet is that removing transaction order within
-                        blocks can unlock far more computation for smart contracts.
-                        Higher throughput follows from the same design: compatible
-                        transactions can execute in parallel, even when they share
-                        state.
+                        blocks can unlock far more computation for smart contracts,
+                        because compatible transactions can run together instead
+                        of taking turns.
+                        Work pushed offchain by compute limits could move onchain.
                     </p>
                     <p>
-                        Match orders, resolve a game turn, or run an auction
-                        alongside the assets it moves. The aim is to give
-                        applications room to do much more, while letting more of
-                        them run together.
+                        Higher throughput follows from the same design, even
+                        across shared state. The aim is a new baseline: if an
+                        application makes sense onchain, compute and throughput
+                        should not hold it back.
                     </p>
                 </div>
                 <div class="difference-list">
@@ -176,9 +169,10 @@ const steps = [
                         <div>
                             <h3>Balance-based capacity</h3>
                             <p>
-                                The goal is to get as much work done as available
-                                capacity allows. Under load, unlocked native-token
-                                balances determine each account's share of
+                                Thruput tries to get as much work done as capacity
+                                allows, instead of rationing it. Under load,
+                                unlocked native-token balances determine each
+                                account's share of
                                 scheduling capacity over time. A root transaction's
                                 declared gas limit determines how much capacity
                                 it uses.
@@ -347,7 +341,7 @@ const steps = [
     }
     .home-page h1 {
         margin: 1.5rem 0;
-        font-size: clamp(2.0625rem, 6vw, 4.5rem);
+        font-size: clamp(1.625rem, 6vw, 4.5rem);
         font-weight: 400;
         line-height: 1.1;
         letter-spacing: -0.06em;

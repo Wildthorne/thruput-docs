@@ -63,7 +63,7 @@ for (const width of [320, 375, 701, 800, 1024, 1280, 1920]) {
     await page.goto(origin);
     await page.evaluate(() => document.fonts.ready);
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
-    await expect(page.locator('h1')).toContainText('The blockchain built for');
+    await expect(page.locator('h1')).toContainText('Blockchain technology built for');
     await expect(page.locator('h1')).toContainText('abundance');
     await expect(page.locator('[id="_top"]')).toHaveCount(1);
     for (const title of ['Payments need rules. Do they need an order?', 'More compute. More throughput.', 'One validator. Many machines.', 'Write Rust. Build something you can use.']) {
