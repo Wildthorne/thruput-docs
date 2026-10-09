@@ -121,7 +121,7 @@ A receipt proves that the transaction committed. Only `status.result: "ok"` prov
 
 ### `groundhog_getTransactionStatus`
 
-Check committed history first, then the scheduler mempool when needed.
+Check committed history first, then the scheduler's retained outcomes when needed.
 
 | Parameter | Type | Description |
 | --- | --- | --- |
@@ -132,13 +132,21 @@ Check committed history first, then the scheduler mempool when needed.
 | `status` | Meaning |
 | --- | --- |
 | `pending` | In the scheduler, not committed |
-| `committed` | Included in a block; includes `height` |
+| `committed` | Included in a block; scheduler commitment can omit `height`; indexed commitment includes the actual height as a decimal string, including `"0"` |
 | `invalid` | Rejected; includes `reason` |
 | `recentFailure` | Recent two-phase-commit conflict; includes `attemptHeight` and `conflict` |
+| `retry` | Scheduler processing failed; includes `error`; resubmitting the same signed transaction may succeed |
+| `dropped` | Scheduler processing failed permanently; includes `error`; modify the transaction before resubmitting |
 | `unknown` | Absent from both scheduler and committed history |
 | `other` | Status from a newer server version |
 
 `recentFailure` is advisory. A later retry of the same transaction may commit. If the scheduler is unavailable and committed history has no record, the gateway returns `BACKEND_UNAVAILABLE` instead of `unknown`.
+
+| Scheduler error field | Contract |
+| --- | --- |
+| `error.source` | `auth`, `scheduler`, `executor`, or `other` |
+| `error.code` | Signed 32-bit JSON number from `AuthErrorCode`, `SchedulerErrorCode`, or `ExecResult` for the indicated source |
+| Usage | [Handle scheduler processing errors](/typescript/transaction-status/#handle-scheduler-processing-errors) |
 
 ### `groundhog_chainTip`
 

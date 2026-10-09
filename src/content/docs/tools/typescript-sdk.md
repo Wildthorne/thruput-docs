@@ -73,10 +73,12 @@ description: TypeScript client entry points, common operations, and links to foc
 
 | API / error | Meaning |
 | --- | --- |
-| `getTransactionStatus(hash)` | One status lookup |
+| `getTransactionStatus(hash)` | One status lookup; committed `height` is optional |
 | `getTransactionReceipt(hash)` | One committed-receipt lookup; `null` when unavailable |
-| `waitForTransactionReceipt(hash, options?)` | Wait for a receipt, including failed execution |
+| `waitForTransactionReceipt(hash, options?)` | Wait for a receipt, including failed execution; throws on `retry` or `dropped`, never resubmits |
 | `waitForExecution(client, hash, options?)` | Wait and require successful execution |
+| `TransactionProcessingError` | Scheduler `retry` or `dropped` outcome; retains `txHash`, `status`, and `error` |
+| `SchedulerTransactionError` | `source`: `auth`, `scheduler`, `executor`, or `other`; `code`: signed 32-bit number; unknown sources map to `other` |
 | `TransactionExecutionError` | Failed committed `receipt` |
 | `TransactionObservationError` | Known `txHash` plus observation and optional submission causes |
 | `ExecutionDecodeError` | Successful receipt whose child return data failed decoding |

@@ -35,12 +35,34 @@ This performs one status check. `waitForTransactionReceipt(hash)` polls for a re
 | Status | Application meaning |
 | --- | --- |
 | `pending` | The gateway knows the transaction; keep waiting |
-| `committed` | Fetch the receipt and check execution |
+| `committed` | Fetch the receipt and check execution; status `height` can be absent until indexing supplies it |
 | `invalid` | Show the reported reason |
 | `recentFailure` | Advisory failure of an attempt; the transaction can still commit |
+| `retry` | Scheduler processing failed; resubmitting the same signed transaction may succeed |
+| `dropped` | Scheduler processing failed permanently; modify the transaction before resubmitting |
 | `unknown` or `other` | No conclusive successful or failed execution result |
 
 A timeout or canceled observation does not cancel onchain execution. Query the original hash on the original network rather than automatically signing a replacement.
+
+## Handle scheduler processing errors
+
+`waitForTransactionReceipt()` throws `TransactionProcessingError` on `retry` or `dropped`. It stops polling and never resubmits. Keep the hash, status, and scheduler diagnostics:
+
+```ts
+import { TransactionProcessingError } from "@groundhogchain/client";
+
+try {
+  const receipt = await client.waitForTransactionReceipt(hash);
+  console.log("Execution succeeded:", receipt.execResult === ExecResult.ExecResultOK);
+} catch (error) {
+  if (error instanceof TransactionProcessingError) {
+    console.error({ txHash: error.txHash, status: error.status, error: error.error });
+  }
+  throw error;
+}
+```
+
+`error.error` is a `SchedulerTransactionError`: `source` is `auth`, `scheduler`, `executor`, or `other`, and `code` is a signed 32-bit number. Interpret the code using that source's protocol error enum. The client maps unrecognized sources to `other` and preserves the code.
 
 ## Handle execution-helper errors
 
