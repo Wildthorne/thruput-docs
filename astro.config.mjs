@@ -30,7 +30,7 @@ export default defineConfig({
         {
           icon: "github",
           label: "GitHub",
-          href: "https://github.com/groundhogchain",
+          href: "https://github.com/thruputchain",
         },
       ],
       sidebar,
