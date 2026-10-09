@@ -1,0 +1,94 @@
+---
+const counts = [1, 3, 5];
+const machines = [1, 2, 3, 4, 5];
+---
+
+<validator-scale>
+    <figure aria-label="One validator with multiple contract executor machines">
+        <div class="diagram-toolbar">
+            <span class="boundary-label"><span aria-hidden="true">●</span> One validator</span>
+            <div class="machine-controls" role="group" aria-label="Executor machines" hidden>
+                <span aria-hidden="true">Executor machines</span>
+                {counts.map(count => <button type="button" data-count={count} aria-label={`${count} executor ${count === 1 ? 'machine' : 'machines'}`} aria-pressed={count === 5 ? 'true' : 'false'}>{count}</button>)}
+            </div>
+        </div>
+        <div class="validator-boundary">
+            <div class="services">
+                <div class="service"><span>Coordinator</span><small>Consensus with other validators</small></div>
+                <div class="service"><span>Scheduler</span><small>Distribute transaction batches</small></div>
+                <div class="service"><span>Authentication</span><small>Check signatures and claims</small></div>
+            </div>
+            <div class="rpc-bus"><span>Internal RPC</span></div>
+            <div class="machines" role="list" aria-label="Contract executor machines">
+                {machines.map(machine => <div class="machine" role="listitem">
+                    <div class="machine-heading"><span>Machine {String(machine).padStart(2, '0')}</span><span class="machine-light" aria-hidden="true"></span></div>
+                    <div class="compute-grid" aria-hidden="true">{Array.from({ length: 16 }, () => <span />)}</div>
+                    <strong>Contract executor</strong>
+                    <span class="machine-detail">Run contracts in parallel</span>
+                </div>)}
+            </div>
+            <div class="state"><span>State</span><small>Shared snapshots and compatible changes</small></div>
+        </div>
+    </figure>
+</validator-scale>
+
+<style>
+    validator-scale { display: block; min-width: 0; }
+    figure { margin: 0; }
+    .diagram-toolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; margin-bottom: 1rem; }
+    .boundary-label { display: flex; align-items: center; gap: .625rem; font: 400 .875rem/1.5 var(--sl-font-mono); }
+    .boundary-label > span { color: var(--brand-accent); font-size: .625rem; }
+    .machine-controls { display: flex; align-items: center; gap: .375rem; }
+    .machine-controls[hidden] { display: none; }
+    .machine-controls > span { margin-right: .5rem; color: var(--brand-muted); font-size: .8125rem; }
+    button { min-width: 2.75rem; min-height: 2.75rem; border: 1px solid var(--brand-border); border-radius: .25rem; background: var(--brand-background); color: var(--brand-muted); font: 400 .875rem/1 var(--sl-font-mono); cursor: pointer; }
+    button:hover { color: var(--brand-foreground); border-color: var(--brand-muted); }
+    button[aria-pressed='true'] { background: var(--brand-accent); color: var(--brand-background); border-color: var(--brand-accent); }
+    button:focus-visible { outline: 2px solid var(--brand-accent); outline-offset: 3px; }
+    .validator-boundary { padding: 1.25rem; border: 1px solid var(--brand-border); border-radius: .375rem; background: var(--brand-surface); }
+    .services { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
+    .service { display: flex; flex-direction: column; gap: .375rem; padding: .75rem; border: 1px solid var(--brand-border); border-radius: .25rem; background: var(--brand-background); }
+    .service > span, .state > span { font-size: .9375rem; }
+    small { color: var(--brand-muted); font-size: .8125rem; line-height: 1.5; }
+    .rpc-bus { display: flex; align-items: center; gap: 1rem; margin-block: 1rem; color: var(--brand-accent); font: 400 .75rem/1.5 var(--sl-font-mono); }
+    .rpc-bus::before, .rpc-bus::after { content: ''; height: 1px; flex: 1; background: var(--brand-accent); opacity: .5; }
+    .machines { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 1rem; }
+    .machine { min-width: 0; padding: .75rem; border: 1px solid var(--brand-border); border-radius: .25rem; background: var(--brand-background); }
+    .machine[hidden] { display: none; }
+    .machine-heading { display: flex; align-items: center; justify-content: space-between; gap: .5rem; color: var(--brand-muted); font: 400 .75rem/1.5 var(--sl-font-mono); }
+    .machine-light { flex-shrink: 0; width: .375rem; height: .375rem; background: var(--brand-accent); border-radius: 50%; }
+    .compute-grid { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: .25rem; margin-block: .75rem; }
+    .compute-grid > span { height: .375rem; background: var(--brand-accent); opacity: .5; border-radius: 1px; }
+    .compute-grid > span:nth-child(3n) { opacity: .3; }
+    .machine strong { display: block; font-size: .875rem; font-weight: 400; }
+    .machine-detail { display: block; margin-top: .375rem; color: var(--brand-muted); font-size: .75rem; line-height: 1.5; }
+    .state { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: .5rem 1rem; margin-top: 1rem; padding: .625rem 1rem; border: 1px solid var(--brand-border); border-radius: .25rem; }
+    @media (max-width: 700px) {
+        .validator-boundary { padding: 1rem; }
+        .services { grid-template-columns: 1fr; gap: .625rem; }
+        .service { padding: .75rem; }
+        .machines { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .625rem; }
+        .machine { padding: .75rem; }
+        .machine-heading { font-size: .6875rem; }
+        .machine-controls > span { margin-right: .25rem; }
+    }
+</style>
+
+<script>
+    class ValidatorScale extends HTMLElement {
+        connectedCallback() {
+            const controls = this.querySelector<HTMLElement>('.machine-controls')!;
+            const buttons = [...this.querySelectorAll<HTMLButtonElement>('button')];
+            const machines = [...this.querySelectorAll<HTMLElement>('.machine')];
+            buttons.forEach(button => {
+                button.onclick = () => {
+                    const count = Number(button.dataset.count);
+                    machines.forEach((machine, index) => { machine.hidden = index >= count; });
+                    buttons.forEach(item => { item.setAttribute('aria-pressed', String(item === button)); });
+                };
+            });
+            controls.hidden = false;
+        }
+    }
+    if (!customElements.get('validator-scale')) customElements.define('validator-scale', ValidatorScale);
+</script>

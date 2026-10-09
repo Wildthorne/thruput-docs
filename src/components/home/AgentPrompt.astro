@@ -1,9 +1,11 @@
 ---
+import { docsPath, docsText } from '../../../scripts/docs-routing.mjs';
 import { Icon } from '@astrojs/starlight/components';
 import CopyIcon from '../CopyIcon.astro';
 import onboarding from '../../content/docs/start/build-with-an-agent.md?raw';
-const prompt = onboarding.match(/```text\r?\n([\s\S]*?)\r?\n```/)?.[1];
-if (!prompt) throw new Error('Agent onboarding must include a text prompt.');
+const rawPrompt = onboarding.match(/```text\r?\n([\s\S]*?)\r?\n```/)?.[1];
+if (!rawPrompt) throw new Error('Agent onboarding must include a text prompt.');
+const prompt = docsText(rawPrompt);
 ---
 
 <home-agent-prompt data-local-snapshot={process.env.GROUNDHOG_DOCS_SNAPSHOT ? 'true' : undefined} role="group" aria-labelledby="install-label">
@@ -21,7 +23,7 @@ if (!prompt) throw new Error('Agent onboarding must include a text prompt.');
       <p id="prompt-outcome">Install the tools, fund a Devnet wallet, and verify a counter value of 15 using the CLI.</p>
       <textarea name="agent-prompt" aria-label="Full agent prompt" readonly rows="13">{prompt}</textarea>
       <p data-dialog-feedback role="status" aria-live="polite"></p>
-      <div class="dialog-actions"><button type="button" class="copy-button primary" data-copy><CopyIcon /><span data-button-label>Copy prompt</span></button><a href="/get-started/contract/">Follow the guided quickstart ↗</a></div>
+      <div class="dialog-actions"><button type="button" class="copy-button primary" data-copy><CopyIcon /><span data-button-label>Copy prompt</span></button><a href={docsPath('/get-started/contract/')}>Follow the guided quickstart ↗</a></div>
     </div>
   </dialog>
   <noscript><details><summary>View full prompt to copy manually</summary><textarea name="agent-prompt-fallback" aria-label="Full agent prompt" readonly rows="13">{prompt}</textarea></details></noscript>

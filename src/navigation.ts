@@ -1,3 +1,4 @@
+import { docsPath, logicalDocsPath, docsPrefix } from '../scripts/docs-routing.mjs';
 interface NavigationGroup {
   label: string;
   items: string[];
@@ -112,10 +113,14 @@ export const sections: DocumentationSection[] = [
   },
 ];
 
-export const sidebar = sections.map(({ label, items }) => ({ label, items, collapsed: true }));
+const routeItem = (item: string | NavigationGroup | NavigationLink): string | NavigationGroup | NavigationLink =>
+  typeof item === 'string' ? `${docsPrefix.slice(1)}${docsPrefix ? '/' : ''}${item}` :
+  'items' in item ? { ...item, items: item.items.map(value => routeItem(value) as string) } :
+  { ...item, link: docsPath(item.link) };
+export const sidebar = sections.map(({ label, items }) => ({ label, items: items.map(routeItem), collapsed: true }));
 
 export function sectionForPath(pathname: string): DocumentationSection | undefined {
-  const slug = pathname.replace(/^\/+|\/+$/g, '');
+  const slug = logicalDocsPath(pathname).replace(/^\/+|\/+$/g, '');
   // Exact ownership takes precedence over the root while legacy routes remain.
   return sections.find(section => section.items.some(item =>
     typeof item === 'string' ? item === slug : 'items' in item && item.items.includes(slug)

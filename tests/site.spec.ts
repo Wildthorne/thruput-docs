@@ -1,10 +1,11 @@
 import { test as base, expect, type Page } from '@playwright/test';
+import { docsText } from '../scripts/docs-routing.mjs';
 import { readFileSync } from 'node:fs';
 
 const origin = 'http://127.0.0.1:4322';
-const docs = '/start/build-with-an-agent/';
+const docs = '/docs/start/build-with-an-agent/';
 const onboarding = readFileSync(new URL('../src/content/docs/start/build-with-an-agent.md', import.meta.url), 'utf8');
-const prompt = onboarding.match(/```text\r?\n([\s\S]*?)\r?\n```/)![1];
+const prompt = docsText(onboarding.match(/```text\r?\n([\s\S]*?)\r?\n```/)![1]);
 const test = base.extend({
   page: async ({ page }, use) => {
     const errors: string[] = [];
@@ -65,7 +66,7 @@ for (const width of [320, 375, 701, 800, 1024, 1280, 1920]) {
     await expect(page.locator('h1')).toContainText('The blockchain built for');
     await expect(page.locator('h1')).toContainText('abundance');
     await expect(page.locator('[id="_top"]')).toHaveCount(1);
-    for (const title of ['Shared state. Compatible changes.', 'More room for application logic.', 'Write Rust. Build something you can use.']) {
+    for (const title of ['Payments need rules. Do they need an order?', 'More compute. More throughput.', 'One validator. Many machines.', 'Write Rust. Build something you can use.']) {
       await expect(page.getByRole('heading', { name: title, level: 2 })).toBeVisible();
     }
     await expect(page.locator('.workflow a')).toHaveCount(5);
@@ -109,9 +110,9 @@ test('mobile homepage navigation and docs sidebar/theme', async ({ page }, testI
   await page.setViewportSize({ width: 375, height: 812 });
   await page.emulateMedia({ colorScheme: 'dark' });
   const links = [
-    ['About', '/architecture/'],
-    ['Get Started', '/get-started/'],
-    ['Documentation', '/architecture/'],
+    ['About', '/docs/architecture/'],
+    ['Get Started', '/docs/get-started/'],
+    ['Documentation', '/docs/get-started/'],
   ];
   for (const [name, href] of links) {
     await page.goto(origin);
@@ -128,14 +129,14 @@ test('mobile homepage navigation and docs sidebar/theme', async ({ page }, testI
   await expect(page.locator('.sidebar .site-navigation').getByRole('link', { name: 'Community', exact: true }))
     .toHaveAttribute('href', 'https://github.com/groundhogchain');
   await page.locator('.sidebar').getByRole('link', { name: 'Start Building', exact: true }).click();
-  await expect(page).toHaveURL(origin + '/get-started/');
+  await expect(page).toHaveURL(origin + '/docs/get-started/');
   await page.getByRole('button', { name: 'Menu', exact: true }).click();
   const sidebar = page.locator('.sidebar');
   await expect(sidebar.getByRole('link', { name: 'Build with an Agent', exact: true })).toBeVisible();
   await sidebar.getByRole('button', { name: 'Switch to light mode', exact: true }).click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
   await sidebar.getByRole('link', { name: 'Contract quickstart', exact: true }).click();
-  await expect(page).toHaveURL(origin + '/get-started/contract/');
+  await expect(page).toHaveURL(origin + '/docs/get-started/contract/');
   await expect(page.locator('body')).not.toHaveAttribute('data-mobile-menu-expanded', '');
 });
 
@@ -274,7 +275,7 @@ test('header and page titles use Stellar Thruput while preserving the exact CLI 
     await expect(brand).toHaveAttribute('href', '/');
     await expect(page).toHaveTitle(/Stellar Thruput/);
     await expect(page.locator('header').getByRole('link', { name: 'About', exact: true }))
-      .toHaveAttribute('href', '/architecture/');
+      .toHaveAttribute('href', '/docs/architecture/');
     if (route === '/') {
       await expect(page.locator('#install-label')).toHaveText('Start with your coding agent');
       await expect(page.locator('[data-preview-text]')).toHaveText(prompt);
@@ -285,10 +286,10 @@ test('header and page titles use Stellar Thruput while preserving the exact CLI 
 
 test('homepage learn-more links navigate to real docs and valid anchors', async ({ page }) => {
   for (const [feature, href, title] of [
-    ['Explore the execution model', '/how-it-works/execution-model/', 'Parallel Execution'],
-    ['Understand gas limits', '/programming-model/execution/#gas', 'Contract Execution'],
-    ['Choose your storage', '/programming-model/storage-types/', 'Storage Types'],
-    ['Build a counter, step by step', '/tutorials/build-a-counter/', 'Build a counter, part 1: Contract'],
+    ['Explore the execution model', '/docs/how-it-works/execution-model/', 'Parallel Execution'],
+    ['Understand gas limits', '/docs/programming-model/execution/#gas', 'Contract Execution'],
+    ['Choose your storage', '/docs/programming-model/storage-types/', 'Storage Types'],
+    ['Build a counter, step by step', '/docs/tutorials/build-a-counter/', 'Build a counter, part 1: Contract'],
   ]) {
     await page.goto(origin);
     const link = page.getByRole('link', { name: feature, exact: true });
@@ -398,7 +399,7 @@ test('no JavaScript homepage is dark and offers manual copying', async ({ browse
     await expect(page.getByRole('textbox', { name: 'Full agent prompt' })).toBeVisible();
     await expect(page.locator('[id="_top"]')).toHaveCount(1);
     await page.getByRole('navigation', { name: 'Site navigation', exact: true }).getByRole('link', { name: 'Documentation' }).click();
-    await expect(page).toHaveURL(origin + '/get-started/');
+    await expect(page).toHaveURL(origin + '/docs/get-started/');
   } finally {
     await context.close();
   }

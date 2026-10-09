@@ -1,25 +1,25 @@
 ---
 const transactions = [
-  { name: 'A', delta: 5, incoming: 'M150 0 C150 30 50 30 50 72', outgoing: 'M50 0 C50 42 150 42 150 72' },
-  { name: 'B', delta: 3, incoming: 'M150 0 L150 72', outgoing: 'M150 0 L150 72' },
-  { name: 'C', delta: 2, incoming: 'M150 0 C150 30 250 30 250 72', outgoing: 'M250 0 C250 42 150 42 150 72' },
+  { name: 'A', amount: 30, admitted: true, incoming: 'M150 0 C150 30 50 30 50 72', outgoing: 'M50 0 C50 42 150 42 150 72' },
+  { name: 'B', amount: 40, admitted: true, incoming: 'M150 0 L150 72', outgoing: 'M150 0 L150 72' },
+  { name: 'C', amount: 50, admitted: false, incoming: 'M150 0 C150 30 250 30 250 72', outgoing: 'M250 0 L250 24' },
 ];
 ---
 
 <shared-state-animation data-phase="complete">
-  <figure class="state-diagram" aria-label="Three compatible counter increments combine from a shared snapshot of 100 into 110">
-    <div class="state initial"><span>Shared snapshot</span><strong>100</strong></div>
+  <figure class="state-diagram" aria-label="One possible block: payments of 30 and 40 share a balance of 100, leaving 30. A payment of 50 is excluded to prevent overspending.">
+    <div class="state initial"><span>Starting balance</span><strong>100</strong></div>
     <svg class="connections" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 72" preserveAspectRatio="none" aria-hidden="true">
       {transactions.map(({ incoming }) => <g><path d={incoming} /><circle r="3" data-incoming-pulse opacity="0" /></g>)}
     </svg>
     <div class="changes">
-      {transactions.map(({ name, delta }) => <div class="transaction"><span>Tx {name}</span><strong>+{delta}</strong><div class="track" aria-hidden="true"><span data-progress></span></div></div>)}
+      {transactions.map(({ name, amount, admitted }) => <div class="transaction" data-admitted={String(admitted)}><span>Payment {name}</span><strong>−{amount}</strong><div class="track" aria-hidden="true"><span data-progress></span></div><span class="outcome">{admitted ? 'Admitted' : 'Excluded'}</span></div>)}
     </div>
     <svg class="connections" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 72" preserveAspectRatio="none" aria-hidden="true">
-      {transactions.map(({ outgoing }) => <g><path d={outgoing} /><circle r="3" data-outgoing-pulse opacity="0" /></g>)}
+      {transactions.map(({ outgoing, admitted }) => <g data-admitted={String(admitted)}><path d={outgoing} /><circle r="3" data-outgoing-pulse opacity="0" /></g>)}
     </svg>
-    <div class="state result"><span>Next committed state</span><strong data-result>110</strong></div>
-    <div class="controls"><p data-stage>100 + 5 + 3 + 2 = 110</p><button type="button" aria-label="Pause counter animation" hidden>Pause</button></div>
+    <div class="state result"><span>Committed balance</span><strong data-result>30</strong></div>
+    <div class="controls"><p data-stage>One valid outcome: 100 − 30 − 40 = 30</p><button type="button" aria-label="Pause payment animation" hidden>Pause</button></div>
   </figure>
 </shared-state-animation>
 
@@ -37,6 +37,10 @@ const transactions = [
   .track { width: 75%; height: 3px; overflow: hidden; background: var(--brand-border); }
   [data-progress] { display: block; width: 100%; height: 100%; background: var(--brand-accent); transform-origin: left; }
   .changes strong, [data-phase='complete'] .result strong { color: var(--brand-accent); }
+  .transaction .outcome { font-size: .75rem; visibility: hidden; }
+  [data-phase='merge'] .outcome, [data-phase='complete'] .outcome { visibility: visible; }
+  [data-admitted='false'] path { stroke-dasharray: 3 4; }
+  [data-phase='merge'] .transaction[data-admitted='false'] strong, [data-phase='complete'] .transaction[data-admitted='false'] strong { color: var(--brand-muted); }
   .result strong { min-width: 3ch; text-align: center; }
   .controls { display: flex; align-items: center; justify-content: space-between; gap: .75rem; min-height: 3rem; margin-top: .75rem; }
   .controls p { margin: 0; color: var(--brand-muted); font-size: .8125rem; }
@@ -87,13 +91,13 @@ const transactions = [
         bars.forEach((bar, index) => {
           bar.style.transform = `scaleX(${progress})`;
           position(incoming[index]!, (t - 250) / 900);
-          position(outgoing[index]!, (t - finish) / 850);
+          position(outgoing[index]!, outgoing[index]!.dot.parentElement?.getAttribute('data-admitted') === 'true' ? (t - finish) / 850 : -1);
         });
         const phase = t < 1_200 ? 'read' : t < 3_400 ? 'execute' : t < 4_500 ? 'merge' : 'complete';
         if (this.dataset.phase !== phase) this.dataset.phase = phase;
-        const value = phase === 'complete' ? '110' : '—';
+        const value = phase === 'complete' ? '30' : '—';
         if (result.textContent !== value) result.textContent = value;
-        const label = { read: 'Read one snapshot', execute: 'Execute in parallel', merge: 'Merge compatible changes', complete: '100 + 5 + 3 + 2 = 110' }[phase];
+        const label = { read: 'Read the same balance of 100', execute: 'Execute all three payments in parallel', merge: 'Admit 30 and 40; exclude 50', complete: 'One valid outcome: 100 − 30 − 40 = 30' }[phase];
         if (stage.textContent !== label) stage.textContent = label;
       };
 
@@ -118,7 +122,7 @@ const transactions = [
       button.addEventListener('click', () => {
         paused = !paused;
         button.textContent = paused ? 'Resume' : 'Pause';
-        button.setAttribute('aria-label', `${paused ? 'Resume' : 'Pause'} counter animation`);
+        button.setAttribute('aria-label', `${paused ? 'Resume' : 'Pause'} payment animation`);
         sync();
       }, { signal: controller.signal });
       motion.addEventListener('change', sync, { signal: controller.signal });

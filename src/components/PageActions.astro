@@ -1,11 +1,13 @@
 ---
+import { docsPath, docsText, logicalDocsPath } from '../../scripts/docs-routing.mjs';
 import Bot from '../assets/bot.svg';
 import { Icon } from '@astrojs/starlight/components';
-const route = Astro.url.pathname.replace(/^\/|\/$/g, '');
+const route = logicalDocsPath(Astro.url.pathname).replace(/^\/|\/$/g, '');
 const markdownUrl = `/markdown/pages/${route || 'index'}.md`;
 const body = Astro.locals.starlightRoute.entry.body ?? '';
 const agentSection = body.split(/^## (?:Work with an agent|Use a coding agent)\s*$/m)[1]?.split(/^## /m)[0];
-const prompt = agentSection?.match(/```text\r?\n([\s\S]*?)\r?\n```/)?.[1];
+const rawPrompt = agentSection?.match(/```text\r?\n([\s\S]*?)\r?\n```/)?.[1];
+const prompt = rawPrompt && docsText(rawPrompt);
 ---
 
 <page-actions data-markdown-url={markdownUrl} data-local-snapshot={process.env.GROUNDHOG_DOCS_SNAPSHOT ? 'true' : undefined} data-pagefind-ignore>
@@ -16,7 +18,7 @@ const prompt = agentSection?.match(/```text\r?\n([\s\S]*?)\r?\n```/)?.[1];
         <button type="button" data-copy="link" hidden><span data-label>Copy link for an agent</span><Icon name="approve-check" size="1rem" /></button>
         {prompt && <button type="button" data-copy="prompt" hidden><span data-label>Copy task prompt</span><Icon name="approve-check" size="1rem" /></button>}
         <a href={markdownUrl}>View Markdown</a>
-        <a href="/start/build-with-an-agent/">Set up your agent</a>
+        <a href={docsPath('/start/build-with-an-agent/')}>Set up your agent</a>
         <p class="feedback" role="status" aria-live="polite"></p>
       </div>
     </details>
