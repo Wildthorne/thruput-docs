@@ -13,8 +13,8 @@ Use the public client from [Connect to a network](/typescript/connect/). Create 
 import { ExecResult, hashFromHex } from "@groundhogchain/client";
 import { client } from "./client.js";
 
-const text = process.env.GROUNDHOG_TX_HASH;
-if (!text) throw new Error("Set GROUNDHOG_TX_HASH to the submitted transaction hash");
+const text = process.env.THRUPUT_TX_HASH;
+if (!text) throw new Error("Set THRUPUT_TX_HASH to the submitted transaction hash");
 const hash = hashFromHex(text);
 const status = await client.getTransactionStatus(hash);
 

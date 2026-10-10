@@ -6,9 +6,9 @@ description: Diagnose configuration, build, runtime, funding, and transaction-ob
 Start with the command's error and the selected environment:
 
 ```bash
-groundhog --version
-groundhog status --profile devnet
-groundhog config get devnet --sources
+thruput --version
+thruput status --profile devnet
+thruput config get devnet --sources
 ```
 
 For local work, use `--profile local`. `status` can exit nonzero when it finds warnings; inspect the findings rather than assuming the report itself failed.
@@ -19,19 +19,19 @@ Complete [Cargo access setup](/cli/install/#configure-cargo-access) in the termi
 
 ## The wrong profile or account is selected
 
-An explicit `--profile` wins over `GROUNDHOG_PROFILE`, which wins over project and global defaults. A profile-specific key or selected wallet can also override the global key. Inspect both configuration and `wallet ls --profile NAME` before changing them.
+An explicit `--profile` wins over `THRUPUT_PROFILE`, which wins over project and global defaults. A profile-specific key or selected wallet can also override the global key. Inspect both configuration and `wallet ls --profile NAME` before changing them.
 
 Use [Profiles and networks](/cli/configuration/) and [Keys and wallets](/cli/wallets/) to change the intended layer. Preserve existing keys rather than generating replacements to hide a selection error.
 
 ## The local runtime is missing or incompatible
 
 ```bash
-groundhog toolchain list
-groundhog toolchain install
-groundhog toolchain which
+thruput toolchain list
+thruput toolchain install
+thruput toolchain which
 ```
 
-Check for an intentional `GROUNDHOG_DEVNODE_BINARY` override or an adjacent binary. The installed CLI's catalog chooses a compatible managed runtime. A protocol-token override does not fix a wire-format mismatch. See [runtime selection](/cli/local-node/#runtime-selection).
+Check for an intentional `THRUPUT_DEVNODE_BINARY` override or an adjacent binary. The installed CLI's catalog chooses a compatible managed runtime. A protocol-token override does not fix a wire-format mismatch. See [runtime selection](/cli/local-node/#runtime-selection).
 
 On Linux, a missing shared-library error identifies the system dependency to install. See [CLI installation](/cli/install/) for runtime-library guidance.
 
@@ -41,11 +41,11 @@ An ephemeral local node loses chain state on shutdown. Restarting it does not re
 
 ## Deployment needs funding
 
-Native deployment requires an explicit `--fund` amount. The sender needs funds for the transfer and scheduling capacity; the deployed contract needs funds for its own storage. Inspect the sender with `groundhog balance --profile NAME`, then request appropriate test funding or reduce the operation. See [Deploy and call](/cli/deploy-and-call/).
+Native deployment requires an explicit `--fund` amount. The sender needs funds for the transfer and scheduling capacity; the deployed contract needs funds for its own storage. Inspect the sender with `thruput balance --profile NAME`, then request appropriate test funding or reduce the operation. See [Deploy and call](/cli/deploy-and-call/).
 
 ## Submission timed out or status is unknown
 
-Keep the transaction hash and original network. Run `groundhog tx show TX_HASH --profile NAME` to inspect it. A timeout is not proof of failure. Do not automatically repeat a deployment or sign a replacement call.
+Keep the transaction hash and original network. Run `thruput tx show TX_HASH --profile NAME` to inspect it. A timeout is not proof of failure. Do not automatically repeat a deployment or sign a replacement call.
 
 ## A view or call cannot resolve a method
 

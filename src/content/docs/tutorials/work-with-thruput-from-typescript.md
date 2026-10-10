@@ -39,7 +39,7 @@ dist/
 Generate the binding from the contract spec built in part 1. Run this from `app`:
 
 ```bash
-groundhog codegen ts ../target/groundhog/counter.spec.xdr \
+thruput codegen ts ../target/thruput/counter.spec.xdr \
   --output src/contracts/counter.ts
 ```
 
@@ -174,7 +174,7 @@ createServer(async (request, response) => {
       const signed = await wallet.signTransaction(transaction);
       return json(response, 200, { transaction: toHex0x(serializeSignedTransaction(signed)) });
     }
-    if (request.url === "/groundhog-rpc" && allowed.has(body?.method)) {
+    if (request.url === "/thruput-rpc" && allowed.has(body?.method)) {
       const upstream = await fetch(rpcUrl, {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body), signal: AbortSignal.timeout(10_000),
@@ -202,7 +202,7 @@ This server is for local development.
 
 ```text
 Follow Build a counter, part 2:
-https://docs.groundhog.dev/tutorials/work-with-groundhog-from-typescript/
+https://thruput.network/docs/tutorials/work-with-thruput-from-typescript/
 Generate the binding from my part-1 contract spec and create the listed
 files using my deployment address. Verify the read, funding, and
 public configuration endpoint. Keep the development key server-side.

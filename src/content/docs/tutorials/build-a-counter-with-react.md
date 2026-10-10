@@ -5,7 +5,7 @@ sidebar:
   label: "Counter 3: React"
 ---
 
-Add a React interface to the project from [part 2](/tutorials/work-with-groundhog-from-typescript/). It will work through the funded development signer as soon as you open it. There is no wallet connection requirement yet.
+Add a React interface to the project from [part 2](/tutorials/work-with-thruput-from-typescript/). It will work through the funded development signer as soon as you open it. There is no wallet connection requirement yet.
 
 Keep the API server running on port 3001. All files below are inside the `app` directory you created in part 2.
 
@@ -43,7 +43,7 @@ export default defineConfig({
     host: "127.0.0.1",
     proxy: {
       "/api": "http://127.0.0.1:3001",
-      "/groundhog-rpc": "http://127.0.0.1:3001",
+      "/thruput-rpc": "http://127.0.0.1:3001",
     },
   },
 });
@@ -77,7 +77,7 @@ async function start() {
   const config: Config = await response.json();
   const client = await createGroundhogClient({
     cluster: defineCluster({
-      rpcUrl: new URL("/groundhog-rpc", location.origin).href,
+      rpcUrl: new URL("/thruput-rpc", location.origin).href,
       networkHash: networkHash(hashFromHex(config.networkId)),
       capabilities: [],
     }),
@@ -295,7 +295,7 @@ npm run build
 
 ```text
 Follow Build a counter, part 3:
-https://docs.groundhog.dev/tutorials/build-a-counter-with-react/
+https://thruput.network/docs/tutorials/build-a-counter-with-react/
 Create the listed files in my existing app directory. Do not clone an
 examples repo. Verify reads, increment/decrement, transaction feedback,
 and the build. Keep the development key on the server and retain an

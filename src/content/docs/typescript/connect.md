@@ -59,8 +59,8 @@ Devnet is unpinned by default. To require a specific deployment, provide the tru
 ```ts
 import { createGroundhogClient, devnet, hashFromHex, networkHash } from "@groundhogchain/client";
 
-const expected = process.env.GROUNDHOG_NETWORK_HASH;
-if (!expected) throw new Error("Set GROUNDHOG_NETWORK_HASH to the expected 0x-prefixed hash");
+const expected = process.env.THRUPUT_NETWORK_HASH;
+if (!expected) throw new Error("Set THRUPUT_NETWORK_HASH to the expected 0x-prefixed hash");
 const client = await createGroundhogClient({
   cluster: devnet({ networkHash: networkHash(hashFromHex(expected)) }),
 });

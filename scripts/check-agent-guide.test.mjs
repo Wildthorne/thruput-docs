@@ -26,17 +26,16 @@ test('accepts the selected source guide', (t) => {
   assert.equal(result.status, 0, result.stderr);
 });
 
-test('rejects drift in the current alias', (t) => {
+test('current handoff is independent of historical release bytes', (t) => {
   const f = fixture(t);
-  f.write('agent-guide.md', 'edited copy');
+  f.write('agent-guide.md', 'Updated maintained skill handoff');
   const result = f.run();
-  assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /differs from versioned/);
+  assert.equal(result.status, 0, result.stderr);
 });
 
-test('rejects modified versioned bytes even when the alias matches', (t) => {
+test('rejects modified historical bytes', (t) => {
   const f = fixture(t);
-  const manifest = JSON.parse(readFileSync(join(f.root, 'public/agents/current.json')));
+  const manifest = JSON.parse(readFileSync(join(f.root, 'public/agents/historical.json')));
   for (const path of ['agent-guide.md', `agents/${manifest.version}/agent-guide.md`]) f.write(path, 'edited guide');
   const result = f.run();
   assert.notEqual(result.status, 0);
@@ -45,10 +44,10 @@ test('rejects modified versioned bytes even when the alias matches', (t) => {
 
 test('rejects a mismatched CLI marker with an otherwise correct checksum', (t) => {
   const f = fixture(t);
-  const manifest = JSON.parse(readFileSync(join(f.root, 'public/agents/current.json')));
+  const manifest = JSON.parse(readFileSync(join(f.root, 'public/agents/historical.json')));
   const bytes = '<!-- groundhog-cli-version: 0.0.0 -->\n';
   manifest.sha256 = createHash('sha256').update(bytes).digest('hex');
-  f.write('agents/current.json', JSON.stringify(manifest));
+  f.write('agents/historical.json', JSON.stringify(manifest));
   for (const path of ['agent-guide.md', `agents/${manifest.version}/agent-guide.md`]) f.write(path, bytes);
   const result = f.run();
   assert.notEqual(result.status, 0);

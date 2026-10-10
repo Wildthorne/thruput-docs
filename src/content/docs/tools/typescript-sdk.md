@@ -93,7 +93,7 @@ description: TypeScript client entry points, common operations, and links to foc
 | --- | --- |
 | `loadLocalDevAccount(options?)` | Node-only manifest-verified native pubkey address, signer, role, and network hash |
 | `role` / `roleOffset` | Select role and zero-based position; defaults to first `local_user` |
-| Manifest selection | `GROUNDHOG_RUNTIME_MANIFEST`, otherwise active CLI configuration |
+| Manifest selection | Set `GROUNDHOG_RUNTIME_MANIFEST` to the manifest path reported by `thruput node` |
 | Usage | [Local bootstrap accounts](/typescript/accounts/#use-a-local-bootstrap-account) |
 
 ## Deploy Through a Wallet

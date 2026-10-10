@@ -8,16 +8,16 @@ Use `--non-interactive` to disable questions and terminal UI. It does not author
 ## Set up explicitly
 
 ```bash
-groundhog init --non-interactive --generate-key
+thruput init --non-interactive --generate-key
 ```
 
-`--generate-key` authorizes initial key creation when there are no stored keys or explicit selections. It does not replace an existing key. Use `groundhog new` separately to create a project in a script.
+`--generate-key` authorizes initial key creation when there are no stored keys or explicit selections. It does not replace an existing key. Use `thruput new` separately to create a project in a script.
 
 ## Request structured output
 
 ```bash
-groundhog config get devnet --json
-groundhog test --json
+thruput config get devnet --json
+thruput test --json
 ```
 
 The envelope identifies the command, its `ok` result, warnings, and command data. Payloads carry a command-specific `schemaVersion`; check it before relying on exact fields.
@@ -31,7 +31,7 @@ With `test --watch --json`, each completed run is a separate JSON record. A long
 For a deployment you intend to submit:
 
 ```bash
-groundhog deploy --profile devnet --fund 10 --non-interactive --force --json
+thruput deploy --profile devnet --fund 10 --non-interactive --force --json
 ```
 
 For preparation without submission, use `--dry-run` instead. Neither `--quiet` nor `--json` substitutes for confirmation.
@@ -39,10 +39,10 @@ For preparation without submission, use `--dry-run` instead. Neither `--quiet` n
 ## Set up agent tools
 
 ```bash
-groundhog skill install --agent opencode --yes --non-interactive --json
-groundhog docs --background --port 0 --json
+thruput skill install --agent opencode --yes --non-interactive --json
+thruput docs --background --port 0 --json
 ```
 
 Unattended skill installation needs both `--yes` and an explicit agent. Updates need `--yes`; add `--global` to either operation for user-wide scope. See [Skills and local docs](/cli/agent-tools/) for prerequisites, targeted updates, and offline reads.
 
-Background docs reports include `running`, `reused`, `server`, and `logPath` in `data`. Read `server.url` and `server.markdownIndex` when a server is present. Use `groundhog docs status --json` to inspect it and `groundhog docs stop --json` to stop it. A status with `running: false` is a valid result, not a command failure.
+Background docs reports include `running`, `reused`, `server`, and `logPath` in `data`. Read `server.url` and `server.markdownIndex` when a server is present. Use `thruput docs status --json` to inspect it and `thruput docs stop --json` to stop it. A status with `running: false` is a valid result, not a command failure.

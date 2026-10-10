@@ -33,7 +33,7 @@ Stellar Thruput discovers storage access during execution. Typed merge rules all
 Solana programs compile to SBF. Stellar Thruput contracts compile to RV32 through:
 
 ```bash
-groundhog build
+thruput build
 ```
 
 The build produces a deployable artifact and contract spec. Keep the generated toolchain and dependencies together.

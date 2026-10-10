@@ -18,7 +18,7 @@ try {
   await cp(resolve(root, 'node_modules'), join(source, 'node_modules'), { recursive: true, verbatimSymlinks: true });
   const revision = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim();
   const env = { ...process.env };
-  for (const key of ['GROUNDHOG_DOCS_SNAPSHOT', 'RAILWAY_GIT_COMMIT_SHA', 'GIT_DIR', 'GIT_WORK_TREE']) delete env[key];
+  for (const key of ['THRUPUT_DOCS_SNAPSHOT', 'RAILWAY_GIT_COMMIT_SHA', 'GIT_DIR', 'GIT_WORK_TREE']) delete env[key];
   assert.throws(() => execFileSync('git', ['rev-parse', 'HEAD'], { cwd: source, env, stdio: 'pipe' }),
     'The fixture must not inherit a Git checkout');
 

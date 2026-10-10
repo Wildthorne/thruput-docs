@@ -43,10 +43,10 @@ https://explorer.thruput.network/address/<address>
 Use the CLI for terminal workflows, local nodes, or when the explorer is unavailable:
 
 ```bash
-groundhog balance <wallet-or-address> --profile devnet
-groundhog tx show <transaction-hash> --profile devnet
-groundhog view <contract-or-alias> <method> --profile devnet
-groundhog storage <contract-or-alias> 0x<32-byte-key> --profile devnet
+thruput balance <wallet-or-address> --profile devnet
+thruput tx show <transaction-hash> --profile devnet
+thruput view <contract-or-alias> <method> --profile devnet
+thruput storage <contract-or-alias> 0x<32-byte-key> --profile devnet
 ```
 
 These commands use Devnet. For a local node, use `--profile local` instead. The hosted explorer does not show your local node's transactions.
@@ -55,4 +55,4 @@ Use the [JSON-RPC API](/reference/json-rpc-api/) directly for receipts, status, 
 
 ## If a result is missing
 
-Check the full hash or address and the network that produced it. Indexer-backed history can lag, so use `groundhog tx show` for the original transaction before submitting another one. A pending or missing result does not prove failure.
+Check the full hash or address and the network that produced it. Indexer-backed history can lag, so use `thruput tx show` for the original transaction before submitting another one. A pending or missing result does not prove failure.

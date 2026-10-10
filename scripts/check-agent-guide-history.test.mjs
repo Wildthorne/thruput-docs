@@ -29,7 +29,7 @@ test('permits a new version and alias promotion', (t) => {
   mkdirSync(join(f.root, 'public/agents/2.0.0'));
   f.write('public/agents/2.0.0/agent-guide.md', 'new');
   f.write('public/agent-guide.md', 'new');
-  f.write('public/agents/current.json', '{"version":"2.0.0"}');
+  f.write('public/agents/historical.json', '{"version":"2.0.0"}');
   f.git('add', '.');
   const result = f.run();
   assert.equal(result.status, 0, result.stderr);
@@ -39,7 +39,7 @@ test('rejects editing an existing version even when metadata and alias change', 
   const f = fixture(t);
   f.write('public/agents/1.0.0/agent-guide.md', 'replacement');
   f.write('public/agent-guide.md', 'replacement');
-  f.write('public/agents/current.json', '{"sha256":"updated"}');
+  f.write('public/agents/historical.json', '{"sha256":"updated"}');
   const result = f.run();
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /Existing versioned guides must not change/);

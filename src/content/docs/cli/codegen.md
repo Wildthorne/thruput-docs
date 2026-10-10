@@ -8,7 +8,7 @@ Generate bindings from the same contract build you deploy. Bindings provide meth
 ## Generate during a build
 
 ```bash
-groundhog build --bindings ts
+thruput build --bindings ts
 ```
 
 The build prints the generated binding path alongside the contract artifacts. Use `-p PACKAGE` when selecting a workspace member.
@@ -18,9 +18,9 @@ The build prints the generated binding path alongside the contract artifacts. Us
 Build first, then select the binary spec sidecar:
 
 ```bash
-groundhog build
+thruput build
 mkdir -p web/src/contracts
-groundhog codegen ts target/groundhog/my_counter.spec.xdr \
+thruput codegen ts target/thruput/my_counter.spec.xdr \
   --output web/src/contracts/my-counter.ts
 ```
 

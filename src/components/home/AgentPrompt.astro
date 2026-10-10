@@ -1,14 +1,14 @@
 ---
-import { docsPath, docsText } from '../../../scripts/docs-routing.mjs';
+import { docsPath } from '../../../scripts/docs-routing.mjs';
 import { Icon } from '@astrojs/starlight/components';
 import CopyIcon from '../CopyIcon.astro';
 import onboarding from '../../content/docs/start/build-with-an-agent.md?raw';
 const rawPrompt = onboarding.match(/```text\r?\n([\s\S]*?)\r?\n```/)?.[1];
 if (!rawPrompt) throw new Error('Agent onboarding must include a text prompt.');
-const prompt = docsText(rawPrompt);
+const prompt = rawPrompt;
 ---
 
-<home-agent-prompt data-local-snapshot={process.env.GROUNDHOG_DOCS_SNAPSHOT ? 'true' : undefined} role="group" aria-labelledby="install-label">
+<home-agent-prompt data-local-snapshot={process.env.THRUPUT_DOCS_SNAPSHOT ? 'true' : undefined} role="group" aria-labelledby="install-label">
   <div id="install-label">Start with your coding agent</div>
   <div class="prompt-bar">
     <button type="button" class="prompt-preview" data-preview aria-label="Preview setup prompt" aria-haspopup="dialog" hidden>
@@ -81,7 +81,7 @@ const prompt = docsText(rawPrompt);
       const dialogFeedback = this.querySelector<HTMLElement>('[data-dialog-feedback]')!;
       const buttons = this.querySelectorAll<HTMLButtonElement>('[data-copy]');
       if (this.dataset.localSnapshot) {
-        textarea.value = textarea.value.replaceAll('https://docs.groundhog.dev/', `${location.origin}/`);
+        textarea.value = textarea.value.replaceAll('https://thruput.network/docs/', `${location.origin}/`);
         this.querySelector('[data-preview-text]')!.textContent = textarea.value;
       }
       const open = (trigger: HTMLElement) => {

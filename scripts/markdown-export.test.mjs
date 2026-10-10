@@ -104,7 +104,7 @@ test('broken local links and fragments stop export', async t => {
 
 test('indexes and bundles follow navigation order, including grouped entries', async t => {
   const directory = await fixture(t, '<p>Home</p>');
-  const slugs = ['guides', 'tutorials/build-a-counter', 'tutorials/work-with-groundhog-from-typescript',
+  const slugs = ['guides', 'tutorials/build-a-counter', 'tutorials/work-with-thruput-from-typescript',
     'tutorials/build-a-counter-with-react', 'tutorials/connect-a-wallet-to-your-app'];
   for (const [index, slug] of slugs.entries()) {
     const path = join(directory, slug, 'index.html');

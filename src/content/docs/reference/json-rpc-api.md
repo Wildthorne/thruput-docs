@@ -386,7 +386,7 @@ Get the number of transactions in the scheduler.
 **Returns:** unsigned 64-bit decimal string, for example `"0"`.
 
 :::caution[Gateway Only]
-The hosted gateway (`hog-gateway`) returns `-32052` for this method. `groundhog node` serves it for the local chain.
+The hosted gateway (`hog-gateway`) returns `-32052` for this method. `thruput node` serves it for the local chain.
 :::
 
 ### `groundhog_getEvents`

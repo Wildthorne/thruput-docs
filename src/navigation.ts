@@ -94,7 +94,7 @@ export const sections: DocumentationSection[] = [
     id: 'guides', label: 'Guides', href: '/guides/',
     items: [
       'guides',
-      'tutorials/build-a-counter', 'tutorials/work-with-groundhog-from-typescript',
+      'tutorials/build-a-counter', 'tutorials/work-with-thruput-from-typescript',
       'tutorials/build-a-counter-with-react', 'tutorials/connect-a-wallet-to-your-app',
       'tutorials/build-a-token', 'tutorials/build-an-amm',
     ],

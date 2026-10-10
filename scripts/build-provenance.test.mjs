@@ -77,9 +77,9 @@ test('local Git identity and dirty state take precedence over deployment environ
 test('explicit CLI snapshot metadata is preserved and malformed JSON is rejected', () => {
   const snapshot = { schemaVersion: 1, sourceRevision: 'c'.repeat(40), sourceDirty: false, agentGuideCliVersion: '1.2.3' };
   assert.deepEqual(buildProvenance('/missing-checkout', '0.19.0', {
-    GROUNDHOG_DOCS_SNAPSHOT: JSON.stringify(snapshot), RAILWAY_GIT_COMMIT_SHA: 'a'.repeat(40),
+    THRUPUT_DOCS_SNAPSHOT: JSON.stringify(snapshot), RAILWAY_GIT_COMMIT_SHA: 'a'.repeat(40),
   }), snapshot);
-  assert.throws(() => buildProvenance('/missing-checkout', '0.19.0', { GROUNDHOG_DOCS_SNAPSHOT: '{' }), SyntaxError);
+  assert.throws(() => buildProvenance('/missing-checkout', '0.19.0', { THRUPUT_DOCS_SNAPSHOT: '{' }), SyntaxError);
 });
 
 test('the build hook exports Markdown without Git or deployment metadata', async t => {
@@ -87,13 +87,13 @@ test('the build hook exports Markdown without Git or deployment metadata', async
   const output = join(root, 'dist');
   await mkdir(join(root, 'public/agents'), { recursive: true });
   await mkdir(output);
-  await writeFile(join(root, 'public/agents/current.json'), JSON.stringify({ version: '0.19.0' }));
+  await writeFile(join(root, 'public/agents/historical.json'), JSON.stringify({ version: '0.19.0' }));
   await writeFile(join(output, 'index.html'), '<html><head><title>Docs</title></head><body><main><h1>Docs</h1><p>Content survives.</p></main></body></html>');
-  const saved = [process.env.GROUNDHOG_DOCS_SNAPSHOT, process.env.RAILWAY_GIT_COMMIT_SHA];
-  delete process.env.GROUNDHOG_DOCS_SNAPSHOT;
+  const saved = [process.env.THRUPUT_DOCS_SNAPSHOT, process.env.RAILWAY_GIT_COMMIT_SHA];
+  delete process.env.THRUPUT_DOCS_SNAPSHOT;
   delete process.env.RAILWAY_GIT_COMMIT_SHA;
   t.after(() => {
-    for (const [index, key] of ['GROUNDHOG_DOCS_SNAPSHOT', 'RAILWAY_GIT_COMMIT_SHA'].entries()) {
+    for (const [index, key] of ['THRUPUT_DOCS_SNAPSHOT', 'RAILWAY_GIT_COMMIT_SHA'].entries()) {
       if (saved[index] === undefined) delete process.env[key];
       else process.env[key] = saved[index];
     }

@@ -6,8 +6,8 @@ description: Install the React integration and connect its wallet and query prov
 Use the current Node.js LTS release. For a new app, create a React TypeScript project:
 
 ```bash
-npm create vite@latest my-groundhog-ui -- --template react-ts
-cd my-groundhog-ui
+npm create vite@latest my-thruput-ui -- --template react-ts
+cd my-thruput-ui
 npm install
 ```
 

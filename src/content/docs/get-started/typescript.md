@@ -8,8 +8,8 @@ Read the native token's total supply from Devnet with a typed contract call. Thi
 ## 1. Create a project
 
 ```bash
-mkdir my-groundhog-app
-cd my-groundhog-app
+mkdir my-thruput-app
+cd my-thruput-app
 npm init -y
 npm pkg set type=module
 mkdir -p src
@@ -66,7 +66,7 @@ Use [Read contract data](/typescript/reads/) for arguments, caller context, and 
 
 ```text
 Build the Stellar Thruput TypeScript quickstart:
-https://docs.groundhog.dev/get-started/typescript/
+https://thruput.network/docs/get-started/typescript/
 Use the latest published SDK packages and the hosted Devnet.
 Configure package access through my environment. Create the typed native-token
 total-supply read shown in the guide and run it. Show the actual supply

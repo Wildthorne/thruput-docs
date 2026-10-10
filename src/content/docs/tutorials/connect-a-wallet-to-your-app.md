@@ -147,7 +147,7 @@ You can also explore the [full counter example on GitHub](https://github.com/gro
 
 ```text
 Follow Build a counter, part 4:
-https://docs.groundhog.dev/tutorials/connect-a-wallet-to-your-app/
+https://thruput.network/docs/tutorials/connect-a-wallet-to-your-app/
 Extend my part-3 app using the listed files. Keep development signing
 as the default, switch on wallet connection, and return only on explicit
 disconnect. Let me approve wallet requests. Verify both paths, rejection,

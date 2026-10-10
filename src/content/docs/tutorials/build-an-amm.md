@@ -140,11 +140,11 @@ cargo test -p swap-factory -p swap-router -p swap-driver -p swap-pair --locked
 Build the guest contracts used by the suite:
 
 ```bash
-groundhog build -p erc20
-groundhog build -p swap-factory
-groundhog build -p swap-handler
-groundhog build -p swap-driver
-groundhog build -p swap-router
+thruput build -p erc20
+thruput build -p swap-factory
+thruput build -p swap-handler
+thruput build -p swap-driver
+thruput build -p swap-router
 cargo test -p swap-driver -p swap-router -p swap-factory --features guest_test --locked
 ```
 
@@ -156,7 +156,7 @@ cargo test -p swap-driver -p swap-router -p swap-factory --features guest_test -
 
 ```text
 Follow Build an AMM:
-https://docs.groundhog.dev/tutorials/build-an-amm/
+https://thruput.network/docs/tutorials/build-an-amm/
 Use the existing swap contract suite in groundhog-examples. Run pool,
 liquidity, swap, slippage, request-ID, authorization, and queue tests.
 Build the guest artifacts and rerun with guest_test. Explain how the

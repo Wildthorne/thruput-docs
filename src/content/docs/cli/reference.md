@@ -1,6 +1,6 @@
 ---
 title: Command reference
-description: Groundhog CLI commands, common options, and links to task instructions.
+description: Thruput CLI commands, common options, and links to task instructions.
 ---
 
 <span id="which-command-should-i-use"></span>
@@ -11,14 +11,14 @@ description: Groundhog CLI commands, common options, and links to task instructi
 
 | Command | Purpose | Usage |
 | --- | --- | --- |
-| `groundhog --version` | Print the installed release | [Install](/cli/install/) |
-| `groundhog init` | Initialize profiles and check setup; offer initial key creation interactively | [CLI quickstart](/get-started/cli/) |
-| `groundhog init --non-interactive --generate-key` | Explicitly authorize initial key creation without prompts | [Automation](/cli/automation/) |
-| `groundhog status [--profile NAME]` | Inspect project, key, compiler, and runtime readiness | [Troubleshooting](/cli/troubleshooting/) |
-| `groundhog new [NAME] [--path PATH] [--template counter\|counter-app]` | Create a minimal contract by default; omit the name for interactive setup | [Create a project](/cli/create-project/) |
-| `groundhog templates list` / `groundhog templates show NAME` | Discover named templates and their prerequisites offline | [Choose a template](/cli/create-project/#choose-a-template) |
-| `groundhog completion SHELL` | Print shell completions | `groundhog completion --help` |
-| `groundhog COMMAND --help` | Print the installed command's options | Available on each command |
+| `thruput --version` | Print the installed release | [Install](/cli/install/) |
+| `thruput init` | Initialize profiles and check setup; offer initial key creation interactively | [CLI quickstart](/get-started/cli/) |
+| `thruput init --non-interactive --generate-key` | Explicitly authorize initial key creation without prompts | [Automation](/cli/automation/) |
+| `thruput status [--profile NAME]` | Inspect project, key, compiler, and runtime readiness | [Troubleshooting](/cli/troubleshooting/) |
+| `thruput new [NAME] [--path PATH] [--template counter\|counter-app]` | Create a minimal contract by default; omit the name for interactive setup | [Create a project](/cli/create-project/) |
+| `thruput templates list` / `thruput templates show NAME` | Discover named templates and their prerequisites offline | [Choose a template](/cli/create-project/#choose-a-template) |
+| `thruput completion SHELL` | Print shell completions | `thruput completion --help` |
+| `thruput COMMAND --help` | Print the installed command's options | Available on each command |
 
 ## Configuration
 
@@ -38,7 +38,7 @@ description: Groundhog CLI commands, common options, and links to task instructi
 | Command | Purpose | Usage |
 | --- | --- | --- |
 | `keys generate [NAME]` | Generate a stored Ed25519 key | [Keys and wallets](/cli/wallets/) |
-| `keys import NAME` | Import key material through the supported input flow | `groundhog keys import --help` |
+| `keys import NAME` | Import key material through the supported input flow | `thruput keys import --help` |
 | `keys ls` / `keys use NAME` | List or select a global key | [Select an account](/cli/wallets/#select-an-account) |
 | `keys export NAME` | Print private key material | Intended export only; exclude from logs |
 | `keys rm NAME` | Delete a local key | Requires confirmation |
@@ -55,7 +55,7 @@ description: Groundhog CLI commands, common options, and links to task instructi
 | --- | --- | --- |
 | `build [-p PACKAGE]` | Build a deployable RV32 artifact | [Build and test](/cli/build-and-test/) |
 | `build --bindings ts` | Also generate TypeScript bindings | [Code generation](/cli/codegen/) |
-| `build --stack-size SIZE` | Set guest stack size within configured memory | `groundhog build --help` |
+| `build --stack-size SIZE` | Set guest stack size within configured memory | `thruput build --help` |
 | `test [-p PACKAGE]` | Build and run the RV32 artifact test target | [Test modes](/cli/build-and-test/#choose-a-test-boundary) |
 | `test --integration` | Run an isolated local-node integration target | [Integration tests](/programming-model/testing/#integration-test-environment) |
 | `test --workspace` | Run eligible workspace members | [Workspace runs](/cli/build-and-test/#integration-and-workspace-runs) |
@@ -74,7 +74,7 @@ description: Groundhog CLI commands, common options, and links to task instructi
 | `node --network-config NAME=VALUE` | Override a supported genesis parameter | Repeatable; preserve settings when reopening a data directory |
 | `node --dev-account-count N` / `--dev-account-hog AMOUNT` | Configure local-user bootstrap accounts | Does not configure the faucet allocation |
 | `toolchain list` / `install` / `which` | Inspect or acquire managed runtimes | [Local runtime setup](/cli/install/#set-up-the-local-runtime) |
-| `toolchain use VERSION` / `clean VERSION` | Select or remove a managed version | `groundhog toolchain --help` |
+| `toolchain use VERSION` / `clean VERSION` | Select or remove a managed version | `thruput toolchain --help` |
 | `chain dump --data-dir PATH --output FILE` | Back up a stopped local chain | [Persistent state](/cli/local-node/#preserve-state) |
 | `chain restore --data-dir PATH --input FILE` | Restore a stopped local chain | Requires confirmation before replacing populated state |
 
@@ -117,17 +117,17 @@ description: Groundhog CLI commands, common options, and links to task instructi
 
 | Command | Purpose | Usage |
 | --- | --- | --- |
-| `groundhog skill install [--global] [--agent NAME]` | Install the maintained skill through `npx skills`; `--agent` is repeatable | [Install the skill](/cli/agent-tools/#install-the-maintained-skill) |
-| `groundhog skill update [--global]` | Update only the `groundhog` skill in the selected scope; requires an existing installation | [Update the skill](/cli/agent-tools/#update-an-installed-skill) |
+| `thruput skill install [--global] [--agent NAME]` | Install the maintained skill through `npx skills`; `--agent` is repeatable | [Install the skill](/cli/agent-tools/#install-the-maintained-skill) |
+| `thruput skill update [--global]` | Update only the `thruput` skill in the selected scope; requires an existing installation | [Update the skill](/cli/agent-tools/#update-an-installed-skill) |
 | `skill install --yes` / `skill update --yes` | Authorize npm execution and skill changes; unattended installation also needs `--agent` | [Automate setup](/cli/agent-tools/#automate-skill-setup) |
-| `groundhog skill show [TOPIC] [--global]` | Read an installed skill file offline; current-directory installation before global unless `--global` is set | [Read guidance](/cli/agent-tools/#read-installed-guidance-offline) |
-| `groundhog skill list [--global]` | List reference names from the selected installed skill | [Read guidance](/cli/agent-tools/#read-installed-guidance-offline) |
-| `groundhog docs [--foreground] [--port PORT]` | Serve the bundled site in the foreground; default port `4321`, `0` selects a free port | [Serve docs](/cli/agent-tools/#serve-local-documentation) |
-| `groundhog docs --dir PATH` | Serve a trusted local snapshot | [Snapshot override](/cli/agent-tools/#use-a-trusted-site-snapshot) |
-| `groundhog docs --background [--port PORT]` | Start or reuse a matching background server; conflicts with `--foreground` | [Serve docs](/cli/agent-tools/#serve-local-documentation) |
-| `groundhog docs status` | Inspect the current user's background server and log path | [Serve docs](/cli/agent-tools/#serve-local-documentation) |
-| `groundhog docs stop` | Stop the managed background server while retaining extracted Markdown | [Serve docs](/cli/agent-tools/#serve-local-documentation) |
-| `groundhog docs export --output PATH [--dir SNAPSHOT]` | Export portable Markdown into a new directory without serving | [Export Markdown](/cli/agent-tools/#export-markdown-without-a-server) |
+| `thruput skill show [TOPIC] [--global]` | Read an installed skill file offline; current-directory installation before global unless `--global` is set | [Read guidance](/cli/agent-tools/#read-installed-guidance-offline) |
+| `thruput skill list [--global]` | List reference names from the selected installed skill | [Read guidance](/cli/agent-tools/#read-installed-guidance-offline) |
+| `thruput docs [--foreground] [--port PORT]` | Serve the bundled site in the foreground; default port `4321`, `0` selects a free port | [Serve docs](/cli/agent-tools/#serve-local-documentation) |
+| `thruput docs --dir PATH` | Serve a trusted local snapshot | [Snapshot override](/cli/agent-tools/#use-a-trusted-site-snapshot) |
+| `thruput docs --background [--port PORT]` | Start or reuse a matching background server; conflicts with `--foreground` | [Serve docs](/cli/agent-tools/#serve-local-documentation) |
+| `thruput docs status` | Inspect the current user's background server and log path | [Serve docs](/cli/agent-tools/#serve-local-documentation) |
+| `thruput docs stop` | Stop the managed background server while retaining extracted Markdown | [Serve docs](/cli/agent-tools/#serve-local-documentation) |
+| `thruput docs export --output PATH [--dir SNAPSHOT]` | Export portable Markdown into a new directory without serving | [Export Markdown](/cli/agent-tools/#export-markdown-without-a-server) |
 
 ## Shared Flags
 

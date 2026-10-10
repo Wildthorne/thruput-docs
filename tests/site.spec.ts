@@ -1,11 +1,10 @@
 import { test as base, expect, type Page } from '@playwright/test';
-import { docsText } from '../scripts/docs-routing.mjs';
 import { readFileSync } from 'node:fs';
 
 const origin = 'http://127.0.0.1:4322';
 const docs = '/docs/start/build-with-an-agent/';
 const onboarding = readFileSync(new URL('../src/content/docs/start/build-with-an-agent.md', import.meta.url), 'utf8');
-const prompt = docsText(onboarding.match(/```text\r?\n([\s\S]*?)\r?\n```/)![1]);
+const prompt = onboarding.match(/```text\r?\n([\s\S]*?)\r?\n```/)![1];
 const test = base.extend({
   page: async ({ page }, use) => {
     const errors: string[] = [];

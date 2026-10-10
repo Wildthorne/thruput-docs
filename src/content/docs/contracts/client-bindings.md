@@ -6,7 +6,7 @@ description: Deliver a contract's typed interface to TypeScript application deve
 Client bindings let an application use your contract's methods, types, errors, and events. Generate them from the contract spec produced by the same build you deploy:
 
 ```bash
-groundhog build --bindings ts
+thruput build --bindings ts
 ```
 
 The spec describes the exported interface. Bindings turn that description into TypeScript code for application developers.

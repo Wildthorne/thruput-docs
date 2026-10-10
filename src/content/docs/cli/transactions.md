@@ -8,7 +8,7 @@ Use the same profile and network that received the transaction. The commands bel
 ## Look up one transaction
 
 ```bash
-groundhog tx show TX_HASH --profile devnet
+thruput tx show TX_HASH --profile devnet
 ```
 
 Replace `TX_HASH` with the submitted hash. This performs one status lookup and fetches the receipt when committed; it does not wait for a pending transaction.
@@ -18,7 +18,7 @@ Check the receipt's execution result. A committed failure is different from a tr
 ## List history
 
 ```bash
-groundhog tx list my-counter --profile devnet --limit 25
+thruput tx list my-counter --profile devnet --limit 25
 ```
 
 History is indexed by root invocation target. A wallet-wrapped call can appear under the wallet rather than the inner target contract. Use the receipt and contract events to inspect inner activity; absence from an address-history page does not prove an operation did not occur.
@@ -26,14 +26,14 @@ History is indexed by root invocation target. A wallet-wrapped call can appear u
 ## Read contract events
 
 ```bash
-groundhog events list my-counter --profile devnet --limit 25
+thruput events list my-counter --profile devnet --limit 25
 ```
 
 For decoded events, supply the trusted spec from the same contract build:
 
 ```bash
-groundhog events list my-counter --profile devnet \
-  --spec target/groundhog/my_counter.spec.xdr --event PingEvent
+thruput events list my-counter --profile devnet \
+  --spec target/thruput/my_counter.spec.xdr --event PingEvent
 ```
 
 Use `--topic0`, `--topic1`, or `--topic2` for raw topic filters. Repeated values at one position mean OR; filters across positions mean AND. Use the signature from the generated spec rather than copying one from another contract.
@@ -41,7 +41,7 @@ Use `--topic0`, `--topic1`, or `--topic2` for raw topic filters. Repeated values
 ## Inspect token transfers
 
 ```bash
-groundhog token transfers HOG --profile devnet
+thruput token transfers HOG --profile devnet
 ```
 
 Use `--account ADDRESS` to restrict the query to an account. Amounts are returned as base-unit values; formatting is separate from the stored amount.
@@ -51,7 +51,7 @@ Use `--account ADDRESS` to restrict the query to an account. Amounts are returne
 These list commands return one newest-first page at a time. Pass the returned cursor to the same command with the same target and filters:
 
 ```bash
-groundhog tx list my-counter --profile devnet --limit 25 --cursor CURSOR
+thruput tx list my-counter --profile devnet --limit 25 --cursor CURSOR
 ```
 
 Replace `CURSOR` with the exact returned value. An empty page with a non-empty cursor is not the end. The returned cursor `0x` ends that historical walk.
