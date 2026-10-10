@@ -35,7 +35,7 @@ async function filesAt(directory) {
 
 /** Hosted builds may contain source files without a Git checkout. */
 export function buildProvenance(root, agentGuideCliVersion, env = process.env) {
-  if (env.GROUNDHOG_DOCS_SNAPSHOT) return JSON.parse(env.GROUNDHOG_DOCS_SNAPSHOT);
+  if (env.THRUPUT_DOCS_SNAPSHOT) return JSON.parse(env.THRUPUT_DOCS_SNAPSHOT);
   const git = (...args) => {
     try {
       return execFileSync('git', args, { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
@@ -55,7 +55,7 @@ function provenance(snapshot) {
     ? `Documentation source: \`${snapshot.sourceRevision}\`${snapshot.sourceDirty === true ? ' (uncommitted preview)' : snapshot.sourceDirty === false ? '' : ' (working-tree status unavailable)'}.`
     : 'Documentation source revision unavailable for this build.';
   return `${source}\n\n` +
-    `Included standalone agent guide: CLI ${snapshot.agentGuideCliVersion}. This is not a version guarantee for every example. Hosted docs may be newer than this snapshot.\n\n`;
+    `Historical guide artifact: CLI ${snapshot.agentGuideCliVersion}. Current guidance uses the maintained Thruput skill. This is not a version guarantee for every example. Hosted docs may be newer than this snapshot.\n\n`;
 }
 
 /** Generate portable Markdown from the same rendered pages shipped as HTML. */
@@ -176,12 +176,12 @@ export async function exportMarkdown({ directory, site, snapshot, sections = [],
 export default function markdownExport({ sections, sectionForPath }) {
   let config;
   return {
-    name: 'groundhog-markdown',
+    name: 'thruput-markdown',
     hooks: {
       'astro:config:done': ({ config: resolved }) => { config = resolved; },
       'astro:build:done': async ({ dir, logger }) => {
         const root = fileURLToPath(config.root);
-        const guide = JSON.parse(await readFile(resolve(root, 'public/agents/current.json'), 'utf8'));
+        const guide = JSON.parse(await readFile(resolve(root, 'public/agents/historical.json'), 'utf8'));
         const snapshot = buildProvenance(root, guide.version);
         const count = await exportMarkdown({ directory: fileURLToPath(dir), site: config.site,
           snapshot, sections, sectionForPath });

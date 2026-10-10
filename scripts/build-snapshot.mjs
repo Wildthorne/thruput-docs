@@ -6,7 +6,7 @@ import { resolve } from 'node:path';
 const root = fileURLToPath(new URL('../', import.meta.url));
 const output = resolve(root, 'dist/docs-snapshot');
 const git = (...args) => execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim();
-const guide = JSON.parse(readFileSync(resolve(root, 'public/agents/current.json'), 'utf8'));
+const guide = JSON.parse(readFileSync(resolve(root, 'public/agents/historical.json'), 'utf8'));
 const snapshot = {
   schemaVersion: 1,
   sourceRevision: git('rev-parse', 'HEAD'),
@@ -21,7 +21,7 @@ execFileSync(process.execPath, ['scripts/check-agent-guide.mjs'], { cwd: root, s
 execFileSync(process.execPath, ['node_modules/astro/bin/astro.mjs', 'build', '--outDir', output], {
   cwd: root,
   stdio: 'inherit',
-  env: { ...process.env, GROUNDHOG_DOCS_SNAPSHOT: JSON.stringify(snapshot) },
+  env: { ...process.env, THRUPUT_DOCS_SNAPSHOT: JSON.stringify(snapshot) },
 });
 writeFileSync(resolve(output, 'snapshot.json'), `${JSON.stringify(snapshot, null, 2)}\n`);
-console.log(`\nSnapshot ready: ${output}\nPass this directory to groundhog docs --dir.`);
+console.log(`\nSnapshot ready: ${output}\nPass this directory to thruput docs --dir.`);

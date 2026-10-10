@@ -1,16 +1,15 @@
 ---
-import { docsPath, docsText, logicalDocsPath } from '../../scripts/docs-routing.mjs';
+import { docsPath, logicalDocsPath } from '../../scripts/docs-routing.mjs';
 import Bot from '../assets/bot.svg';
 import { Icon } from '@astrojs/starlight/components';
 const route = logicalDocsPath(Astro.url.pathname).replace(/^\/|\/$/g, '');
 const markdownUrl = `/markdown/pages/${route || 'index'}.md`;
 const body = Astro.locals.starlightRoute.entry.body ?? '';
 const agentSection = body.split(/^## (?:Work with an agent|Use a coding agent)\s*$/m)[1]?.split(/^## /m)[0];
-const rawPrompt = agentSection?.match(/```text\r?\n([\s\S]*?)\r?\n```/)?.[1];
-const prompt = rawPrompt && docsText(rawPrompt);
+const prompt = agentSection?.match(/```text\r?\n([\s\S]*?)\r?\n```/)?.[1];
 ---
 
-<page-actions data-markdown-url={markdownUrl} data-local-snapshot={process.env.GROUNDHOG_DOCS_SNAPSHOT ? 'true' : undefined} data-pagefind-ignore>
+<page-actions data-markdown-url={markdownUrl} data-local-snapshot={process.env.THRUPUT_DOCS_SNAPSHOT ? 'true' : undefined} data-pagefind-ignore>
     <details>
       <summary><Bot width="16" height="16" aria-hidden="true" /><span>Agent tools</span><Icon name="down-caret" size="1rem" /></summary>
       <div class="options">
@@ -74,7 +73,7 @@ const prompt = rawPrompt && docsText(rawPrompt);
             if (button.dataset.copy === 'link') text = markdownUrl;
             else if (button.dataset.copy === 'prompt') {
               text = this.querySelector<HTMLTemplateElement>('[data-task-prompt]')!.content.textContent!;
-              if (this.dataset.localSnapshot) text = text.replaceAll('https://docs.groundhog.dev/', `${location.origin}/`);
+              if (this.dataset.localSnapshot) text = text.replaceAll('https://thruput.network/docs/', `${location.origin}/`);
             } else {
               const response = await fetch(markdownUrl, { signal: controller.signal });
               if (!response.ok || response.headers.get('content-type')?.includes('text/html')) {

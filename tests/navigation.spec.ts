@@ -48,7 +48,7 @@ test('entry pages keep site navigation separate from expandable documentation se
     ['Smart Contracts', '/docs/programming-model/storage-types/', 'Storage Types'],
     ['Smart Contracts', '/docs/how-it-works/contracts/', 'Contract artifacts and addresses'],
     ['Guides', '/docs/tutorials/build-a-counter/', 'Build a counter, part 1: Contract'],
-    ['Guides', '/docs/tutorials/work-with-groundhog-from-typescript/', 'Build a counter, part 2: TypeScript'],
+    ['Guides', '/docs/tutorials/work-with-thruput-from-typescript/', 'Build a counter, part 2: TypeScript'],
     ['Guides', '/docs/tutorials/build-a-counter-with-react/', 'Build a counter, part 3: React'],
     ['Guides', '/docs/tutorials/connect-a-wallet-to-your-app/', 'Build a counter, part 4: Connect a wallet'],
     ['Guides', '/docs/tutorials/build-a-token/', 'Build a token'],
@@ -202,7 +202,6 @@ test('the old getting-started URL reaches the contract quickstart', async ({ pag
 
 test('migrated guides preserve old URLs and fragments', async ({ page }) => {
   for (const [oldPath, newPath, fragment] of [
-    ['/docs/tools/groundhog-cli/', '/docs/cli/reference/', 'configuration'],
     ['/docs/reference/error-handling/', '/docs/contracts/errors/', 'defining-errors'],
     ['/docs/reference/cross-contract-calls/', '/docs/contracts/cross-contract-calls/', 'gas-limits'],
     ['/docs/programming-model/advanced/', '/docs/programming-model/storage-types/', 'exclusive-writes'],

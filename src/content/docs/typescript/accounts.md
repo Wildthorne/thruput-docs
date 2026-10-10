@@ -7,10 +7,10 @@ Use a signer when your Node.js script or service manages an account's key. This 
 
 ## Bind a signer
 
-Supply a 32-byte Ed25519 private-key seed through your process environment as `GROUNDHOG_PRIVATE_KEY`, using `0x`-prefixed hex. For a disposable Devnet test account, generate one once in your terminal:
+Supply a 32-byte Ed25519 private-key seed through your process environment as `THRUPUT_PRIVATE_KEY`, using `0x`-prefixed hex. For a disposable Devnet test account, generate one once in your terminal:
 
 ```bash
-export GROUNDHOG_PRIVATE_KEY="$(node -e 'process.stdout.write("0x" + require("node:crypto").randomBytes(32).toString("hex"))')"
+export THRUPUT_PRIVATE_KEY="$(node -e 'process.stdout.write("0x" + require("node:crypto").randomBytes(32).toString("hex"))')"
 ```
 
 Keep that environment for the funding and send commands. Generating another seed selects another account. For a persistent account, load the existing seed from your secret configuration.
@@ -23,8 +23,8 @@ import {
 } from "@groundhogchain/client";
 import { client } from "./client.js";
 
-const secret = process.env.GROUNDHOG_PRIVATE_KEY;
-if (!secret) throw new Error("Set GROUNDHOG_PRIVATE_KEY for this script account");
+const secret = process.env.THRUPUT_PRIVATE_KEY;
+if (!secret) throw new Error("Set THRUPUT_PRIVATE_KEY for this script account");
 
 export const account = createPubkeyAccount({
   signer: new PrivateKeySigner(fromHex0x(secret)),
@@ -58,7 +58,11 @@ The client must use a cluster that declares airdrop support. The hosted faucet s
 
 ## Use a local bootstrap account
 
-For a node started by [the CLI](/cli/local-node/), use this instead of the Devnet signer setup:
+For a node started by [the CLI](/cli/local-node/), use this instead of the Devnet signer setup. Set the manifest path reported by `thruput node` in the terminal that runs the script:
+
+```bash
+export GROUNDHOG_RUNTIME_MANIFEST=/absolute/path/to/runtime-manifest.json
+```
 
 ```ts
 import { createGroundhogClient, createPubkeyAccount, createWalletClient, localnet } from "@groundhogchain/client";
@@ -72,4 +76,4 @@ const account = createPubkeyAccount({ signer: local.signer, nonce: 0n });
 const wallet = createWalletClient({ client, account });
 ```
 
-The Node.js-only loader verifies a native pubkey account from the runtime manifest and selects the first `local_user`, normally `dev-1`. It reads `GROUNDHOG_RUNTIME_MANIFEST` or the active CLI configuration. If you override the RPC URL, select the manifest for that same node. These deterministic keys are for local development.
+The Node.js-only loader verifies a native pubkey account from the runtime manifest and selects the first `local_user`, normally `dev-1`. Set `GROUNDHOG_RUNTIME_MANIFEST` to the runtime manifest path reported by `thruput node`. The current TypeScript SDK uses this variable; it does not discover the renamed CLI configuration. If you override the RPC URL, select the manifest for that same node. These deterministic keys are for local development.

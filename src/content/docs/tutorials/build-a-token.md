@@ -100,11 +100,11 @@ cargo test -p erc20 --test same_block same_block_credits_merge --locked
 ## Build and test the guest artifact
 
 ```bash
-groundhog build -p erc20
-groundhog test -p erc20
+thruput build -p erc20
+thruput test -p erc20
 ```
 
-The build writes `target/groundhog/erc20.rv32a` and spec sidecars. The artifact test exercises the compiled guest implementation. Keep it as well as the native tests.
+The build writes `target/thruput/erc20.rv32a` and spec sidecars. The artifact test exercises the compiled guest implementation. Keep it as well as the native tests.
 
 You now have a deployable token artifact. Use [Deploy and call](/cli/deploy-and-call/) for network deployment and [Use contract bindings](/tools/typescript-bindings/) for typed application calls. The repository's standard-token and factory examples add a fixed launch configuration for the separate launchpad application.
 
@@ -112,7 +112,7 @@ You now have a deployable token artifact. Use [Deploy and call](/cli/deploy-and-
 
 ```text
 Follow Build a token:
-https://docs.groundhog.dev/tutorials/build-a-token/
+https://thruput.network/docs/tutorials/build-a-token/
 Use contracts/erc20 in groundhog-examples with its workspace lockfile.
 Trace administrator checks, transfers, allowances, and events in source.
 Run the native, same-block, and RV32 tests. Report actual results and

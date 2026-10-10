@@ -10,7 +10,7 @@ Create a wallet on Devnet, fund it with native test tokens, and inspect the fund
 ## 1. Set up the CLI
 
 ```bash
-groundhog init
+thruput init
 ```
 
 On a fresh installation, accept signing-key creation and decline starter-project creation. Setup creates the `default` key and the built-in network profiles.
@@ -18,13 +18,13 @@ On a fresh installation, accept signing-key creation and decline starter-project
 ## 2. Create a wallet
 
 ```bash
-groundhog wallet create --profile devnet
+thruput wallet create --profile devnet
 ```
 
 Confirm the prompt. The CLI saves a wallet address for your selected key. Creating this wallet does not fund it or send a transaction.
 
 ```bash
-groundhog wallet ls --profile devnet
+thruput wallet ls --profile devnet
 ```
 
 You should see your wallet's name and address. With a fresh setup, its name is `default`.
@@ -32,8 +32,8 @@ You should see your wallet's name and address. With a fresh setup, its name is `
 ## 3. Request test funds
 
 ```bash
-groundhog airdrop --profile devnet
-groundhog balance --profile devnet
+thruput airdrop --profile devnet
+thruput balance --profile devnet
 ```
 
 Confirm the airdrop and wait for its result. You should have a positive native-token balance. Save the transaction hash printed by the airdrop command.
@@ -45,7 +45,7 @@ The faucet selects the test-token amount; you do not need an amount flag. CLI ou
 Replace `TX_HASH` with the hash from the airdrop:
 
 ```bash
-groundhog tx show TX_HASH --profile devnet
+thruput tx show TX_HASH --profile devnet
 ```
 
 Check that the transaction committed successfully. You now have a funded wallet and have verified an onchain result.
@@ -61,9 +61,9 @@ If funding is pending, rerun the same airdrop command to resume the request. For
 Copy this prompt into your agent:
 
 ```text
-Help me complete the Groundhog CLI quickstart:
-https://docs.groundhog.dev/get-started/cli/
-Use the latest CLI, install the groundhog skill, and read groundhog skill show cli.
+Help me complete the Thruput CLI quickstart:
+https://thruput.network/docs/get-started/cli/
+Use the latest CLI, install the thruput skill, and read thruput skill show cli.
 Set up a Devnet
 wallet without creating a contract project or running a local node.
 Preserve any existing keys and configuration. Request test funds,

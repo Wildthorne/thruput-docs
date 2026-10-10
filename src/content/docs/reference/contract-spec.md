@@ -13,7 +13,7 @@ For usage, see
 | `<crate>.spec.xdr` | Canonical contract API, consumed by standalone TypeScript codegen |
 | `<crate>.spec.json` | Human-readable rendering for inspection; not the codegen input |
 | `<crate>.rv32a` | Deployable RV32 artifact |
-| Generation | SDK macros emit fragments; build canonicalizes, sorts, validates, and writes sidecars under `target/groundhog/` by default |
+| Generation | SDK macros emit fragments; build canonicalizes, sorts, validates, and writes sidecars under `target/thruput/` by default |
 
 ## Top-Level Structure
 

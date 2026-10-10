@@ -9,7 +9,7 @@ export async function getStaticPaths() {
   // Reuse the existing fragment maps for both old root and hosted docs URLs.
   const retired = import.meta.glob<AstroComponentFactory>([
     './reference/cross-contract-calls.astro', './reference/error-handling.astro',
-    './programming-model/advanced.astro', './tools/groundhog-cli.astro',
+    './programming-model/advanced.astro',
     './tutorials/develop-on-devnet.astro', './tutorials/develop-locally.astro',
     './tutorials/build-a-swap.astro', './tutorials/design-a-swap.astro',
     './tutorials/add-events-to-a-contract.astro',

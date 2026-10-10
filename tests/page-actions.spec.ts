@@ -1,8 +1,8 @@
 import { expect, test } from '@playwright/test';
 
 const origin = 'http://127.0.0.1:4322';
-const path = '/docs/tutorials/work-with-groundhog-from-typescript/';
-const markdown = '/markdown/pages/tutorials/work-with-groundhog-from-typescript.md';
+const path = '/docs/tutorials/work-with-thruput-from-typescript/';
+const markdown = '/markdown/pages/tutorials/work-with-thruput-from-typescript.md';
 
 for (const name of ['cli', 'contract', 'typescript', 'react']) {
   test(`copies the ${name} quickstart prompt from its coding-agent section`, async ({ page, context }) => {
@@ -32,7 +32,7 @@ test('copies the exported page, Markdown link, and existing task prompt', async 
   expect(response.ok()).toBe(true);
   const exported = await response.text();
   expect(exported).toContain('Source: <https://thruput.network' + path + '>');
-  expect(exported).toContain('groundhog codegen ts');
+  expect(exported).toContain('thruput codegen ts');
   expect(exported).not.toContain('Copy page');
   const more = actions.locator('summary');
   await expect(more).toHaveAccessibleName('Agent tools');

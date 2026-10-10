@@ -24,8 +24,8 @@ In [Thruput Wallet](/tools/wallet-extension/#select-devnet-and-get-test-hog), se
 With a Devnet wallet already configured:
 
 ```bash
-groundhog airdrop --profile devnet
-groundhog balance --profile devnet
+thruput airdrop --profile devnet
+thruput balance --profile devnet
 ```
 
 The faucet selects the amount, so omit `--amount` for remote requests. For initial key and wallet setup, follow the [CLI quickstart](/get-started/cli/).

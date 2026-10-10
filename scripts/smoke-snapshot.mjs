@@ -10,8 +10,8 @@ import { visit } from 'unist-util-visit';
 import { parseMarkdown, validateMarkdown } from './markdown-validation.mjs';
 
 const binary = process.argv[2];
-if (!binary) throw new Error('Usage: node scripts/smoke-snapshot.mjs /path/to/groundhog');
-const exported = mkdtempSync(resolve(tmpdir(), 'groundhog-docs-export-'));
+if (!binary) throw new Error('Usage: node scripts/smoke-snapshot.mjs /path/to/thruput');
+const exported = mkdtempSync(resolve(tmpdir(), 'thruput-docs-export-'));
 try {
   const output = resolve(exported, 'docs');
   const result = spawnSync(resolve(binary), ['docs', 'export', '--dir', resolve('dist/docs-snapshot'), '--output', output, '--json'], { encoding: 'utf8' });
@@ -68,12 +68,11 @@ try {
   await page.getByRole('complementary', { name: 'Local documentation snapshot' }).waitFor();
   const prompt = await page.locator('textarea[name="agent-prompt"]').inputValue();
   assert.ok(prompt.includes(`${origin}/cli/install/`));
-  assert.ok(!prompt.includes('https://docs.groundhog.dev'));
+  assert.ok(!prompt.includes('https://thruput.network'));
   await page.goto(`${origin}/start/`);
   await page.waitForURL(`${origin}/architecture/`);
   assert.equal(await page.locator('main h1').textContent(), 'Introduction');
   for (const [legacy, destination, fragment] of [
-    ['tools/groundhog-cli', 'cli/reference', 'configuration'],
     ['reference/error-handling', 'contracts/errors', 'defining-errors'],
     ['reference/cross-contract-calls', 'contracts/cross-contract-calls', 'gas-limits'],
     ['programming-model/advanced', 'programming-model/storage-types', 'lock-requests'],
@@ -98,7 +97,7 @@ try {
   await page.waitForFunction(() => document.querySelector('page-actions [role="status"]')?.textContent === 'Copied');
   const task = await page.evaluate(() => navigator.clipboard.readText());
   assert.ok(task.includes(`${origin}/tutorials/build-a-counter/`));
-  assert.ok(!task.includes('https://docs.groundhog.dev/'));
+  assert.ok(!task.includes('https://thruput.network/'));
   await page.locator('site-search > button').click();
   const dialog = page.getByRole('dialog');
   await dialog.getByRole('textbox', { name: /^Search/ }).fill('storage');
@@ -114,7 +113,7 @@ try {
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
   const guide = await context.request.get(`${origin}/agent-guide.md`);
   assert.equal(guide.status(), 200);
-  assert.ok((await guide.text()).includes('groundhog-cli-version:'));
+  assert.ok((await guide.text()).includes('thruput skill install'));
   const markdown = await context.request.get(`${origin}/markdown/pages/get-started/react.md`);
   assert.equal(markdown.status(), 200);
   assert.ok(markdown.headers()['content-type'].startsWith('text/markdown'));

@@ -3,7 +3,7 @@ title: Project structure
 description: Understand the files, build artifacts, and SDK layers in a CLI-generated contract project.
 ---
 
-`groundhog new` creates a minimal Cargo contract project by default. Use `groundhog new my-counter --template counter` for the counter layout below, including its example methods and tests. Keep the generated dependency versions, compiler settings, and CLI configuration together.
+`thruput new` creates a minimal Cargo contract project by default. Use `thruput new my-counter --template counter` for the counter layout below, including its example methods and tests. Keep the generated dependency versions, compiler settings, and CLI configuration together.
 
 ## Generated files
 
@@ -12,7 +12,7 @@ my-counter/
   Cargo.toml              # Package, SDK dependencies, and build features
   AGENTS.md               # Instructions for coding agents
   build.rs                # Integration-test setup
-  groundhog.toml          # Project profiles and contract aliases
+  thruput.toml          # Project profiles and contract aliases
   rust-toolchain.toml     # Selected compiler and targets
   .cargo/
     config.toml           # Registry and Cargo configuration
@@ -31,9 +31,9 @@ The `.gitignore` excludes build output and project-local runtime state.
 
 ## Build artifacts
 
-`groundhog build` compiles the entrypoint for RV32, Stellar Thruput's 32-bit RISC-V contract target. It lowers the compiler output into an artifact the node can execute.
+`thruput build` compiles the entrypoint for RV32, Stellar Thruput's 32-bit RISC-V contract target. It lowers the compiler output into an artifact the node can execute.
 
-For `my-counter`, the output under `target/groundhog/` includes:
+For `my-counter`, the output under `target/thruput/` includes:
 
 - `my_counter.rv32a`: deployable contract artifact.
 - `my_counter.rv32.json`: lowering metadata.
@@ -45,8 +45,8 @@ The specification describes the contract interface and supports [TypeScript bind
 ## Test modes
 
 - `cargo test` runs the native contract tests.
-- `groundhog test` runs the RV32 artifact tests.
-- `groundhog test --integration` manages a local node for the integration tests.
+- `thruput test` runs the RV32 artifact tests.
+- `thruput test --integration` manages a local node for the integration tests.
 
 See [Testing](/programming-model/testing/) for the execution modes, generated integration environment, and how to add assertions.
 

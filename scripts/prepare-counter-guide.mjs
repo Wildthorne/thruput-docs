@@ -10,7 +10,7 @@ if (!outputArgument || !bindingArgument || !['2', '3', '4'].includes(part)) {
 }
 const output = resolve(outputArgument);
 mkdirSync(output, { recursive: true });
-const chapters = ['work-with-groundhog-from-typescript'];
+const chapters = ['work-with-thruput-from-typescript'];
 if (part !== '2') chapters.push('build-a-counter-with-react');
 if (part === '4') chapters.push('connect-a-wallet-to-your-app');
 for (const chapter of chapters) {

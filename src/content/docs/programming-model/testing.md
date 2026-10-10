@@ -10,14 +10,14 @@ Choose a test path based on the boundary you need to exercise:
 | Command | What it covers | Use for |
 |---------|----------------|---------|
 | `cargo test` | Native SDK execution in process | Fast logic tests, error-path assertions, debugging |
-| `groundhog test` | Executor-backed RV32 artifact test | Contract artifact behavior without an RPC node |
-| `groundhog test --integration` | Ephemeral `hog-devnode`, deployed RV32 artifact, RPC client path | End-to-end deploy/call tests |
+| `thruput test` | Executor-backed RV32 artifact test | Contract artifact behavior without an RPC node |
+| `thruput test --integration` | Ephemeral `hog-devnode`, deployed RV32 artifact, RPC client path | End-to-end deploy/call tests |
 
-Start with `cargo test`, then run `groundhog test` against the RV32 artifact. Add `groundhog test --integration` when you need to test the same path a partner or app will use: build artifact, local node, deployment, signing profile, RPC URL, and generated client behavior.
+Start with `cargo test`, then run `thruput test` against the RV32 artifact. Add `thruput test --integration` when you need to test the same path a partner or app will use: build artifact, local node, deployment, signing profile, RPC URL, and generated client behavior.
 
-`groundhog test --integration` builds and deploys RV32, the normal user-contract runtime.
+`thruput test --integration` builds and deploys RV32, the normal user-contract runtime.
 
-Fresh projects include the integration target and host-only dependencies. The CLI can acquire a compatible catalog-pinned `hog-devnode`; use `groundhog toolchain list` to inspect it. `GROUNDHOG_DEVNODE_BINARY` selects an explicit matching source build.
+Fresh projects include the integration target and host-only dependencies. The CLI can acquire a compatible catalog-pinned `hog-devnode`; use `thruput toolchain list` to inspect it. `THRUPUT_DEVNODE_BINARY` selects an explicit matching source build.
 
 ## What the Scaffold Gives You
 
@@ -31,19 +31,19 @@ tests/
 
 `tests/integration.rs` starts with one ignored RPC smoke test. It checks that the CLI provided a deployed contract, connects to the ephemeral node with `groundhog-json-rpc-client`, and calls `chainTip`. Replace or extend the final placeholder with assertions for your contract.
 
-The starter remains ignored under ordinary `cargo test`, even if you explicitly enable its feature. `groundhog test --integration` enables the feature and sets `GROUNDHOG_INTEGRATION_TEST=1`, which lets the scaffold's `build.rs` activate the live test. You can rename the module and test functions without changing how activation works.
+The starter remains ignored under ordinary `cargo test`, even if you explicitly enable its feature. `thruput test --integration` enables the feature and sets `THRUPUT_INTEGRATION_TEST=1`, which lets the scaffold's `build.rs` activate the live test. You can rename the module and test functions without changing how activation works.
 
-The generated `groundhog-integration-test` feature enables the optional RPC client and Tokio dependencies. Their target-specific Cargo entries keep them out of RV32 guest builds. Preserve the SDK and RPC versions selected together by the scaffold.
+The generated `thruput-integration-test` feature enables the optional RPC client and Tokio dependencies. Their target-specific Cargo entries keep them out of RV32 guest builds. Preserve the SDK and RPC versions selected together by the scaffold.
 
 The generated `build.rs` contains:
 
 ```rust
 fn main() {
-    println!("cargo:rerun-if-env-changed=GROUNDHOG_INTEGRATION_TEST");
-    println!("cargo:rustc-check-cfg=cfg(groundhog_integration_runner)");
+    println!("cargo:rerun-if-env-changed=THRUPUT_INTEGRATION_TEST");
+    println!("cargo:rustc-check-cfg=cfg(thruput_integration_runner)");
 
-    if std::env::var("GROUNDHOG_INTEGRATION_TEST").as_deref() == Ok("1") {
-        println!("cargo:rustc-cfg=groundhog_integration_runner");
+    if std::env::var("THRUPUT_INTEGRATION_TEST").as_deref() == Ok("1") {
+        println!("cargo:rustc-cfg=thruput_integration_runner");
     }
 }
 ```
@@ -132,7 +132,7 @@ let result = env
 
 Finish the builder with `transact` for auto-commit, `transact_manual` for explicit commit or abort control, or `build` to obtain a `MockTransactionHandler` directly. Plain `env.transact(...)` remains the shorthand for the default transaction configuration.
 
-Use `groundhog test --integration` when the thing under test is not just contract logic: local node startup, RV32 artifact deployment, profile resolution, signing, RPC environment variables, or generated off-chain client behavior.
+Use `thruput test --integration` when the thing under test is not just contract logic: local node startup, RV32 artifact deployment, profile resolution, signing, RPC environment variables, or generated off-chain client behavior.
 
 ## Testing Error Cases
 
@@ -151,23 +151,23 @@ The `try_decrement` method (generated alongside `decrement` by the `#[contract]`
 
 ## Integration Test Environment
 
-`groundhog test --integration` runs `tests/integration.rs` against an ephemeral `hog-devnode`. The CLI builds and deploys the selected artifact, then sets:
+`thruput test --integration` runs `tests/integration.rs` against an ephemeral `hog-devnode`. The CLI builds and deploys the selected artifact, then sets:
 
 | Variable | Value |
 |----------|-------|
-| `GROUNDHOG_INTEGRATION_TEST` | `1`; activates the scaffolded live test |
-| `GROUNDHOG_RPC_URL` | RPC URL for the ephemeral node |
-| `GROUNDHOG_CONTRACT_ADDRESS` | Deployed contract address |
-| `GROUNDHOG_PROFILE` | `integration` |
-| `GROUNDHOG_DEFAULT_KEY` | Lowest-index `local_user`, normally `dev-1` |
-| `GROUNDHOG_RUNTIME_MANIFEST` | Runtime manifest path, when available |
+| `THRUPUT_INTEGRATION_TEST` | `1`; activates the scaffolded live test |
+| `THRUPUT_RPC_URL` | RPC URL for the ephemeral node |
+| `THRUPUT_CONTRACT_ADDRESS` | Deployed contract address |
+| `THRUPUT_PROFILE` | `integration` |
+| `THRUPUT_DEFAULT_KEY` | Lowest-index `local_user`, normally `dev-1` |
+| `THRUPUT_RUNTIME_MANIFEST` | Runtime manifest path, when available |
 
 The full run is:
 
 1. Build the RV32 artifact.
 2. Start an isolated local node.
 3. Deploy it with the runtime's lowest-index `local_user`, normally `dev-1`. `dev-0` remains reserved for the local faucet.
-4. Enable `groundhog-integration-test` and run only the `integration` Cargo test target with the environment above.
+4. Enable `thruput-integration-test` and run only the `integration` Cargo test target with the environment above.
 5. Shut down the node after the test run, including after test failures.
 
 Normal test-harness controls such as `--match-test`, `--skip`, `--show-output`, `--no-capture`, and `--test-threads` apply to integration tests. `--watch` and `--rerun` cannot be combined with `--integration` yet.

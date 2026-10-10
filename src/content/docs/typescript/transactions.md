@@ -15,8 +15,8 @@ import { ERC20 } from "@groundhogchain/client/contracts";
 import { HOG_ADDRESS } from "@groundhogchain/protocol";
 import { wallet } from "./wallet.js";
 
-const recipient = process.env.GROUNDHOG_RECIPIENT;
-if (!recipient) throw new Error("Set GROUNDHOG_RECIPIENT to a funded address");
+const recipient = process.env.THRUPUT_RECIPIENT;
+if (!recipient) throw new Error("Set THRUPUT_RECIPIENT to a funded address");
 
 const transfer = ERC20.v0_1.transfer.call({
   contract: HOG_ADDRESS,

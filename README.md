@@ -44,7 +44,7 @@ strict source-identity and packaging checks.
 
 ## Documentation snapshot workflow
 
-The site is the producer for `groundhog docs`. Its normal Astro/Starlight build
+The site is the producer for `thruput docs`. Its normal Astro/Starlight build
 supplies the pages, assets, fonts, and Pagefind search; there is no second site.
 
 ```bash
@@ -55,7 +55,7 @@ pnpm package:snapshot
 Use Node 22, the pnpm version in `package.json`, and Python 3. The command creates:
 
 - `dist/docs-snapshot/`: browsable site with `snapshot.json` identifying the
-  source commit, dirty-tree status, and included agent-guide CLI version.
+  source commit, dirty-tree status, and historical agent-guide CLI version.
 - `dist/docs-artifact/snapshot.tar.gz`: deterministic archive, approximately
   1.5 MB for the initial 50-page site.
 - `dist/docs-artifact/snapshot-lock.json`: archive SHA-256, byte length, and
@@ -77,7 +77,7 @@ To select documentation for a CLI release:
    dirty source, checksum/identity mismatches, and unsupported archive content.
 4. Build/test/release the CLI through its normal workflow. The CLI embeds the
    selected compressed snapshot and materializes it in the user's cache on
-   first `groundhog docs`; no first-use download is needed.
+   first `thruput docs`; no first-use download is needed.
 
 The producer's local build can be dirty for previews, but such an artifact cannot
 be imported into the CLI. A committed, clean local build can also exercise the
@@ -86,7 +86,7 @@ handoff before CI; identify that as local evidence, not a successful CI run.
 For content development, `pnpm build:snapshot` builds only the directory:
 
 ```bash
-groundhog docs --dir "$PWD/dist/docs-snapshot" --port 4321
+thruput docs --dir "$PWD/dist/docs-snapshot" --port 4321
 ```
 
 Use `--port 0` for an available port or `--json` for readiness metadata. Keep an
@@ -99,7 +99,7 @@ API references, repositories, and network services still require access.
 To exercise the snapshot through the actual CLI in Chromium:
 
 ```bash
-node scripts/smoke-snapshot.mjs /absolute/path/to/groundhog
+node scripts/smoke-snapshot.mjs /absolute/path/to/thruput
 ```
 
 The smoke blocks non-loopback browser requests and checks local search,
@@ -139,40 +139,23 @@ Markdown files live in `src/content/docs/`, organized by section. The sidebar is
 
 ## Agent guidance
 
-The landing page imports the prompt from `/start/build-with-an-agent/`. Maintain
-its text block in that page only. The prompt installs the CLI and skill, exports
-the docs, and verifies a counter through CLI calls on Devnet. The hosted
-standalone reference is a pinned artifact, not a separately authored CLI guide.
+The landing page imports the prompt from `/start/build-with-an-agent/`.
+Maintain its text block there. The prompt installs the Thruput CLI and maintained
+skill, exports the docs, and verifies a counter through CLI calls on Devnet.
+`public/agent-guide.md` points readers to this workflow and the maintained skill.
+Skill content is maintained in `groundhogchain/agent-skills` and updates
+independently of CLI releases.
 
-`public/agents/current.json` identifies the selected guide's CLI version, status,
-SHA-256, and source. The selected reference is the released CLI **0.19.0** guide
-from `groundhog-rpc` commit `8b98df1f44d2d486412601fcbff064dbfc59ca3f`, verified
-against its release `SHA256SUMS`. Later knowledge-source edits require a new
-qualified guide artifact; this selection does not relabel them as release 0.19.0.
+Earlier release guides remain unchanged under `public/agents/<cli-version>/`.
+`public/agents/historical.json` records the last selected release artifact and
+its checksum. It supplies the historical `agentGuideCliVersion` field required
+by the snapshot format; this field does not identify the current skill version.
+The build validates those historical bytes. The active handoff is independent
+of them. Never modify, remove, or rename existing versioned guide files.
 
-To promote another guide:
-
-1. Obtain `agent-guide.md` from the explicitly selected CLI release and verify it
-   against that release's `SHA256SUMS`. Do not select the latest prerelease
-   automatically. For a source preview, generate/check it at the recorded commit
-    and validate it with that source revision's artifact checks. Installed skill
-    output is not a CLI release artifact.
-2. Add those unchanged bytes at `public/agents/<cli-version>/agent-guide.md`.
-   Retain earlier version paths. Never replace an existing version with different
-   bytes; a corrected guide needs a new CLI release.
-3. Copy the selected file to `public/agent-guide.md`, and update `current.json`
-   with its version, `preview` or `release` status, source, and SHA-256.
-4. Run `pnpm check:agent-guide`, `pnpm astro check`, and `pnpm build`.
-
-The build checks that the current alias matches the versioned artifact, version
-marker, and recorded checksum. Astro copies the Markdown unchanged. Deployment
-uses the site's existing hosting process; building does not publish anything.
-
-CI also compares versioned guide paths against the PR base commit (or the previous
-commit for a push to main). Existing versions cannot be modified, removed, or
-renamed, even if the alias and checksum are updated together. To run this check
-locally, use `node scripts/check-agent-guide-history.mjs origin/main` after fetching
-the base branch. Source-artifact verification in step 1 remains part of promotion.
+CI compares versioned guide paths against the PR base commit (or the previous
+commit for a push to main). To run that check locally, use
+`node scripts/check-agent-guide-history.mjs origin/main`.
 
 ## Markdown documentation
 
@@ -211,7 +194,7 @@ added later, verify authentication parity, `Content-Type: text/markdown`, and
 `Vary: Accept` before enabling it. Unauthenticated hosted probes currently return
 401, so successful hosted export access needs verification after deployment.
 
-The agent setup and CLI pages document `groundhog skill` and `groundhog docs`
+The agent setup and CLI pages document `thruput skill` and `thruput docs`
 from the GH-459 command implementation. Use a CLI build with those commands
 for snapshot export verification.
 
@@ -225,11 +208,10 @@ The whole `markdown/` tree can be copied away from the website. With a CLI
 that supports Markdown export, use:
 
 ```sh
-groundhog docs export --dir "$PWD/dist/docs-snapshot" --output /path/to/new-folder
+thruput docs export --dir "$PWD/dist/docs-snapshot" --output /path/to/new-folder
 ```
 
 Run `pnpm test` for conversion fixtures. The snapshot smoke also checks the
 real CLI export, links in the copied folder, and code examples against their
-source pages. Markdown output records the docs commit and the separately
-selected standalone agent-guide version; the latter does not version the
+source pages. Markdown output records the docs commit and the historical standalone agent-guide version; the latter does not version the
 whole site.

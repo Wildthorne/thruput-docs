@@ -16,11 +16,11 @@ The contract lifecycle remains write, test, deploy, and call. The main differenc
 | Task | Stellar Thruput path |
 | --- | --- |
 | Write | Rust with SDK storage handles and contract macros |
-| Compile | `groundhog build` produces an RV32 artifact and contract-spec sidecars |
+| Compile | `thruput build` produces an RV32 artifact and contract-spec sidecars |
 | Deploy | Fund the new contract's storage and deploy with the CLI or wallet client |
 | Initialize | Call an ordinary method, optionally atomically through `deploy --init` |
 | Call | Use generated Rust or TypeScript bindings |
-| Read | Use a typed view through the public client or `groundhog view` |
+| Read | Use a typed view through the public client or `thruput view` |
 
 Stellar Thruput entrypoints use 8-byte IDs and CXS arguments. Ethereum contract calls commonly use a 4-byte selector and ABI arguments; see [Ethereum transactions](https://ethereum.org/en/developers/docs/transactions/). Use bindings rather than constructing either encoding manually.
 

@@ -10,8 +10,8 @@ Build a React page that reads the native token's total supply from Devnet and re
 Use the current Node.js LTS release:
 
 ```bash
-npm create vite@latest my-groundhog-ui -- --template react-ts
-cd my-groundhog-ui
+npm create vite@latest my-thruput-ui -- --template react-ts
+cd my-thruput-ui
 ```
 
 Configure [npm package access](/typescript/setup/#give-npm-package-access) in this directory, then install the application dependencies:
@@ -115,7 +115,7 @@ See [Read contract data](/react/reads/) for arguments and query behavior, or [Co
 
 ```text
 Build the Stellar Thruput React quickstart:
-https://docs.groundhog.dev/get-started/react/
+https://thruput.network/docs/get-started/react/
 Use a React TypeScript Vite project, the latest published Stellar Thruput
 packages, and hosted Devnet. Configure package access through my environment.
 Display the native-token total supply and its read height with useContractView.

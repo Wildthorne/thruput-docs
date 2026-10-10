@@ -1,9 +1,8 @@
 import { expect, test } from '@playwright/test';
-import { docsText } from '../scripts/docs-routing.mjs';
 import { readFileSync } from 'node:fs';
 
 const origin = 'http://127.0.0.1:4322';
-const prompt = docsText(readFileSync(new URL('../src/content/docs/start/build-with-an-agent.md', import.meta.url), 'utf8').match(/```text\r?\n([\s\S]*?)\r?\n```/)![1]);
+const prompt = readFileSync(new URL('../src/content/docs/start/build-with-an-agent.md', import.meta.url), 'utf8').match(/```text\r?\n([\s\S]*?)\r?\n```/)![1];
 
 for (const width of [320, 1280]) {
   test(`prompt preview is complete, keyboard accessible, and copyable at ${width}px`, async ({ page, context }, info) => {

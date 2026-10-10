@@ -48,7 +48,7 @@ try {
     ['docs.groundhog.dev', '/programming-model/advanced/?via=old', '/docs/programming-model/advanced/?via=old'],
     ['docs.thruput.network', '/docs/get-started/', '/docs/get-started/'],
     ['docs.thruput.network', '/markdown/pages/cli/install.md', '/markdown/pages/cli/install.md'],
-    ['docs.thruput.network', '/agents/current.json', '/agents/current.json'],
+    ['docs.thruput.network', '/agents/historical.json', '/agents/historical.json'],
   ]) {
     const response = await request(host, path);
     assert.equal(response.status, 308, `${host}${path}`);

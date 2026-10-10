@@ -13,18 +13,18 @@ User contracts compile to RV32, Stellar Thruput's 32-bit RISC-V contract target.
 
 ### RV32 Contracts
 
-`groundhog build` compiles the contract's RV32 entrypoint wrapper for `riscv32im-unknown-none-elf`, lowers that ELF into a deployable `.rv32a` artifact, and finalizes its contract-spec sidecars.
+`thruput build` compiles the contract's RV32 entrypoint wrapper for `riscv32im-unknown-none-elf`, lowers that ELF into a deployable `.rv32a` artifact, and finalizes its contract-spec sidecars.
 
 For a crate named `counter`, the default build writes:
 
 ```txt
-target/groundhog/counter.rv32a
-target/groundhog/counter.rv32.json
-target/groundhog/counter.spec.xdr
-target/groundhog/counter.spec.json
+target/thruput/counter.rv32a
+target/thruput/counter.rv32.json
+target/thruput/counter.spec.xdr
+target/thruput/counter.spec.json
 ```
 
-The `.rv32a` file is the executable contract artifact. `groundhog deploy` wraps those bytes in the protocol's `Contract::kRv32` variant before signing and submitting the deploy transaction.
+The `.rv32a` file is the executable contract artifact. `thruput deploy` wraps those bytes in the protocol's `Contract::kRv32` variant before signing and submitting the deploy transaction.
 
 Deployment must satisfy the network's limits on attached contract size, RV32 code, guest memory, and new contracts per transaction. Client and gateway submission limits also apply. Use the selected network's configuration rather than assuming a fixed maximum.
 
@@ -38,7 +38,7 @@ Entrypoint IDs can be arbitrary 8-byte values at the protocol layer. The SDK pro
 
 #### Artifact Shape
 
-Most developers should let the [Groundhog CLI](/cli/build-and-test/) produce RV32 artifacts. Under the hood, the RV32 lowerer:
+Most developers should let the [Thruput CLI](/cli/build-and-test/) produce RV32 artifacts. Under the hood, the RV32 lowerer:
 
 - Parses the `riscv32im-unknown-none-elf` contract binary.
 - Validates the layout expected by the Stellar Thruput RV32 runtime.
@@ -55,7 +55,7 @@ Users cannot deploy native contracts. Network configuration assigns system contr
 
 ## Contract Deployment
 
-Contracts are deployed by the DeployContract [system call](/reference/syscalls/). In normal CLI usage, `groundhog deploy` invokes the active wallet contract, and the wallet contract calls DeployContract with the artifact hash and deployment nonce.
+Contracts are deployed by the DeployContract [system call](/reference/syscalls/). In normal CLI usage, `thruput deploy` invokes the active wallet contract, and the wallet contract calls DeployContract with the artifact hash and deployment nonce.
 
 ### Contract Identification
 
@@ -204,7 +204,7 @@ Once a contract is deployed to an address, that address's `AddressMetadata` cann
 
 ## Related Documentation
 
-- [Groundhog CLI](/cli/): RV32 builds, local nodes, deployment, and codegen
+- [Thruput CLI](/cli/): RV32 builds, local nodes, deployment, and codegen
 - [Invocation Frames](/how-it-works/invocation-frames/): execution context and call stack management
 - [Syscalls](/reference/syscalls/): system calls available to contracts
 - [SDK Macros](/reference/sdk-macros/): SDK entrypoint IDs and generated clients

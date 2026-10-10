@@ -20,7 +20,7 @@ Get a working result on Devnet. Choose the tools you want to use; you do not nee
 
 ## What you need
 
-CLI and contract work use the [Groundhog CLI and Cargo registry](/cli/install/). TypeScript and React applications use [Node.js and GitHub Packages](/typescript/setup/). Install the latest releases; the quickstarts link to the setup they need.
+CLI and contract work use the [Thruput CLI and Cargo registry](/cli/install/). TypeScript and React applications use [Node.js and GitHub Packages](/typescript/setup/). Install the latest releases; the quickstarts link to the setup they need.
 
 Devnet is a shared test network and can be reset. Keep your development keys, but expect to request new test funds or redeploy after a reset.
 

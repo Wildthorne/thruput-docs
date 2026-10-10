@@ -10,7 +10,7 @@ Deploy a counter to Devnet, increase its value, and read the result.
 ## 1. Create a contract
 
 ```bash
-groundhog new my-counter --template counter
+thruput new my-counter --template counter
 cd my-counter
 ```
 
@@ -19,8 +19,8 @@ The project includes a Rust counter and tests. Its main methods are `initialize`
 ## 2. Build and test
 
 ```bash
-groundhog build
-groundhog test
+thruput build
+thruput test
 ```
 
 The first build installs the compiler components selected by the project. Wait for the build and tests to finish successfully.
@@ -30,13 +30,13 @@ These commands run on your machine. You do not need to start a local blockchain.
 ## 3. Deploy to Devnet
 
 ```bash
-groundhog deploy --estimate --profile devnet
+thruput deploy --estimate --profile devnet
 ```
 
 Read the reported minimum funding in whole native tokens. Add **10 native test tokens** as this walkthrough's storage allowance, then replace `TOTAL_FUNDING` below with that decimal total. The allowance is an example budget, not an estimate of initializer writes or a universal requirement. These tokens have no monetary value. See [deployment estimates](/cli/deploy-and-call/#estimate-deployment-funding) for the breakdown.
 
 ```bash
-groundhog deploy --profile devnet --fund TOTAL_FUNDING \
+thruput deploy --profile devnet --fund TOTAL_FUNDING \
   --init initialize --init-arg 10
 ```
 
@@ -47,7 +47,7 @@ Confirm the deployment. Funding, deployment, and initialization happen atomicall
 Increase the counter initialized during deployment:
 
 ```bash
-groundhog call my-counter increment 5 --profile devnet
+thruput call my-counter increment 5 --profile devnet
 ```
 
 Confirm the call and wait for success. Do not initialize again: this example method adds the initial amount rather than enforcing one-time initialization.
@@ -55,7 +55,7 @@ Confirm the call and wait for success. Do not initialize again: this example met
 ## 5. Read the result
 
 ```bash
-groundhog view my-counter get --profile devnet
+thruput view my-counter get --profile devnet
 ```
 
 The result should be **15**. You have built, tested, deployed, and called a contract on Devnet.
@@ -68,9 +68,9 @@ The result should be **15**. You have built, tested, deployed, and called a cont
 
 ```text
 Help me complete the Stellar Thruput contract quickstart:
-https://docs.groundhog.dev/get-started/contract/
-Use the latest CLI, install the groundhog skill for this project, and read
-groundhog skill show contracts. Scaffold with --template counter. Check CLI setup and
+https://thruput.network/docs/get-started/contract/
+Use the latest CLI, install the thruput skill for this project, and read
+thruput skill show contracts. Scaffold with --template counter. Check CLI setup and
 Devnet funding first. Scaffold my-counter, preserve its generated
 dependency and compiler settings, then build and test it.
 Read the deployment estimate and add the documented storage allowance to its

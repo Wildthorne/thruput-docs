@@ -14,7 +14,7 @@ You can also explore the [full counter example on GitHub](https://github.com/gro
 Complete [CLI installation and Cargo access](/cli/install/). For deployment, use a funded Devnet account from the [CLI quickstart](/get-started/cli/).
 
 ```bash
-groundhog new counter --template counter
+thruput new counter --template counter
 cd counter
 ```
 
@@ -58,7 +58,7 @@ The scaffold's `initialize` method adds its initial amount. It is an ordinary me
 
 ```bash
 cargo test
-groundhog test
+thruput test
 ```
 
 The native tests exercise contract logic and underflow handling. The artifact test runs the compiled RV32 contract. Neither needs a running RPC node.
@@ -68,16 +68,16 @@ The native tests exercise contract logic and underflow handling. The artifact te
 ## Build, deploy, and initialize
 
 ```bash
-groundhog build
-groundhog deploy --estimate --profile devnet
+thruput build
+thruput deploy --estimate --profile devnet
 ```
 
 Add **10 native test tokens** to the reported minimum funding in whole-token units as an example allowance for initializer storage and later writes. This is a budget, not an exact estimate of those writes or a universal requirement. Replace `TOTAL_FUNDING` with the decimal sum. The minimum alone covers only the first balance-item deposit and deployment collateral, leaving no free contract balance. See [Estimate deployment funding](/cli/deploy-and-call/#estimate-deployment-funding).
 
 ```bash
-groundhog deploy --profile devnet --fund TOTAL_FUNDING \
+thruput deploy --profile devnet --fund TOTAL_FUNDING \
   --init initialize --init-arg 10
-groundhog view counter get --profile devnet
+thruput view counter get --profile devnet
 ```
 
 Funding, deployment, and initialization happen in one transaction. The sender still needs its own storage and scheduling capacity. Your new counter should read `10`.
@@ -87,11 +87,11 @@ Save the printed deployment address. Part 2 uses this address and the contract s
 ## Check a change
 
 ```bash
-groundhog call counter increment 1 --profile devnet
-groundhog view counter get --profile devnet
+thruput call counter increment 1 --profile devnet
+thruput view counter get --profile devnet
 ```
 
-On your otherwise unchanged counter, the value is now `11`. Keep the same address and project for [part 2](/tutorials/work-with-groundhog-from-typescript/).
+On your otherwise unchanged counter, the value is now `11`. Keep the same address and project for [part 2](/tutorials/work-with-thruput-from-typescript/).
 
 For isolated local work, follow [Run a local node](/cli/local-node/) and use its profile, endpoint, and network identity consistently.
 
@@ -99,8 +99,8 @@ For isolated local work, follow [Run a local node](/cli/local-node/) and use its
 
 ```text
 Follow Build a counter, part 1:
-https://docs.groundhog.dev/tutorials/build-a-counter/
-Start with groundhog new counter --template counter, without cloning an examples repo.
+https://thruput.network/docs/tutorials/build-a-counter/
+Start with thruput new counter --template counter, without cloning an examples repo.
 Run the native and RV32 checks, build, and read the deployment estimate.
 Add the documented storage allowance to the minimum and deploy with that
 explicit total using my configured Devnet account. Initialize atomically to 10.

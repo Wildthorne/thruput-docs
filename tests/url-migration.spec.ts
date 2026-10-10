@@ -11,7 +11,7 @@ test('landing and docs have distinct canonical URLs and retain root downloads', 
   expect(links.every(link => link!.startsWith('/docs/') || link!.startsWith('/markdown/'))).toBe(true);
   await page.getByRole('link', { name: 'Stellar Thruput homepage' }).click();
   await expect(page).toHaveURL(origin + '/');
-  for (const path of ['/markdown/pages/cli/install.md', '/llms.txt', '/agents/current.json', '/agent-guide.md']) {
+  for (const path of ['/markdown/pages/cli/install.md', '/llms.txt', '/agents/historical.json', '/agent-guide.md']) {
     expect((await request.get(origin + path)).status()).toBe(200);
   }
 });
@@ -32,7 +32,7 @@ test('sitemap lists canonical pages and excludes URL aliases and redirect pages'
   const xml = await (await request.get(origin + '/sitemap-0.xml')).text();
   expect(xml).toContain('<loc>https://thruput.network/</loc>');
   expect(xml).toContain('<loc>https://thruput.network/docs/cli/install/</loc>');
-  for (const path of ['/cli/install/', '/docs/', '/start/', '/docs/start/', '/docs/tools/groundhog-cli/']) {
+  for (const path of ['/cli/install/', '/docs/', '/start/', '/docs/start/']) {
     expect(xml).not.toContain(`<loc>https://thruput.network${path}</loc>`);
   }
 });
