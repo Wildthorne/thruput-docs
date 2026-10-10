@@ -13,10 +13,10 @@ const transactions = [
       {transactions.map(({ incoming }) => <g><path d={incoming} /><circle r="3" data-incoming-pulse opacity="0" /></g>)}
     </svg>
     <div class="changes">
-      {transactions.map(({ name, amount, admitted }) => <div class="transaction" data-admitted={String(admitted)}><span>Payment {name}</span><strong>−{amount}</strong><div class="track" aria-hidden="true"><span data-progress></span></div><span class="outcome">{admitted ? 'Admitted' : 'Excluded'}</span></div>)}
+      {transactions.map(({ name, amount, admitted }) => <div class="transaction" data-admitted={String(admitted)} data-resolved="true"><span>Payment {name}</span><strong>−{amount}</strong><div class="track" aria-hidden="true"><span data-progress></span></div><span class="outcome">{admitted ? 'Admitted' : 'Excluded'}</span></div>)}
     </div>
-    <svg class="connections" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 72" preserveAspectRatio="none" aria-hidden="true">
-      {transactions.map(({ outgoing, admitted }) => <g data-admitted={String(admitted)}><path d={outgoing} /><circle r="3" data-outgoing-pulse opacity="0" /></g>)}
+    <svg class="connections outgoing" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 72" preserveAspectRatio="none" aria-hidden="true">
+      {transactions.map(({ outgoing, admitted }) => <g data-admitted={String(admitted)} data-resolved="true"><path d={outgoing} /><circle r="3" data-outgoing-pulse opacity="0" /></g>)}
     </svg>
     <div class="state result"><span>Committed balance</span><strong data-result>30</strong></div>
     <div class="controls"><p data-stage>One valid outcome: 100 − 30 − 40 = 30</p><button type="button" aria-label="Pause payment animation" hidden>Pause</button></div>
@@ -30,6 +30,7 @@ const transactions = [
   .state span, .transaction > span { color: var(--brand-muted); font-size: .875rem; }
   strong { font: 400 1.75rem/1.2 var(--sl-font-mono); font-variant-numeric: tabular-nums; }
   .connections { display: block; width: 100%; height: 4.5rem; overflow: visible; }
+  .outgoing [data-resolved='false'] { visibility: hidden; }
   path { fill: none; stroke: var(--brand-border); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
   circle { fill: var(--brand-accent); }
   .changes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -38,9 +39,9 @@ const transactions = [
   [data-progress] { display: block; width: 100%; height: 100%; background: var(--brand-accent); transform-origin: left; }
   .changes strong, [data-phase='complete'] .result strong { color: var(--brand-accent); }
   .transaction .outcome { font-size: .75rem; visibility: hidden; }
-  [data-phase='merge'] .outcome, [data-phase='complete'] .outcome { visibility: visible; }
+  [data-resolved='true'] .outcome { visibility: visible; }
   [data-admitted='false'] path { stroke-dasharray: 3 4; }
-  [data-phase='merge'] .transaction[data-admitted='false'] strong, [data-phase='complete'] .transaction[data-admitted='false'] strong { color: var(--brand-muted); }
+  .transaction[data-admitted='false'][data-resolved='true'] strong { color: var(--brand-muted); }
   .result strong { min-width: 3ch; text-align: center; }
   .controls { display: flex; align-items: center; justify-content: space-between; gap: .75rem; min-height: 3rem; margin-top: .75rem; }
   .controls p { margin: 0; color: var(--brand-muted); font-size: .8125rem; }
@@ -63,12 +64,20 @@ const transactions = [
       const result = this.querySelector<HTMLElement>('[data-result]')!;
       const stage = this.querySelector<HTMLElement>('[data-stage]')!;
       const bars = [...this.querySelectorAll<HTMLElement>('[data-progress]')];
+      const payments = [...this.querySelectorAll<HTMLElement>('.transaction')];
+      const connections = [...this.querySelectorAll<SVGGElement>('.outgoing g')];
       const pulses = (selector: string) => [...this.querySelectorAll<SVGCircleElement>(selector)].map(dot => {
         const path = dot.previousElementSibling as SVGPathElement;
         return { dot, path, length: path.getTotalLength() };
       });
       const incoming = pulses('[data-incoming-pulse]');
       const outgoing = pulses('[data-outgoing-pulse]');
+      const executionStart = 1_200;
+      const executionDurations = [1_500, 1_850, 2_200];
+      const executionFinish = executionStart + Math.max(...executionDurations);
+      const commitDuration = 850;
+      const commitFinish = Math.max(executionFinish, ...executionDurations.map((duration, index) =>
+        payments[index]!.dataset.admitted === 'true' ? executionStart + duration + commitDuration : 0));
       let elapsed = 0;
       let last: number | null = null;
       let frame: number | null = null;
@@ -86,18 +95,20 @@ const transactions = [
 
       const render = (time: number) => {
         const t = time % 8_000;
-        const finish = 3_400;
-        const progress = Math.max(0, Math.min(1, (t - 1_200) / (finish - 1_200)));
         bars.forEach((bar, index) => {
+          const progress = Math.max(0, Math.min(1, (t - executionStart) / executionDurations[index]!));
+          const resolved = String(progress === 1);
+          payments[index]!.dataset.resolved = resolved;
+          connections[index]!.dataset.resolved = resolved;
           bar.style.transform = `scaleX(${progress})`;
           position(incoming[index]!, (t - 250) / 900);
-          position(outgoing[index]!, outgoing[index]!.dot.parentElement?.getAttribute('data-admitted') === 'true' ? (t - finish) / 850 : -1);
+          position(outgoing[index]!, payments[index]!.dataset.admitted === 'true' ? (t - executionStart - executionDurations[index]!) / commitDuration : -1);
         });
-        const phase = t < 1_200 ? 'read' : t < 3_400 ? 'execute' : t < 4_500 ? 'merge' : 'complete';
+        const phase = t < executionStart ? 'read' : t < executionFinish ? 'execute' : t < commitFinish ? 'merge' : 'complete';
         if (this.dataset.phase !== phase) this.dataset.phase = phase;
         const value = phase === 'complete' ? '30' : '—';
         if (result.textContent !== value) result.textContent = value;
-        const label = { read: 'Read the same balance of 100', execute: 'Execute all three payments in parallel', merge: 'Admit 30 and 40; exclude 50', complete: 'One valid outcome: 100 − 30 − 40 = 30' }[phase];
+        const label = { read: 'Read the same balance of 100', execute: 'Execute all three payments in parallel', merge: 'Admit A and B; exclude C to prevent overspending', complete: 'One valid outcome: 100 − 30 − 40 = 30' }[phase];
         if (stage.textContent !== label) stage.textContent = label;
       };
 
@@ -113,7 +124,7 @@ const transactions = [
         frame = null;
         last = null;
         button.hidden = motion.matches;
-        if (motion.matches) render(4_500);
+        if (motion.matches) render(commitFinish);
         const running = visible && !document.hidden && !paused && !motion.matches;
         this.toggleAttribute('data-running', running);
         if (running) { render(elapsed); frame = requestAnimationFrame(tick); }
