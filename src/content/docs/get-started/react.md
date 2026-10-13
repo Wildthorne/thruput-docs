@@ -18,7 +18,7 @@ Configure [npm package access](/typescript/setup/#give-npm-package-access) in th
 
 ```bash
 npm install
-npm install @groundhogchain/react @groundhogchain/client @groundhogchain/protocol @tanstack/react-query
+npm install @thruputchain/react @thruputchain/client @thruputchain/protocol @tanstack/react-query
 ```
 
 ## 2. Connect the providers
@@ -27,8 +27,8 @@ Replace `src/main.tsx`:
 
 ```tsx
 import { createRoot } from "react-dom/client";
-import { createGroundhogClient, devnet } from "@groundhogchain/client";
-import { WalletProvider } from "@groundhogchain/react";
+import { createThruputClient, devnet } from "@thruputchain/client";
+import { WalletProvider } from "@thruputchain/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import App from "./App";
 
@@ -36,7 +36,7 @@ const root = createRoot(document.getElementById("root")!);
 root.render(<p>Connecting to Devnet…</p>);
 
 async function start() {
-  const client = await createGroundhogClient({ cluster: devnet() });
+  const client = await createThruputClient({ cluster: devnet() });
   const queries = new QueryClient();
 
   root.render(
@@ -62,10 +62,10 @@ The client and query cache are created once. `WalletProvider` makes the client a
 Replace `src/App.tsx`:
 
 ```tsx
-import { formatUnits } from "@groundhogchain/client";
-import { ERC20 } from "@groundhogchain/client/contracts";
-import { HOG_ADDRESS } from "@groundhogchain/protocol";
-import { useContractView } from "@groundhogchain/react";
+import { formatUnits } from "@thruputchain/client";
+import { ERC20 } from "@thruputchain/client/contracts";
+import { HOG_ADDRESS } from "@thruputchain/protocol";
+import { useContractView } from "@thruputchain/react";
 
 export default function App() {
   const supply = useContractView({

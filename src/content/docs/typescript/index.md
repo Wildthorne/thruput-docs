@@ -5,7 +5,7 @@ sidebar:
   label: Overview
 ---
 
-Build browser applications, Node.js services, and scripts with `@groundhogchain/client`. You can read an existing contract without a wallet, signing key, Rust installation, or deployment.
+Build browser applications, Node.js services, and scripts with `@thruputchain/client`. You can read an existing contract without a wallet, signing key, Rust installation, or deployment.
 
 ## The application model
 
@@ -22,11 +22,11 @@ Write:  contract binding + wallet client → signed transaction → receipt
 
 | Package or entry point | Role |
 | --- | --- |
-| `@groundhogchain/client` | RPC clients, accounts, wallet helpers, amounts, and contract runtime |
-| `@groundhogchain/client/contracts` | Standard contract bindings supplied with the client, including ERC-20 and DefaultWallet |
-| `@groundhogchain/protocol` | Wire types, serialization, and protocol constants such as `HOG_ADDRESS` |
-| `@groundhogchain/contract-spec` | Contract schema tooling; most applications use the generated binding instead |
-| `@groundhogchain/react` | React integration over the client and wallet model; see [React](/react/) |
+| `@thruputchain/client` | RPC clients, accounts, wallet helpers, amounts, and contract runtime |
+| `@thruputchain/client/contracts` | Standard contract bindings supplied with the client, including ERC-20 and DefaultWallet |
+| `@thruputchain/protocol` | Wire types, serialization, and protocol constants such as `HOG_ADDRESS` |
+| `@thruputchain/contract-spec` | Contract schema tooling; most applications use the generated binding instead |
+| `@thruputchain/react` | React integration over the client and wallet model; see [React](/react/) |
 
 Generated bindings are application files, not a replacement for the client package. They import its contract runtime.
 

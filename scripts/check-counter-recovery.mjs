@@ -9,11 +9,11 @@ if (!app) throw new Error('Usage: node scripts/check-counter-recovery.mjs EXTRAC
 const parent = pathToFileURL(resolve(app, 'package.json')).href;
 const require = createRequire(parent);
 const { tsImport } = await import(pathToFileURL(require.resolve('tsx/esm/api')).href);
-const sdk = await tsImport('@groundhogchain/client', parent);
-const { ERC20 } = await tsImport('@groundhogchain/client/contracts', parent);
-const { MockTransport } = await tsImport('@groundhogchain/client/transport', parent);
+const sdk = await tsImport('@thruputchain/client', parent);
+const { ERC20 } = await tsImport('@thruputchain/client/contracts', parent);
+const { MockTransport } = await tsImport('@thruputchain/client/transport', parent);
 const { archiveExpiredUpdate } = await tsImport(pathToFileURL(resolve(app, 'src/updates.ts')).href, parent);
-const client = await sdk.createGroundhogClient({
+const client = await sdk.createThruputClient({
   cluster: sdk.defineCluster({ networkHash: sdk.networkHash(sdk.hashFromHex(`0x${'00'.repeat(32)}`)), capabilities: [] }),
   transport: new MockTransport(),
 });

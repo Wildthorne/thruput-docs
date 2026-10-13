@@ -7,7 +7,7 @@ Bindings describe a contract's API. The client runtime uses them to encode argum
 
 ## Obtain the binding
 
-The client supplies standard bindings such as `ERC20` through `@groundhogchain/client/contracts`. For a custom contract, obtain its generated `.ts` file, address, and network from the contract author.
+The client supplies standard bindings such as `ERC20` through `@thruputchain/client/contracts`. For a custom contract, obtain its generated `.ts` file, address, and network from the contract author.
 
 Generate a binding yourself only when you have its build or canonical spec. See [CLI code generation](/cli/codegen/) and [the contract-side handoff](/contracts/client-bindings/).
 
@@ -18,7 +18,7 @@ Regenerate when methods, argument or return types, declared exceptions, or event
 ## Select an Interface Version
 
 ```ts
-import { ERC20 } from "@groundhogchain/client/contracts";
+import { ERC20 } from "@thruputchain/client/contracts";
 
 const tokenInterface = ERC20.v0_1;
 ```
@@ -37,9 +37,9 @@ The value alias does not create a TypeScript type namespace. Keep the full path 
 ## Bind a deployment
 
 ```ts
-import { getContract } from "@groundhogchain/client";
-import { ERC20 } from "@groundhogchain/client/contracts";
-import { HOG_ADDRESS } from "@groundhogchain/protocol";
+import { getContract } from "@thruputchain/client";
+import { ERC20 } from "@thruputchain/client/contracts";
+import { HOG_ADDRESS } from "@thruputchain/protocol";
 import { client } from "./client.js";
 
 const hog = getContract({ binding: ERC20.v0_1, address: HOG_ADDRESS, client });

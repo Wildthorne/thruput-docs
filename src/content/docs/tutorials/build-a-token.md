@@ -3,7 +3,7 @@ title: Build a token
 description: Build and test an ERC-20 contract with balances, allowances, administrator-controlled supply, and standard events.
 ---
 
-Build the `erc20` contract in the [examples repository](https://github.com/groundhogchain/groundhog-examples/tree/main/contracts/erc20). You will trace a transfer, exercise minting and allowances, and test both native and RV32 execution.
+Build the `erc20` contract in the [examples repository](https://github.com/thruputchain/thruput-examples/tree/main/contracts/erc20). You will trace a transfer, exercise minting and allowances, and test both native and RV32 execution.
 
 This is a contract guide. The [counter series](/tutorials/build-a-counter/) covers the full contract-to-application journey; [TypeScript](/typescript/) covers application interactions.
 
@@ -12,8 +12,8 @@ This is a contract guide. The [counter series](/tutorials/build-a-counter/) cove
 Complete [CLI and Cargo setup](/cli/install/), then clone the examples repository if you do not already have it:
 
 ```bash
-git clone https://github.com/groundhogchain/groundhog-examples.git
-cd groundhog-examples
+git clone https://github.com/thruputchain/thruput-examples.git
+cd thruput-examples
 ```
 
 Use the workspace's manifests, toolchain, and lockfile together. The token implements the shared interface crates rather than copying their definitions.

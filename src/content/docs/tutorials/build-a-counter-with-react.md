@@ -14,7 +14,7 @@ Keep the API server running on port 3001. All files below are inside the `app` d
 From `app`, install the React packages and browser tooling:
 
 ```bash
-npm install @groundhogchain/react @tanstack/react-query react react-dom
+npm install @thruputchain/react @tanstack/react-query react react-dom
 npm install --save-dev vite @types/react @types/react-dom
 ```
 
@@ -61,8 +61,8 @@ export default defineConfig({
 
 ```tsx title="src/main.tsx"
 import { createRoot } from "react-dom/client";
-import { createGroundhogClient, defineCluster, hashFromHex, networkHash } from "@groundhogchain/client";
-import { WalletProvider } from "@groundhogchain/react";
+import { createThruputClient, defineCluster, hashFromHex, networkHash } from "@thruputchain/client";
+import { WalletProvider } from "@thruputchain/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { App } from "./App";
 import type { Config } from "./updates";
@@ -75,7 +75,7 @@ async function start() {
   const response = await fetch("/api/config");
   if (!response.ok) throw new Error("Could not load counter configuration");
   const config: Config = await response.json();
-  const client = await createGroundhogClient({
+  const client = await createThruputClient({
     cluster: defineCluster({
       rpcUrl: new URL("/thruput-rpc", location.origin).href,
       networkHash: networkHash(hashFromHex(config.networkId)),
@@ -113,16 +113,16 @@ Create a small shared update module. It retains the hash before submitting and c
 
 ```ts title="src/updates.ts"
 import { useRef, useState } from "react";
-import { deserializeSignedTransaction, fromHex0x, hashSignedTransaction, toHex0x, type ConnectedGroundhogClient } from "@groundhogchain/client";
-import { parseSignTransactionResult } from "@groundhogchain/client/provider";
-import { useClient, useWaitForTransactionReceipt } from "@groundhogchain/react";
+import { deserializeSignedTransaction, fromHex0x, hashSignedTransaction, toHex0x, type ConnectedThruputClient } from "@thruputchain/client";
+import { parseSignTransactionResult } from "@thruputchain/client/provider";
+import { useClient, useWaitForTransactionReceipt } from "@thruputchain/react";
 
 export type Config = { networkId: string; counterAddress: string; signerAddress: string | null };
 export type Direction = "increment" | "decrement";
 export type Pending = { hash: string; signedTransaction: string; account: string; networkId: string };
 export type Prepared = { record: Pending; submit(): Promise<unknown> };
 
-export async function archiveExpiredUpdate(client: ConnectedGroundhogClient, record: Pending, key: string, storage: Pick<Storage, "setItem" | "removeItem">) {
+export async function archiveExpiredUpdate(client: ConnectedThruputClient, record: Pending, key: string, storage: Pick<Storage, "setItem" | "removeItem">) {
   if (toHex0x(client.network.networkHash) !== record.networkId) throw new Error("Select the original network before recovery");
   const signed = deserializeSignedTransaction(fromHex0x(record.signedTransaction));
   const hash = hashSignedTransaction(signed);
@@ -135,7 +135,7 @@ export async function archiveExpiredUpdate(client: ConnectedGroundhogClient, rec
   storage.removeItem(key);
 }
 
-export async function prepareDevelopment(client: ConnectedGroundhogClient, config: Config, direction: Direction): Promise<Prepared> {
+export async function prepareDevelopment(client: ConnectedThruputClient, config: Config, direction: Direction): Promise<Prepared> {
   if (!config.signerAddress) throw new Error("Development signer unavailable");
   const response = await fetch("/api/prepare", {
     method: "POST", headers: { "Content-Type": "application/json" },
@@ -208,8 +208,8 @@ The preparer returns a signed record and a submission function. This keeps the U
 ## Build the small components
 
 ```tsx title="src/Counter.tsx"
-import { addressFromHex, ExecResult } from "@groundhogchain/client";
-import { contractViewQueryOptions, useClient } from "@groundhogchain/react";
+import { addressFromHex, ExecResult } from "@thruputchain/client";
+import { contractViewQueryOptions, useClient } from "@thruputchain/react";
 import { useQuery } from "@tanstack/react-query";
 import { Counter } from "./contracts/counter";
 import type { Direction, useUpdate } from "./updates";
@@ -254,7 +254,7 @@ export function UpdateStatus({ update }: { update: ReturnType<typeof useUpdate> 
 ```
 
 ```tsx title="src/App.tsx"
-import { useClient } from "@groundhogchain/react";
+import { useClient } from "@thruputchain/react";
 import { CounterPanel, UpdateStatus } from "./Counter";
 import { prepareDevelopment, useUpdate, type Config } from "./updates";
 

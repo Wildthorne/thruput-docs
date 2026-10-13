@@ -10,9 +10,9 @@ A public client performs RPC reads without signing. Create one per application n
 Create `src/client.ts`:
 
 ```ts
-import { createGroundhogClient, devnet } from "@groundhogchain/client";
+import { createThruputClient, devnet } from "@thruputchain/client";
 
-export const client = await createGroundhogClient({ cluster: devnet() });
+export const client = await createThruputClient({ cluster: devnet() });
 ```
 
 Client creation is asynchronous. It fetches the network identity before returning. Other examples import this client from `./client.js`.
@@ -20,7 +20,7 @@ Client creation is asynchronous. It fetches the network identity before returnin
 To check the connection, create `src/network.ts`:
 
 ```ts
-import { toHex0x } from "@groundhogchain/client";
+import { toHex0x } from "@thruputchain/client";
 import { client } from "./client.js";
 
 const [tip, version] = await Promise.all([
@@ -43,9 +43,9 @@ No wallet permission or account funding is required.
 `devnet({ rpcUrl })` overrides the Devnet endpoint. For a local node, replace the cluster with `localnet()`:
 
 ```ts
-import { createGroundhogClient, localnet } from "@groundhogchain/client";
+import { createThruputClient, localnet } from "@thruputchain/client";
 
-const client = await createGroundhogClient({ cluster: localnet() });
+const client = await createThruputClient({ cluster: localnet() });
 ```
 
 Start the node with [the CLI](/cli/local-node/) first. Local account manifests and RPC endpoints must refer to the same node.
@@ -57,11 +57,11 @@ Use `defineCluster()` for a reusable custom descriptor. `mainnet()` requires an 
 Devnet is unpinned by default. To require a specific deployment, provide the trusted hash from your environment:
 
 ```ts
-import { createGroundhogClient, devnet, hashFromHex, networkHash } from "@groundhogchain/client";
+import { createThruputClient, devnet, hashFromHex, networkHash } from "@thruputchain/client";
 
 const expected = process.env.THRUPUT_NETWORK_HASH;
 if (!expected) throw new Error("Set THRUPUT_NETWORK_HASH to the expected 0x-prefixed hash");
-const client = await createGroundhogClient({
+const client = await createThruputClient({
   cluster: devnet({ networkHash: networkHash(hashFromHex(expected)) }),
 });
 ```

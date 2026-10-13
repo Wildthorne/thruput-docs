@@ -8,8 +8,8 @@ description: Observe a saved transaction hash without wallet permission and dist
 ## Display a receipt
 
 ```tsx
-import { ExecResult } from "@groundhogchain/client";
-import { useWaitForTransactionReceipt } from "@groundhogchain/react";
+import { ExecResult } from "@thruputchain/client";
+import { useWaitForTransactionReceipt } from "@thruputchain/react";
 
 export function TransactionStatus({ hash }: { hash: string | null }) {
   const receipt = useWaitForTransactionReceipt({

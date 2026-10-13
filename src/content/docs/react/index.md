@@ -5,7 +5,7 @@ sidebar:
   label: Overview
 ---
 
-Build wallet controls and contract-data interfaces with `@groundhogchain/react`. The library supplies state and hooks; you supply the components, styling, and application workflow.
+Build wallet controls and contract-data interfaces with `@thruputchain/react`. The library supplies state and hooks; you supply the components, styling, and application workflow.
 
 ## How the layers fit
 

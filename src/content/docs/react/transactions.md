@@ -10,10 +10,10 @@ description: Use an explicit mutation to request approval, save signed transacti
 This component sends a small native-token transfer to an already funded recipient. The application supplies `savePending`, which must durably save the approved transaction before resolving:
 
 ```tsx
-import { gasAmount, parseUnits, toHex0x, TransactionObservationError, type ContractAddress } from "@groundhogchain/client";
-import { ERC20 } from "@groundhogchain/client/contracts";
-import { HOG_ADDRESS } from "@groundhogchain/protocol";
-import { useExecute, useWallet, type ExecuteVariables } from "@groundhogchain/react";
+import { gasAmount, parseUnits, toHex0x, TransactionObservationError, type ContractAddress } from "@thruputchain/client";
+import { ERC20 } from "@thruputchain/client/contracts";
+import { HOG_ADDRESS } from "@thruputchain/protocol";
+import { useExecute, useWallet, type ExecuteVariables } from "@thruputchain/react";
 
 type SavePending = ExecuteVariables["options"]["onSigned"];
 

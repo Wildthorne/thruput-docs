@@ -5,7 +5,7 @@ sidebar:
   label: Overview
 ---
 
-Build a project with a visible result or passing check. The counter series starts from an empty directory. The [examples repository](https://github.com/groundhogchain/groundhog-examples) supplies the token and AMM contracts and a full-featured counter app for reference.
+Build a project with a visible result or passing check. The counter series starts from an empty directory. The [examples repository](https://github.com/thruputchain/thruput-examples) supplies the token and AMM contracts and a full-featured counter app for reference.
 
 ## Build a counter app
 

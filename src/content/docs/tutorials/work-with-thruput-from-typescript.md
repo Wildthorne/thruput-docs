@@ -21,7 +21,7 @@ npm pkg set type=module
 Configure [npm registry access](/typescript/setup/#give-npm-package-access), then install the TypeScript dependencies:
 
 ```bash
-npm install @groundhogchain/client @groundhogchain/protocol
+npm install @thruputchain/client @thruputchain/protocol
 npm install --save-dev typescript tsx @types/node
 mkdir -p src/contracts
 ```
@@ -36,7 +36,7 @@ dist/
 
 ## Generate the TypeScript binding
 
-Generate the binding from the contract spec built in part 1. Run this from `app`:
+Use Thruput CLI 0.29.0 or newer. Its TypeScript generator imports the `@thruputchain` packages used by this app. Generate the binding from the contract spec built in part 1. Run this from `app`:
 
 ```bash
 thruput codegen ts ../target/thruput/counter.spec.xdr \
@@ -59,9 +59,9 @@ These public values identify one deployment. A different network needs its own e
 
 ```ts title="chain.ts"
 import {
-  addressFromHex, createGroundhogClient, createPubkeyAccount, createWalletClient,
+  addressFromHex, createThruputClient, createPubkeyAccount, createWalletClient,
   defineCluster, fromHex0x, hashFromHex, networkHash, PrivateKeySigner,
-} from "@groundhogchain/client";
+} from "@thruputchain/client";
 import { Counter } from "./src/contracts/counter.js";
 
 function required(name: string) {
@@ -72,7 +72,7 @@ function required(name: string) {
 
 export const rpcUrl = required("RPC_URL");
 export const contract = addressFromHex(required("COUNTER_ADDRESS"));
-export const client = await createGroundhogClient({
+export const client = await createThruputClient({
   cluster: defineCluster({
     rpcUrl,
     networkHash: networkHash(hashFromHex(required("NETWORK_HASH"))),
@@ -110,7 +110,7 @@ export COUNTER_SIGNING_PRIVATE_KEY="$(node -e 'process.stdout.write("0x" + requi
 Keep this terminal environment for funding and the server. A persistent account should load its existing seed from secret configuration. Never put this key in a browser file or a `VITE_` variable.
 
 ```ts title="fund.ts"
-import { toHex0x } from "@groundhogchain/client";
+import { toHex0x } from "@thruputchain/client";
 import { developmentWallet } from "./chain.js";
 
 const wallet = developmentWallet();
@@ -130,7 +130,7 @@ The server exposes public configuration, proxies the app's RPC requests, and pre
 
 ```ts title="server.ts"
 import { createServer, type ServerResponse } from "node:http";
-import { gasAmount, serializeSignedTransaction, toHex0x } from "@groundhogchain/client";
+import { gasAmount, serializeSignedTransaction, toHex0x } from "@thruputchain/client";
 import { client, contract, Counter, developmentWallet, rpcUrl } from "./chain.js";
 
 const wallet = process.env.COUNTER_SIGNING_PRIVATE_KEY ? developmentWallet() : null;

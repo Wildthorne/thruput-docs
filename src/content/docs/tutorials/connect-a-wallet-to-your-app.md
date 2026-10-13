@@ -18,7 +18,7 @@ Install the [Wallet Extension](/tools/wallet-extension/) and select the app's ne
 ## Add wallet controls
 
 ```tsx title="src/WalletControls.tsx"
-import { useWallet } from "@groundhogchain/react";
+import { useWallet } from "@thruputchain/react";
 
 export function WalletControls({ busy, walletMode, disconnect }: {
   busy: boolean; walletMode: boolean; disconnect(): void;
@@ -50,8 +50,8 @@ export function WalletControls({ busy, walletMode, disconnect }: {
 ## Add the wallet preparer
 
 ```ts title="src/wallet-update.ts"
-import { addressFromHex, gasAmount } from "@groundhogchain/client";
-import type { ProviderWalletClient } from "@groundhogchain/client/wallet";
+import { addressFromHex, gasAmount } from "@thruputchain/client";
+import type { ProviderWalletClient } from "@thruputchain/client/wallet";
 import { Counter } from "./contracts/counter";
 import type { Config, Direction, Prepared } from "./updates";
 
@@ -76,7 +76,7 @@ Replace `src/App.tsx`:
 
 ```tsx title="src/App.tsx"
 import { useEffect, useState } from "react";
-import { useClient, useWallet, useWalletClient } from "@groundhogchain/react";
+import { useClient, useWallet, useWalletClient } from "@thruputchain/react";
 import { CounterPanel, UpdateStatus } from "./Counter";
 import { WalletControls } from "./WalletControls";
 import { prepareDevelopment, useUpdate, type Config, type Direction } from "./updates";
@@ -141,7 +141,7 @@ npm run build
 
 **Checkpoint:** a small, complete app built without a repository clone. Its default signer is convenient for development, and connected users can approve their own transactions.
 
-You can also explore the [full counter example on GitHub](https://github.com/groundhogchain/groundhog-examples/tree/main/apps/counter).
+You can also explore the [full counter example on GitHub](https://github.com/thruputchain/thruput-examples/tree/main/apps/counter).
 
 ## Work with an agent
 

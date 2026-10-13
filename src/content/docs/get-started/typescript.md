@@ -18,7 +18,7 @@ mkdir -p src
 Configure [npm package access](/typescript/setup/#give-npm-package-access) in this directory, then install the latest SDK and a TypeScript runner:
 
 ```bash
-npm install @groundhogchain/client @groundhogchain/protocol
+npm install @thruputchain/client @thruputchain/protocol
 npm install --save-dev typescript tsx @types/node
 ```
 
@@ -27,12 +27,12 @@ npm install --save-dev typescript tsx @types/node
 Create `src/index.ts`:
 
 ```ts
-import { createGroundhogClient, devnet, formatUnits, getContract } from "@groundhogchain/client";
-import { ERC20 } from "@groundhogchain/client/contracts";
-import { HOG_ADDRESS } from "@groundhogchain/protocol";
+import { createThruputClient, devnet, formatUnits, getContract } from "@thruputchain/client";
+import { ERC20 } from "@thruputchain/client/contracts";
+import { HOG_ADDRESS } from "@thruputchain/protocol";
 
 async function main() {
-  const client = await createGroundhogClient({ cluster: devnet() });
+  const client = await createThruputClient({ cluster: devnet() });
   const hog = getContract({ binding: ERC20.v0_1, address: HOG_ADDRESS, client });
   const supply = await hog.totalSupply.view({ args: undefined });
 

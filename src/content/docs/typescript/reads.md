@@ -12,9 +12,9 @@ A view simulates a contract call against committed state without submitting a tr
 Use the `src/client.ts` from [Connect to a network](/typescript/connect/). Create `src/read.ts`:
 
 ```ts
-import { formatUnits, getContract } from "@groundhogchain/client";
-import { ERC20 } from "@groundhogchain/client/contracts";
-import { HOG_ADDRESS } from "@groundhogchain/protocol";
+import { formatUnits, getContract } from "@thruputchain/client";
+import { ERC20 } from "@thruputchain/client/contracts";
+import { HOG_ADDRESS } from "@thruputchain/protocol";
 import { client } from "./client.js";
 
 const hog = getContract({ binding: ERC20.v0_1, address: HOG_ADDRESS, client });
@@ -34,7 +34,7 @@ The client supplies the standard ERC-20 binding, and the protocol package suppli
 For an address held by your application:
 
 ```ts
-import { addressFromHex } from "@groundhogchain/client";
+import { addressFromHex } from "@thruputchain/client";
 
 export async function readBalance(ownerText: string, signal?: AbortSignal) {
   const owner = addressFromHex(ownerText);
@@ -117,7 +117,7 @@ Malformed contract bytes throw `ContractDecodeError`. Transport and RPC failures
 ## Cancel stale reads
 
 ```ts
-import { classifyReadError } from "@groundhogchain/client";
+import { classifyReadError } from "@thruputchain/client";
 
 export async function refreshSupply(signal: AbortSignal) {
   try {

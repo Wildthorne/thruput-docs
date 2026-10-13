@@ -8,8 +8,8 @@ Use `useBalance` for the native token and `useTokenBalance` for a standard ERC-2
 ## Follow the connected account
 
 ```tsx
-import { formatUnits } from "@groundhogchain/client";
-import { useBalance } from "@groundhogchain/react";
+import { formatUnits } from "@thruputchain/client";
+import { useBalance } from "@thruputchain/react";
 
 export function NativeBalance() {
   const balance = useBalance();
@@ -27,8 +27,8 @@ With no address, the hook follows the selected account only while the wallet is 
 Pass an address to read without wallet permission:
 
 ```tsx
-import { formatUnits } from "@groundhogchain/client";
-import { useTokenBalance, type BalanceAddress } from "@groundhogchain/react";
+import { formatUnits } from "@thruputchain/client";
+import { useTokenBalance, type BalanceAddress } from "@thruputchain/react";
 
 export function TokenBalance({ token, owner, decimals }: {
   token: BalanceAddress;
