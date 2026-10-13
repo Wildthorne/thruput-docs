@@ -8,7 +8,7 @@ Contract integers are JavaScript `bigint` values. Addresses and hashes are typed
 ## Parse and display amounts
 
 ```ts
-import { parseUnits, formatUnits } from "@groundhogchain/client";
+import { parseUnits, formatUnits } from "@thruputchain/client";
 
 const amount = parseUnits("12.05", 2); // 1205n
 console.log(formatUnits(amount, 2));  // "12.05"
@@ -22,7 +22,7 @@ The native token has seven decimal places. Other tokens choose their own decimal
 ## Convert addresses and hashes
 
 ```ts
-import { addressFromHex, hashFromHex, toHex0x } from "@groundhogchain/client";
+import { addressFromHex, hashFromHex, toHex0x } from "@thruputchain/client";
 
 export function parseInputs(addressText: string, transactionText: string) {
   const address = addressFromHex(addressText);

@@ -12,10 +12,10 @@ description: Display a typed contract view with loading, error, data, and refres
 Use this as `src/App.tsx`. The binding and deployed address are supplied by the SDK packages:
 
 ```tsx
-import { formatUnits } from "@groundhogchain/client";
-import { ERC20 } from "@groundhogchain/client/contracts";
-import { HOG_ADDRESS } from "@groundhogchain/protocol";
-import { useContractView } from "@groundhogchain/react";
+import { formatUnits } from "@thruputchain/client";
+import { ERC20 } from "@thruputchain/client/contracts";
+import { HOG_ADDRESS } from "@thruputchain/protocol";
+import { useContractView } from "@thruputchain/react";
 
 export default function App() {
   const supply = useContractView({
@@ -50,10 +50,10 @@ No wallet, signer, or new deployment is needed. The result retains `value`, `hei
 For a method with arguments, pass its generated argument object:
 
 ```tsx
-import type { ContractAddress } from "@groundhogchain/client";
-import { ERC20 } from "@groundhogchain/client/contracts";
-import { HOG_ADDRESS } from "@groundhogchain/protocol";
-import { useContractView } from "@groundhogchain/react";
+import type { ContractAddress } from "@thruputchain/client";
+import { ERC20 } from "@thruputchain/client/contracts";
+import { HOG_ADDRESS } from "@thruputchain/protocol";
+import { useContractView } from "@thruputchain/react";
 
 export function RawBalance({ owner }: { owner: ContractAddress }) {
   const balance = useContractView({

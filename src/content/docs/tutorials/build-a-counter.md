@@ -7,7 +7,7 @@ sidebar:
 
 Build a small counter application from scratch. Across four parts, you will create a contract, add a TypeScript development signer, build a React interface, and let users switch to their own wallet.
 
-You can also explore the [full counter example on GitHub](https://github.com/groundhogchain/groundhog-examples/tree/main/apps/counter).
+You can also explore the [full counter example on GitHub](https://github.com/thruputchain/thruput-examples/tree/main/apps/counter).
 
 ## Create the contract
 

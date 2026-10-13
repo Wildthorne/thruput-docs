@@ -18,13 +18,13 @@ Different client instances do not share cached reads, even on the same network. 
 Factories work outside components when given an initialized client and explicit inputs:
 
 ```ts
-import type { ConnectedGroundhogClient } from "@groundhogchain/client";
-import { tokenBalanceQueryOptions, type BalanceAddress } from "@groundhogchain/react";
+import type { ConnectedThruputClient } from "@thruputchain/client";
+import { tokenBalanceQueryOptions, type BalanceAddress } from "@thruputchain/react";
 import type { QueryClient } from "@tanstack/react-query";
 
 export function prefetchBalance(
   queries: QueryClient,
-  client: ConnectedGroundhogClient,
+  client: ConnectedThruputClient,
   owner: BalanceAddress,
   token: BalanceAddress,
 ) {
@@ -46,9 +46,9 @@ Balance factories do not resolve the connected wallet. Missing inputs produce a 
 Use one balance component per token, or compose factory options with `useQueries`:
 
 ```tsx
-import { toHex0x } from "@groundhogchain/client";
+import { toHex0x } from "@thruputchain/client";
 import { useQueries } from "@tanstack/react-query";
-import { tokenBalanceQueryOptions, useClient, useWallet, type BalanceAddress } from "@groundhogchain/react";
+import { tokenBalanceQueryOptions, useClient, useWallet, type BalanceAddress } from "@thruputchain/react";
 
 export function TokenBalances({ tokens }: { tokens: BalanceAddress[] }) {
   const client = useClient();
@@ -83,7 +83,7 @@ After observing a committed transaction, invalidate the key for the account and 
 
 ```ts
 import type { QueryClient } from "@tanstack/react-query";
-import type { BalanceQueryKey } from "@groundhogchain/react";
+import type { BalanceQueryKey } from "@thruputchain/react";
 
 export function refreshBalance(queries: QueryClient, originalKey: BalanceQueryKey) {
   return queries.invalidateQueries({ queryKey: originalKey, exact: true });

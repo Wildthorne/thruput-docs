@@ -10,7 +10,7 @@ To install and fund a wallet for testing, follow [Wallet Extension](/tools/walle
 ## Select and connect a wallet
 
 ```tsx
-import { useWallet } from "@groundhogchain/react";
+import { useWallet } from "@thruputchain/react";
 
 export function WalletControls() {
   const wallet = useWallet();
@@ -50,7 +50,7 @@ Discovery selects the first provider without prompting. The user grants access t
 ## Select an authorized account
 
 ```tsx
-import { useWallet } from "@groundhogchain/react";
+import { useWallet } from "@thruputchain/react";
 
 export function AccountSelector() {
   const wallet = useWallet();

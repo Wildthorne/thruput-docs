@@ -11,7 +11,7 @@ For the generated counter, place its artifact and binding in your project. This 
 
 ```ts
 import { readFile } from "node:fs/promises";
-import { gasAmount, parseUnits, prepareContractDeployment, toHex0x } from "@groundhogchain/client";
+import { gasAmount, parseUnits, prepareContractDeployment, toHex0x } from "@thruputchain/client";
 import { Counter } from "./contracts/my-counter.js";
 import { account, wallet } from "./wallet.js";
 

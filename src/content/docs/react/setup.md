@@ -14,7 +14,7 @@ npm install
 Complete the shared [registry access setup](/typescript/setup/#give-npm-package-access), then install the integration and its client together:
 
 ```bash
-npm install @groundhogchain/react @groundhogchain/client @groundhogchain/protocol @tanstack/react-query
+npm install @thruputchain/react @thruputchain/client @thruputchain/protocol @tanstack/react-query
 ```
 
 The package manager resolves the React library's compatible client dependency. Keep the lockfile. In an existing application, satisfy the library's peer dependencies rather than forcing an incompatible client version. The integration uses React 19 and TanStack Query 5.
@@ -25,8 +25,8 @@ Replace `src/main.tsx`:
 
 ```tsx
 import { createRoot } from "react-dom/client";
-import { createGroundhogClient, devnet } from "@groundhogchain/client";
-import { WalletProvider } from "@groundhogchain/react";
+import { createThruputClient, devnet } from "@thruputchain/client";
+import { WalletProvider } from "@thruputchain/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import App from "./App";
 
@@ -34,7 +34,7 @@ const root = createRoot(document.getElementById("root")!);
 root.render(<p>Connecting to Devnet…</p>);
 
 async function start() {
-  const client = await createGroundhogClient({ cluster: devnet() });
+  const client = await createThruputClient({ cluster: devnet() });
   const queries = new QueryClient();
 
   root.render(

@@ -20,7 +20,7 @@ Create `src/wallet.ts`:
 ```ts
 import {
   PrivateKeySigner, createPubkeyAccount, createWalletClient, fromHex0x,
-} from "@groundhogchain/client";
+} from "@thruputchain/client";
 import { client } from "./client.js";
 
 const secret = process.env.THRUPUT_PRIVATE_KEY;
@@ -39,7 +39,7 @@ Keep the key in the process's secret configuration, not browser code or committe
 Create `src/fund.ts`:
 
 ```ts
-import { toHex0x } from "@groundhogchain/client";
+import { toHex0x } from "@thruputchain/client";
 import { account, wallet } from "./wallet.js";
 
 const result = await wallet.requestAirdrop();
@@ -56,24 +56,24 @@ npx tsx src/fund.ts
 
 The client must use a cluster that declares airdrop support. The hosted faucet selects the allocation. `requestAirdrop` polls one attempt with a stable nonce; retain an explicit `clientNonce` if your application must recover the request across process restarts. `requestAirdropAttempt` exposes application-controlled polling.
 
-## Use a local bootstrap account
+## Use a local development account
 
-For a node started by [the CLI](/cli/local-node/), use this instead of the Devnet signer setup. Set the manifest path reported by `thruput node` in the terminal that runs the script:
+For a node started by [the CLI](/cli/local-node/), create a disposable signer and fund it from the local faucet. In the terminal that runs the script:
 
 ```bash
-export GROUNDHOG_RUNTIME_MANIFEST=/absolute/path/to/runtime-manifest.json
+export THRUPUT_SIGNING_PRIVATE_KEY="$(node -e 'process.stdout.write("0x" + require("node:crypto").randomBytes(32).toString("hex"))')"
 ```
 
 ```ts
-import { createGroundhogClient, createPubkeyAccount, createWalletClient, localnet } from "@groundhogchain/client";
-import { loadLocalDevAccount } from "@groundhogchain/client/local-dev";
+import { createThruputClient, createPubkeyAccount, createWalletClient, fromHex0x, localnet, PrivateKeySigner } from "@thruputchain/client";
 
-const local = await loadLocalDevAccount();
-const client = await createGroundhogClient({
-  cluster: localnet({ networkHash: local.networkHash }),
-});
-const account = createPubkeyAccount({ signer: local.signer, nonce: 0n });
+const seed = process.env.THRUPUT_SIGNING_PRIVATE_KEY;
+if (!seed) throw new Error("Set THRUPUT_SIGNING_PRIVATE_KEY");
+const client = await createThruputClient({ cluster: localnet() });
+const signer = new PrivateKeySigner(fromHex0x(seed));
+const account = createPubkeyAccount({ signer });
 const wallet = createWalletClient({ client, account });
+await wallet.requestAirdrop();
 ```
 
-The Node.js-only loader verifies a native pubkey account from the runtime manifest and selects the first `local_user`, normally `dev-1`. Set `GROUNDHOG_RUNTIME_MANIFEST` to the runtime manifest path reported by `thruput node`. The current TypeScript SDK uses this variable; it does not discover the renamed CLI configuration. If you override the RPC URL, select the manifest for that same node. These deterministic keys are for local development.
+`localnet()` selects the local endpoint and checks its network identity. Keep the signer seed in this terminal environment for later calls. Use an existing seed from secret configuration when the account must persist. The SDK does not load CLI account files or runtime manifests.

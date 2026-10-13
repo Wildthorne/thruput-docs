@@ -65,7 +65,7 @@ Try this with [counter part 4](/tutorials/connect-a-wallet-to-your-app/). To add
 
 After replacing the extension files, click **Reload** on its card in `chrome://extensions`, then refresh app tabs so they load the current provider.
 
-For a source build, follow the [wallet README](https://github.com/groundhogchain/groundhog-examples/tree/main/apps/wallet-extension). That path needs repository and package access; load its generated `dist` folder in Chrome.
+For a source build, follow the [wallet README](https://github.com/thruputchain/thruput-examples/tree/main/apps/wallet-extension). That path needs repository and package access; load its generated `dist` folder in Chrome.
 
 ## If something does not work
 

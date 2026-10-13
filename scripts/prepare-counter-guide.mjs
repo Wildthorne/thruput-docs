@@ -33,6 +33,6 @@ if (!existsSync(resolve(output, 'package.json'))) {
   }, null, 2) + '\n');
 }
 if (!existsSync(resolve(output, '.npmrc'))) {
-  writeFileSync(resolve(output, '.npmrc'), '@groundhogchain:registry=https://npm.pkg.github.com\n');
+  writeFileSync(resolve(output, '.npmrc'), '@thruputchain:registry=https://npm.pkg.github.com\n');
 }
 console.log(`Counter part ${part} files prepared in ${output}`);

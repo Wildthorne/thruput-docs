@@ -10,8 +10,8 @@ Use a generated event descriptor to build filters and decode payloads. This page
 With the client from [Connect to a network](/typescript/connect/), create `src/events.ts`:
 
 ```ts
-import { groundhog_erc20_if } from "@groundhogchain/client/contracts";
-import { HOG_ADDRESS } from "@groundhogchain/protocol";
+import { groundhog_erc20_if } from "@thruputchain/client/contracts";
+import { HOG_ADDRESS } from "@thruputchain/protocol";
 import { client } from "./client.js";
 
 const { TransferEvent } = groundhog_erc20_if.v0_1.events;

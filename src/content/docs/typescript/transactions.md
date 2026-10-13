@@ -10,9 +10,9 @@ A binding builds an application call. A wallet wraps that call into an authorize
 Set up and fund the account from [Use a signer in scripts](/typescript/accounts/). For this small-transfer example, choose a recipient that already has native tokens. Create `src/send.ts`:
 
 ```ts
-import { addressFromHex, gasAmount, parseUnits, toHex0x } from "@groundhogchain/client";
-import { ERC20 } from "@groundhogchain/client/contracts";
-import { HOG_ADDRESS } from "@groundhogchain/protocol";
+import { addressFromHex, gasAmount, parseUnits, toHex0x } from "@thruputchain/client";
+import { ERC20 } from "@thruputchain/client/contracts";
+import { HOG_ADDRESS } from "@thruputchain/protocol";
 import { wallet } from "./wallet.js";
 
 const recipient = process.env.THRUPUT_RECIPIENT;
@@ -45,11 +45,11 @@ The helper waits for successful committed execution and decodes child returns in
 Use the adapter returned by [Connect a wallet](/tools/wallet-integration/). The same typed call works, but the provider helper also requires an `onSigned` callback:
 
 ```ts
-import type { ContractAddress } from "@groundhogchain/client";
-import { gasAmount, parseUnits } from "@groundhogchain/client";
-import { ERC20 } from "@groundhogchain/client/contracts";
-import { HOG_ADDRESS } from "@groundhogchain/protocol";
-import type { ProviderWalletClient, ProviderExecutionOptions } from "@groundhogchain/client/wallet";
+import type { ContractAddress } from "@thruputchain/client";
+import { gasAmount, parseUnits } from "@thruputchain/client";
+import { ERC20 } from "@thruputchain/client/contracts";
+import { HOG_ADDRESS } from "@thruputchain/protocol";
+import type { ProviderWalletClient, ProviderExecutionOptions } from "@thruputchain/client/wallet";
 
 export function sendHog(
   wallet: ProviderWalletClient,

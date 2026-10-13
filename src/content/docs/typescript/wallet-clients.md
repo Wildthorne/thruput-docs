@@ -24,7 +24,7 @@ Both constructors create local JavaScript objects. They do not fund an address, 
 Given an existing `Signer` named `signer`:
 
 ```ts
-import { createPubkeyAccount } from "@groundhogchain/client";
+import { createPubkeyAccount } from "@thruputchain/client";
 
 const account = createPubkeyAccount({ signer, nonce: 0n });
 ```
@@ -38,8 +38,8 @@ An undeployed pubkey account uses the network's DefaultWallet behavior for its r
 For an existing account whose stored policy authorizes your signer at key slot zero with sufficient weight:
 
 ```ts
-import { createSourceAddressAccount } from "@groundhogchain/client";
-import { bitMap, weight } from "@groundhogchain/protocol";
+import { createSourceAddressAccount } from "@thruputchain/client";
+import { bitMap, weight } from "@thruputchain/protocol";
 
 const account = createSourceAddressAccount({
   address: walletAddress,
@@ -58,7 +58,7 @@ The constructor does not register signers or set their weights. Those must alrea
 With a pubkey `account` and the cluster-aware public client from [Connect to a network](/typescript/connect/):
 
 ```ts
-import { createWalletClient } from "@groundhogchain/client";
+import { createWalletClient } from "@thruputchain/client";
 import { client } from "./client.js";
 
 const wallet = createWalletClient({ client, account });
@@ -75,7 +75,7 @@ A cluster-aware client supplies its validated signing network hash. A transport-
 In a browser app, the wallet provider manages signing. Use an authorized account returned by its session:
 
 ```ts
-import { createProviderWalletClient } from "@groundhogchain/client/wallet";
+import { createProviderWalletClient } from "@thruputchain/client/wallet";
 
 const wallet = createProviderWalletClient({
   client,

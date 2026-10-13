@@ -16,7 +16,7 @@ This page covers the provider-backed path described in [Accounts and wallet clie
 Start discovery when the wallet picker mounts and let the user select a provider:
 
 ```ts
-import { discoverWalletProviders, type WalletProvider } from "@groundhogchain/client/provider";
+import { discoverWalletProviders, type WalletProvider } from "@thruputchain/client/provider";
 
 export function mountWalletPicker(showChoice: (provider: WalletProvider) => void) {
   return discoverWalletProviders(showChoice);
@@ -28,12 +28,12 @@ Call the returned cleanup function when the picker unmounts. Discovery supports 
 Connect from the user's chosen-wallet action. This helper accepts a public client, the application's trusted network hash, and an account picker:
 
 ```ts
-import type { CoreGroundhogClient } from "@groundhogchain/client";
-import { parseWalletSession, type WalletAccount, type WalletProvider } from "@groundhogchain/client/provider";
-import { createProviderWalletClient } from "@groundhogchain/client/wallet";
+import type { CoreThruputClient } from "@thruputchain/client";
+import { parseWalletSession, type WalletAccount, type WalletProvider } from "@thruputchain/client/provider";
+import { createProviderWalletClient } from "@thruputchain/client/wallet";
 
 export async function connectWallet(
-  client: CoreGroundhogClient,
+  client: CoreThruputClient,
   provider: WalletProvider,
   expectedNetworkHash: string,
   chooseAccount: (accounts: readonly WalletAccount[]) => WalletAccount,
@@ -62,8 +62,8 @@ For a [cluster-aware client](/typescript/connect/), convert its validated networ
 Every provider `change` invalidates the current adapter. A failed session read or mismatched session also invalidates it. Stop offering actions through that binding, update the account/network UI, and construct a new adapter for a newly authorized session.
 
 ```ts
-import type { WalletProvider } from "@groundhogchain/client/provider";
-import type { ProviderWalletClient } from "@groundhogchain/client/wallet";
+import type { WalletProvider } from "@thruputchain/client/provider";
+import type { ProviderWalletClient } from "@thruputchain/client/wallet";
 
 export function watchWallet(
   provider: WalletProvider,

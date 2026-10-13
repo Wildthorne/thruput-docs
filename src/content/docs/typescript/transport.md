@@ -8,10 +8,10 @@ The client uses HTTP JSON-RPC by default. Supply `HttpTransport` when you need e
 ## Set a request timeout
 
 ```ts
-import { createGroundhogClient, devnet, HttpTransport } from "@groundhogchain/client";
+import { createThruputClient, devnet, HttpTransport } from "@thruputchain/client";
 
 const cluster = devnet();
-const client = await createGroundhogClient({
+const client = await createThruputClient({
   cluster,
   transport: new HttpTransport(cluster.rpcUrl!, { timeoutMs: 10_000 }),
 });
@@ -24,7 +24,7 @@ The cluster still controls identity checks; the transport controls requests to t
 Batch independent RPC reads into fewer HTTP requests:
 
 ```ts
-const batched = await createGroundhogClient({
+const batched = await createThruputClient({
   cluster,
   transport: new HttpTransport(cluster.rpcUrl!, {
     batch: { maxSize: 100, waitMs: 0 },

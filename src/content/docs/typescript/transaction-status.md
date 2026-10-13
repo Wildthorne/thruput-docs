@@ -10,7 +10,7 @@ Submission, commitment, execution, and decoding are separate steps. Keep the tra
 Use the public client from [Connect to a network](/typescript/connect/). Create `src/status.ts`:
 
 ```ts
-import { ExecResult, hashFromHex } from "@groundhogchain/client";
+import { ExecResult, hashFromHex } from "@thruputchain/client";
 import { client } from "./client.js";
 
 const text = process.env.THRUPUT_TX_HASH;
@@ -49,7 +49,7 @@ A timeout or canceled observation does not cancel onchain execution. Query the o
 `waitForTransactionReceipt()` throws `TransactionProcessingError` on `retry` or `dropped`. It stops polling and never resubmits. Keep the hash, status, and scheduler diagnostics:
 
 ```ts
-import { TransactionProcessingError } from "@groundhogchain/client";
+import { TransactionProcessingError } from "@thruputchain/client";
 
 try {
   const receipt = await client.waitForTransactionReceipt(hash);
@@ -76,7 +76,7 @@ try {
 For example, classify errors from a wallet execution helper:
 
 ```ts
-import { TransactionExecutionError, TransactionObservationError, toHex0x } from "@groundhogchain/client";
+import { TransactionExecutionError, TransactionObservationError, toHex0x } from "@thruputchain/client";
 
 export function describeExecutionError(error: unknown): string {
   if (error instanceof TransactionObservationError) {

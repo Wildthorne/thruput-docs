@@ -14,15 +14,15 @@ description: TypeScript client entry points, common operations, and links to foc
 
 | Package | Use | Instructions |
 | --- | --- | --- |
-| `@groundhogchain/client` | Application client and contract runtime | [Package setup](/typescript/setup/) |
-| `@groundhogchain/protocol` | Protocol-only constants and wire types | [Package setup](/typescript/setup/) |
-| `@groundhogchain/contract-spec` | Schema tooling | [Contract spec](/reference/contract-spec/) |
+| `@thruputchain/client` | Application client and contract runtime | [Package setup](/typescript/setup/) |
+| `@thruputchain/protocol` | Protocol-only constants and wire types | [Package setup](/typescript/setup/) |
+| `@thruputchain/contract-spec` | Schema tooling | [Contract spec](/reference/contract-spec/) |
 
 ## Connect to a Cluster
 
 | API | Behavior |
 | --- | --- |
-| `createGroundhogClient({ cluster, transport? })` | Async client creation with network identity validation |
+| `createThruputClient({ cluster, transport? })` | Async client creation with network identity validation |
 | `devnet(options?)` | Hosted development network; unpinned unless given `networkHash`; declares airdrop support |
 | `localnet(options?)` | Local endpoint and default local identity; override with the matching runtime identity |
 | `mainnet(options)` | Requires an explicit endpoint |
@@ -91,10 +91,11 @@ description: TypeScript client entry points, common operations, and links to foc
 
 | API | Result / requirement |
 | --- | --- |
-| `loadLocalDevAccount(options?)` | Node-only manifest-verified native pubkey address, signer, role, and network hash |
-| `role` / `roleOffset` | Select role and zero-based position; defaults to first `local_user` |
-| Manifest selection | Set `GROUNDHOG_RUNTIME_MANIFEST` to the manifest path reported by `thruput node` |
-| Usage | [Local bootstrap accounts](/typescript/accounts/#use-a-local-bootstrap-account) |
+| `localnet(options?)` | Local endpoint and pinned local network identity |
+| `PrivateKeySigner(seed)` | Explicit signer seed from the application environment |
+| `createPubkeyAccount({ signer })` | Native pubkey account derived from the signer |
+| `wallet.requestAirdrop()` | Fund the account through the local faucet |
+| Usage | [Local development accounts](/typescript/accounts/#use-a-local-development-account) |
 
 ## Deploy Through a Wallet
 
@@ -176,21 +177,20 @@ description: TypeScript client entry points, common operations, and links to foc
 
 | Import | Use for |
 | --- | --- |
-| `@groundhogchain/client` | Clients, clusters, accounts, actions, amounts, common primitives |
-| `@groundhogchain/client/contracts` | Standard contract and event descriptors |
-| `@groundhogchain/client/contract` | Descriptor runtime, codecs, fixed-length helpers |
-| `@groundhogchain/client/transport` | HTTP/mock transports and errors |
-| `@groundhogchain/client/actions` | Standalone actions |
-| `@groundhogchain/client/wallet` | Execution and provider adapters |
-| `@groundhogchain/client/provider` | Provider wire types, validation, discovery |
-| `@groundhogchain/client/local-dev` | Node-only local account loading |
-| `@groundhogchain/client/transaction` | Construction, signing, serialization |
-| `@groundhogchain/client/signers` | Signer interface and private-key signer |
-| `@groundhogchain/client/signed-op` | Network-bound offchain signed operations |
+| `@thruputchain/client` | Clients, clusters, accounts, actions, amounts, common primitives |
+| `@thruputchain/client/contracts` | Standard contract and event descriptors |
+| `@thruputchain/client/contract` | Descriptor runtime, codecs, fixed-length helpers |
+| `@thruputchain/client/transport` | HTTP/mock transports and errors |
+| `@thruputchain/client/actions` | Standalone actions |
+| `@thruputchain/client/wallet` | Execution and provider adapters |
+| `@thruputchain/client/provider` | Provider wire types, validation, discovery |
+| `@thruputchain/client/transaction` | Construction, signing, serialization |
+| `@thruputchain/client/signers` | Signer interface and private-key signer |
+| `@thruputchain/client/signed-op` | Network-bound offchain signed operations |
 
 ## Maintained Examples
 
 | Source | Purpose |
 | --- | --- |
-| [Client examples](https://github.com/groundhogchain/client-ts/tree/main/examples) | Runnable SDK examples; use dependencies matching the selected source revision |
+| [Client examples](https://github.com/thruputchain/thruput-sdk-ts/tree/main/examples) | Runnable SDK examples; use dependencies matching the selected source revision |
 | [Guides](/guides/) | Complete contract and application walkthroughs |

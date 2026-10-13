@@ -5,16 +5,16 @@ description: Provider props, wallet hooks, query hooks, transaction hooks, and r
 
 | Entry point | Purpose |
 | --- | --- |
-| `@groundhogchain/react` | All public React exports below |
+| `@thruputchain/react` | All public React exports below |
 | [Setup](/react/setup/) | Installation and context wiring |
 | [TypeScript client reference](/tools/typescript-sdk/) | Shared SDK concepts and operations; use the client supported by the React package's peer dependencies |
-| [React source](https://github.com/groundhogchain/react) | Public declarations and implementation |
+| [React source](https://github.com/thruputchain/thruput-react) | Public declarations and implementation |
 
 ## WalletProvider
 
 | Prop | Type / behavior |
 | --- | --- |
-| `client` | Initialized `ConnectedGroundhogClient` with validated cluster identity; keep stable |
+| `client` | Initialized `ConnectedThruputClient` with validated cluster identity; keep stable |
 | `children` | `ReactNode` |
 | `discoveryTarget?` | `EventTarget`; browser default is `window` after mounting |
 

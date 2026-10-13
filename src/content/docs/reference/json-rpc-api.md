@@ -462,7 +462,7 @@ Standard JSON-RPC 2.0 errors apply. The gateway also defines:
 
 ## Client Libraries
 
-The `@groundhogchain/client` packages provide TypeScript transports, codecs, and higher-level actions. See [TypeScript SDK](/tools/typescript-sdk/).
+The `@thruputchain/client` packages provide TypeScript transports, codecs, and higher-level actions. See [TypeScript SDK](/tools/typescript-sdk/).
 
 Rust clients can use `groundhog-json-rpc-client` and its `GroundhogApiClient` trait.
 
