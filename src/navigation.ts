@@ -41,6 +41,7 @@ export const sections: DocumentationSection[] = [
         'ecosystem/evm', 'ecosystem/solana', 'ecosystem/stellar',
         'start/for-backend-developers', 'start/for-distributed-systems-developers',
       ] },
+      'architecture/roadmap',
     ],
   },
   {
