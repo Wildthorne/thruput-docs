@@ -14,7 +14,7 @@ Developer documentation site for the Stellar Thruput blockchain. Built with Astr
 
 ## Programming Model Guidance
 
-The sibling source repos are authoritative for SDK APIs, protocol semantics, execution, gas, and storage economics. `docs/programming-model/` is a compact working model for doc authors. Read it before editing related content, but verify its claims against source before publishing.
+The sibling source repos are authoritative for SDK APIs, protocol semantics, execution, gas, and storage economics. Verify technical claims against source before publishing.
 
 Key rules:
 
@@ -45,7 +45,7 @@ Key rules:
 
 ## Verification
 
-Verify technical claims against source code first, then reconcile `docs/programming-model/` and published docs with what the source says.
+Verify technical claims against source code first, then reconcile published docs with what the source says.
 
 Other repos:
 

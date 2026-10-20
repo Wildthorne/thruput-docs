@@ -25,16 +25,16 @@ const transactions = [
 
 <style>
   shared-state-animation { display: block; min-width: 0; }
-  .state-diagram { margin: 0; padding: 1.5rem 1.5rem .75rem; border: 1px solid var(--brand-border); border-radius: .375rem; background: var(--brand-surface); }
+  .state-diagram { margin: 0; padding: 2rem 1.5rem .75rem; border: 1px solid var(--brand-border); border-radius: 1rem; background: radial-gradient(ellipse at 50% 25%, color-mix(in srgb, var(--brand-accent-tint) 35%, transparent), transparent 70%), var(--brand-background); }
   .state { display: flex; flex-direction: column; align-items: center; gap: .375rem; width: fit-content; min-width: min(11rem, 100%); margin-inline: auto; padding: .75rem 1rem; border: 1px solid var(--brand-border); border-radius: .375rem; background: var(--brand-background); }
   .state span, .transaction > span { color: var(--brand-muted); font-size: .875rem; }
   strong { font: 400 1.75rem/1.2 var(--sl-font-mono); font-variant-numeric: tabular-nums; }
   .connections { display: block; width: 100%; height: 4.5rem; overflow: visible; }
   .outgoing [data-resolved='false'] { visibility: hidden; }
-  path { fill: none; stroke: var(--brand-border); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
+  path { fill: none; stroke: var(--brand-accent); stroke-width: 1; vector-effect: non-scaling-stroke; }
   circle { fill: var(--brand-accent); }
   .changes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .transaction { display: flex; flex-direction: column; align-items: center; gap: .5rem; padding-block: .5rem; }
+  .transaction { display: flex; flex-direction: column; align-items: center; gap: .5rem; margin-inline: .375rem; padding-block: .75rem; border: 1px solid var(--brand-border); border-radius: .625rem; background: var(--brand-background); }
   .track { width: 75%; height: 3px; overflow: hidden; background: var(--brand-border); }
   [data-progress] { display: block; width: 100%; height: 100%; background: var(--brand-accent); transform-origin: left; }
   .changes strong, [data-phase='complete'] .result strong { color: var(--brand-accent); }

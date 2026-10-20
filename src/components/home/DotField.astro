@@ -104,7 +104,7 @@
         canvas.height = Math.round(height * ratio);
         context.setTransform(ratio, 0, 0, ratio, 0, 0);
         dots = [];
-        const spacing = width < 600 ? 12 : 11;
+        const spacing = width < 600 ? 20 : 24;
         // Leave a grid cell clear around the canvas so no circles are clipped.
         for (let y = spacing; y < height - spacing; y += spacing) {
           for (let x = spacing; x < width - spacing; x += spacing) {
@@ -115,7 +115,7 @@
             const centerFade = 1 - 0.72 * Math.exp(-(((nx - 0.5) / 0.27) ** 2) - ((ny - 0.43) / 0.3) ** 2);
             dots.push({
               x, y,
-              radius: 0.65 + ribbon * 2.3,
+              radius: 1 + ribbon * 1.5,
               opacity: (0.24 + ribbon * 0.48) * edge * centerFade,
               phase: nx * 0.9 + ny * 0.22 + Math.sin(ny * Math.PI * 2) * 0.08,
             });

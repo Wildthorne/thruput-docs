@@ -1,30 +1,30 @@
-@import '@fontsource/ibm-plex-mono/latin-400.css';
-@import '@fontsource/ibm-plex-mono/latin-500.css';
-@import '@fontsource/ibm-plex-sans/latin-400.css';
-@import '@fontsource/ibm-plex-sans/latin-400-italic.css';
-@import '@fontsource/ibm-plex-sans/latin-500.css';
-@import '@fontsource/ibm-plex-sans/latin-600.css';
+@import '@fontsource-variable/inter';
+@import '@fontsource-variable/inconsolata';
 
 :root {
-  --brand-background: #10110f;
-  --brand-foreground: #f0f0e9;
-  --brand-surface: #1b1d17;
-  --brand-muted: #a7a9a0;
-  --brand-accent: #e9ef64;
-  --brand-border: #393c2e;
-  --sl-font: 'IBM Plex Sans', sans-serif;
-  --sl-font-mono: 'IBM Plex Mono', monospace;
+  --brand-background: #0a0a0a;
+  --brand-foreground: #f5f5f0;
+  --brand-surface: #111111;
+  --brand-muted: #a8a8a8;
+  --brand-accent: #fdda24;
+  --brand-accent-hover: #ffe45c;
+  --brand-on-accent: #0a0a0a;
+  --brand-border: #2c2c2c;
+  --brand-accent-tint: #433b10;
+  --brand-success: #30a46c;
+  --sl-font: 'Inter Variable', sans-serif;
+  --sl-font-mono: 'Inconsolata Variable', monospace;
   --sl-color-white: var(--brand-foreground);
-  --sl-color-gray-1: #e2e3d9;
-  --sl-color-gray-2: #c2c4b8;
+  --sl-color-gray-1: #e5e5e5;
+  --sl-color-gray-2: #c7c7c7;
   --sl-color-gray-3: var(--brand-muted);
-  --sl-color-gray-4: #737768;
+  --sl-color-gray-4: #737373;
   --sl-color-gray-5: var(--brand-border);
   --sl-color-gray-6: var(--brand-surface);
   --sl-color-black: var(--brand-background);
-  --sl-color-accent-low: #2b2e19;
+  --sl-color-accent-low: var(--brand-accent-tint);
   --sl-color-accent: var(--brand-accent);
-  --sl-color-accent-high: #e9ef9a;
+  --sl-color-accent-high: #ffe985;
   --sl-color-text-accent: var(--brand-accent);
   --sl-color-bg-nav: var(--brand-background);
   --sl-color-bg-sidebar: var(--brand-background);
@@ -41,36 +41,44 @@
 }
 
 :root[data-theme='light'] {
-  --brand-background: #fafbf6;
-  --brand-foreground: #202319;
-  --brand-surface: #f0f2e8;
-  --brand-muted: #606653;
-  --brand-border: #d7dccb;
+  --brand-background: #f5f5f0;
+  --brand-foreground: #0a0a0a;
+  --brand-surface: #ffffff;
+  --brand-muted: #626262;
+  --brand-border: #d6d6d0;
+  --brand-accent-tint: #fff3b3;
+  --brand-success: #18794e;
   --sl-color-white: var(--brand-foreground);
-  --sl-color-gray-1: #303526;
-  --sl-color-gray-2: #424936;
+  --sl-color-gray-1: #262626;
+  --sl-color-gray-2: #444444;
   --sl-color-gray-3: var(--brand-muted);
-  --sl-color-gray-4: #858d77;
+  --sl-color-gray-4: #858585;
   --sl-color-gray-5: var(--brand-border);
   --sl-color-gray-6: var(--brand-surface);
-  --sl-color-gray-7: #f5f7ef;
+  --sl-color-gray-7: #eeeeea;
   --sl-color-black: var(--brand-background);
-  --sl-color-accent-low: #edf0ce;
-  --sl-color-accent: #596500;
-  --sl-color-accent-high: #384200;
-  --sl-color-text-accent: #596500;
+  --sl-color-accent-low: var(--brand-accent-tint);
+  --sl-color-accent: #705c00;
+  --sl-color-accent-high: #433b10;
+  --sl-color-text-accent: #705c00;
 }
 
-body { -webkit-font-smoothing: antialiased; }
-::selection { background: var(--brand-accent); color: #10110f; }
+body { -webkit-font-smoothing: antialiased; font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11'; }
+::selection { background: var(--brand-accent); color: var(--brand-on-accent); }
 :focus-visible { outline: 2px solid var(--sl-color-text-accent); outline-offset: 3px; }
-h1, h2, h3, h4, h5, h6 { font-family: var(--sl-font-mono); font-weight: 500; letter-spacing: -.035em; }
+h1, h2, h3, h4, h5, h6 { font-family: var(--sl-font); font-weight: 500; letter-spacing: -.035em; }
 .sl-markdown-content h2, .sl-markdown-content h3 { letter-spacing: -.025em; }
 .sl-markdown-content pre { border-radius: .375rem; border: 1px solid var(--brand-border); }
 .expressive-code { --ec-brdRad: .375rem; --ec-brdCol: var(--brand-border); }
 .sidebar-content, starlight-toc, mobile-starlight-toc { font-family: var(--sl-font); }
 .sidebar-content { font-size: .9375rem; }
 .sidebar-content a[aria-current='page'] { color: var(--sl-color-text-accent); background: var(--sl-color-accent-low); }
+:root[data-theme='light'] .sidebar-content a[aria-current='page'],
+:root[data-theme='light'] starlight-toc a[aria-current='true'],
+:root[data-theme='light'] mobile-starlight-toc a[aria-current='true'] {
+  color: var(--brand-on-accent);
+  background: var(--brand-accent);
+}
 .sidebar-content .large { font-weight: 500; font-size: .9375rem; }
 .pagination-links a { border-radius: .375rem; box-shadow: none; }
 .pagination-links .link-title { font-family: var(--sl-font); font-size: 1rem; }

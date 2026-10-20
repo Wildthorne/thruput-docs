@@ -54,7 +54,7 @@ const labels = ['Agent', 'Rust', 'TypeScript'];
 </style></noscript>
 
 <style>
-  counter-example { display: block; min-width: 0; }
+  counter-example { display: block; min-width: 0; padding: 1.5rem; border: 1px solid var(--brand-border); border-radius: 1rem; background: radial-gradient(ellipse at 50% 0%, color-mix(in srgb, var(--brand-accent-tint) 35%, transparent), transparent 65%), var(--brand-background); }
   .tab-controls { display: flex; align-items: center; justify-content: space-between; gap: .5rem; padding-bottom: .75rem; }
   [role='tablist'] { display: flex; min-width: 0; gap: .25rem; }
   button { padding: .5rem .625rem; border: 0; background: transparent; color: var(--brand-muted); font: 400 .875rem/1.5 var(--sl-font); cursor: pointer; }
@@ -75,6 +75,7 @@ const labels = ['Agent', 'Rust', 'TypeScript'];
   :global(.counter-example .expressive-code) { max-width: 100%; }
   :global(.counter-example #counter-panel-1 .expressive-code pre) { min-height: 15rem; }
   @media (pointer: coarse) { button { min-height: 3rem; } }
+  @media (max-width: 25rem) { counter-example { padding: .75rem; } }
 </style>
 
 <script>
