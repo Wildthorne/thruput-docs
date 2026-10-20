@@ -74,6 +74,18 @@ for (const width of [320, 1280]) {
     const box = await animation.boundingBox();
     expect(box!.x).toBeGreaterThanOrEqual(0);
     expect(box!.x + box!.width).toBeLessThanOrEqual(width);
+    const offsets = await animation.evaluate(element => {
+      const cards = [...element.querySelectorAll('.transaction')].map(card => {
+        const bounds = card.getBoundingClientRect();
+        return bounds.x + bounds.width / 2;
+      });
+      return [...element.querySelectorAll<SVGPathElement>('.connections path')].map((path, index) => {
+        const point = path.getPointAtLength(index < 3 ? path.getTotalLength() : 0);
+        const screen = new DOMPoint(point.x, point.y).matrixTransform(path.getScreenCTM()!);
+        return Math.abs(screen.x - cards[index % 3]!);
+      });
+    });
+    for (const offset of offsets) expect(offset).toBeLessThan(1);
     await page.screenshot({ path: info.outputPath('shared-state.png') });
     await page.emulateMedia({ reducedMotion: 'no-preference' });
     await expect(animation).toHaveAttribute('data-running', '');

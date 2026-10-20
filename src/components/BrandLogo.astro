@@ -9,7 +9,8 @@
   .site-brand { display: inline-flex; align-items: center; gap: .75rem; flex-shrink: 0; min-height: 2.25rem; color: var(--brand-foreground); font: 500 .9375rem/1.2 var(--sl-font); text-decoration: none; white-space: nowrap; }
   img { display: block; width: 6.25rem; height: 1.5625rem; flex-shrink: 0; }
   .brand-divider { width: 1px; height: 1.25rem; background: var(--brand-border); }
-  :global([data-theme='dark']) .stellar-light, :global([data-theme='light']) .stellar-dark { display: none; }
+  .stellar-light, :global([data-theme='light']) .stellar-dark { display: none; }
+  :global([data-theme='light']) .stellar-light { display: block; }
   @media (max-width: 24rem) {
     .site-brand { gap: .5rem; font-size: .875rem; }
     img { width: 5rem; height: 1.25rem; }

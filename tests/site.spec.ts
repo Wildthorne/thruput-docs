@@ -397,6 +397,10 @@ test('no JavaScript homepage is dark and offers manual copying', async ({ browse
   try {
     await page.goto(origin);
     await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(10, 10, 10)');
+    for (const brand of await page.locator('.site-brand').all()) {
+      await expect(brand.locator('img:visible')).toHaveCount(1);
+      await expect(brand.locator('img:visible')).toHaveAttribute('src', '/brand/stellar-dark.svg');
+    }
     await expect(page.getByRole('button', { name: 'Copy prompt', exact: true })).toBeHidden();
     await page.getByText('View full prompt to copy manually', { exact: true }).click();
     await expect(page.getByRole('textbox', { name: 'Full agent prompt' })).toHaveValue(prompt);
