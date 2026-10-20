@@ -269,7 +269,8 @@ test('header and page titles use Stellar Thruput while preserving the exact CLI 
   for (const route of ['/', docs]) {
     await page.goto(origin + route);
     const brand = page.locator('header').getByRole('link', { name: 'Stellar Thruput homepage', exact: true });
-    await expect(brand).toHaveText('STELLAR THRUPUT');
+    await expect(brand).toHaveText('Thruput');
+    await expect(brand.locator('img:visible')).toHaveAttribute('alt', 'Stellar');
     await expect(brand).toHaveAttribute('href', '/');
     await expect(page).toHaveTitle(/Stellar Thruput/);
     await expect(page.locator('header').getByRole('link', { name: 'About', exact: true }))
@@ -323,7 +324,7 @@ for (const theme of ['light', 'dark'] as const) {
     await expect(input).toBeFocused();
     await expect(input).toHaveCSS('outline-style', 'none');
     await expect(input).toHaveCSS('box-shadow', 'none');
-    const accent = theme === 'light' ? 'rgb(89, 101, 0)' : 'rgb(233, 239, 100)';
+    const accent = theme === 'light' ? 'rgb(112, 92, 0)' : 'rgb(253, 218, 36)';
     await expect(input).toHaveCSS('border-color', accent);
     for (const selector of ['.pagefind-ui__result-inner > .pagefind-ui__result-title', '.pagefind-ui__result-nested']) {
       const row = dialog.locator(selector).first();
@@ -357,11 +358,16 @@ test('copies exact full prompt to real clipboard', async ({ page, context }) => 
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(prompt);
 });
 
-test('logo stays yellow in both themes and toggle follows Start Building', async ({ page }) => {
+test('Stellar logo follows the theme and toggle follows Start Building', async ({ page }) => {
   for (const theme of ['light', 'dark'] as const) {
     await page.emulateMedia({ colorScheme: theme });
     await page.goto(origin + docs);
-    await expect(page.locator('.site-brand svg:visible')).toHaveCSS('color', 'rgb(233, 239, 100)');
+    const logo = page.locator('header .site-brand img:visible');
+    await expect(logo).toHaveCount(1);
+    await expect(logo).toHaveAttribute('src', theme === 'dark' ? '/brand/stellar-dark.svg' : '/brand/stellar.svg');
+    expect(await logo.evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0)).toBe(true);
+    await page.evaluate(() => document.fonts.ready);
+    await expect(page.locator('main h1')).toHaveCSS('font-family', '"Inter Variable", sans-serif');
     const build = await page.locator('.header-actions .build-link').boundingBox();
     const toggle = await page.locator('.desktop-theme button').boundingBox();
     expect(build).not.toBeNull();
@@ -390,7 +396,7 @@ test('no JavaScript homepage is dark and offers manual copying', async ({ browse
   const page = await context.newPage();
   try {
     await page.goto(origin);
-    await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(16, 17, 15)');
+    await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(10, 10, 10)');
     await expect(page.getByRole('button', { name: 'Copy prompt', exact: true })).toBeHidden();
     await page.getByText('View full prompt to copy manually', { exact: true }).click();
     await expect(page.getByRole('textbox', { name: 'Full agent prompt' })).toHaveValue(prompt);

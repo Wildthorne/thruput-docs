@@ -1,5 +1,6 @@
 ---
 import { docsPath } from '../../scripts/docs-routing.mjs';
+import BrandLogo from './BrandLogo.astro';
 const groups = [
   { title: 'Build', links: [
     ['Quickstarts', '/get-started/'], ['CLI', '/cli/'], ['Smart contracts', '/contracts/'], ['Application guides', '/guides/'],
@@ -17,7 +18,7 @@ const groups = [
 ---
 <footer class="project-footer">
   <div class="footer-content">
-    <div class="footer-intro"><p class="footer-name">Stellar Thruput</p><p>A blockchain for abundant compute</p><p class="preview">Technology preview · alpha-pre.1</p></div>
+    <div class="footer-intro"><BrandLogo /><p>A blockchain for abundant compute</p><p class="preview">Technology preview · alpha-pre.1</p></div>
     <nav aria-label="Footer" class="footer-groups">
       {groups.map(group => <div><h2>{group.title}</h2><ul role="list">{group.links.map(([label, href]) => <li><a href={docsPath(href)}>{label}</a></li>)}</ul></div>)}
     </nav>
@@ -28,7 +29,6 @@ const groups = [
   .footer-content { display: flex; flex-direction: column; gap: 2.5rem; }
   .footer-intro { display: flex; flex-direction: column; gap: .5rem; }
   .footer-intro p { margin: 0; color: var(--brand-muted); }
-  .footer-intro .footer-name { color: var(--brand-foreground); font: 500 1.25rem var(--sl-font-mono); }
   .preview { font-size: .875rem; }
   .footer-groups { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2rem; }
   h2 { margin: 0 0 .875rem; color: var(--brand-foreground); font: 500 1rem var(--sl-font); letter-spacing: normal; }
