@@ -73,6 +73,12 @@ h1, h2, h3, h4, h5, h6 { font-family: var(--sl-font); font-weight: 500; letter-s
 .sidebar-content, starlight-toc, mobile-starlight-toc { font-family: var(--sl-font); }
 .sidebar-content { font-size: .9375rem; }
 .sidebar-content a[aria-current='page'] { color: var(--sl-color-text-accent); background: var(--sl-color-accent-low); }
+:root[data-theme='light'] .sidebar-content a[aria-current='page'],
+:root[data-theme='light'] starlight-toc a[aria-current='true'],
+:root[data-theme='light'] mobile-starlight-toc a[aria-current='true'] {
+  color: var(--brand-on-accent);
+  background: var(--brand-accent);
+}
 .sidebar-content .large { font-weight: 500; font-size: .9375rem; }
 .pagination-links a { border-radius: .375rem; box-shadow: none; }
 .pagination-links .link-title { font-family: var(--sl-font); font-size: 1rem; }
