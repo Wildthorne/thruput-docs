@@ -3,40 +3,38 @@ title: Storage Types
 description: "SDK storage types, their conflict semantics, and how to choose between them."
 ---
 
-The SDK storage layer exposes the types you use to model contract state. The type you choose determines whether concurrent writes merge, conflict, or ignore each other. At the protocol level, the primitives are `NNInt`, `Bytestring`, and `RetrocausalQueue`. `Balance` and `CapacityConstraint` provide narrower APIs over the integer primitive. `Map`, `Value`, `Vector`, and `Node` provide typed composition.
+Start with `Balance` for nonnegative counts and amounts. It exposes reads, increases, and decreases without requiring you to manage the underlying integer base. The storage type you choose determines whether concurrent writes merge, conflict, or ignore each other.
 
 This page explains behavior and tradeoffs. For exact method signatures, see [Storage Types Reference](/reference/storage-types/) or [`sdk::storage` Rustdoc](https://crates.thruput.network/docs/sdk/0.42.2/doc/sdk/storage/index.html).
 
-## NNInt
+## Balance
 
-Integer storage for signed changes that concurrent transactions can combine. Use it for counters or state models that need signed adjustments or an explicit `set`.
+Nonnegative, zero-defaulting storage for counters, balances, allowances, and supply. `Balance` uses `i128` amounts in `0..=i128::MAX`, rejects negative inputs, and exposes no signed adjustment or absolute `set`.
 
 ```rust
-use sdk::storage::NNInt;
+use sdk::storage::Balance;
 
 #[derive(Debug)]
 #[sdk::storage]
 pub struct Counter {
-    value: NNInt,
+    value: Balance,
 }
 ```
 
-With a snapshot value of `100`, these changes can merge:
+Read with `self.value.get()`. A never-written value returns zero; other storage failures still abort. With a snapshot value of `100`, these changes can merge:
 
 ```rust
 // Two transactions run against a snapshot value of 100:
-self.value.strict_inc(5);    // Tx A: "add 5"
-self.value.strict_inc(-3);   // Tx B: "subtract 3"
+self.value.increase(5);   // Tx A: "add 5"
+self.value.decrease(3);   // Tx B: "subtract 3"
 // If both transactions are admitted, the result is 102.
 ```
 
-Pass negative values to `strict_inc` to subtract. With a nonnegative base, the runtime prevents concurrent decrements from driving the value below zero. `NNInt` also permits an explicit negative `set`, which changes its commit-time floor. Use `Balance` when negative values and absolute replacement should not be part of the contract API.
+Both methods check bounds during execution and record relative changes. The runtime also checks aggregate bounds when it reserves concurrent transactions. Two decreases that each fit the snapshot may still exceed it together; successful execution alone does not guarantee inclusion. See [Merged Deltas](/programming-model/execution/#merged-deltas).
 
-See [Merged Deltas](/programming-model/execution/#merged-deltas) for the contract-level model. The underlying `set_add` representation and exact commutativity rules are covered in [NNInt and concurrent updates](/programming-model/nnint/).
+### Checked and lazy updates
 
-## Balance
-
-Nonnegative, zero-defaulting storage for balances, allowances, and supply. `Balance` uses `i128` amounts, rejects negative inputs, and exposes no signed adjustment or absolute `set`.
+For per-account amounts, combine Balance with a Map:
 
 ```rust
 use sdk::storage::{Balance, Map};
@@ -70,6 +68,33 @@ All four adjustment methods record deltas that can merge with compatible transac
 | `lazy_decrease(amount)` | Not forced to load | Underflow decided during delta reservation | Yes |
 
 The `try_` variants report errors that are available during contract execution, so a contract can translate an immediate failure into a domain error. Lazy variants cannot report a snapshot-bound failure that they deliberately did not load. They can still report conversion and transaction-local accumulated-delta errors.
+
+## NNInt
+
+`NNInt` is the lower-level integer API behind Balance. Use it when your state model needs a signed delta or an explicit base. For ordinary nonnegative counts and amounts, keep using Balance.
+
+```rust
+use sdk::storage::NNInt;
+
+#[derive(Debug)]
+#[sdk::storage]
+pub struct IntegerState {
+    value: NNInt,
+}
+```
+
+The direction is part of the delta:
+
+```rust
+// Two transactions run against a nonnegative snapshot value of 100:
+self.value.strict_inc(5);    // Tx A: "add 5"
+self.value.strict_inc(-3);   // Tx B: "subtract 3"
+// If both transactions are admitted, the result is 102.
+```
+
+`strict_inc` loads the base for an immediate underflow check; `inc` skips the forced read. Both produce deltas that can merge when their resolved bases match and aggregate bounds permit. Unlike Balance, `NNInt::get` fails on missing storage, and `set` can replace the base, including with a negative value. Negative bases change the commit-time floor.
+
+Continue with [NNInt and concurrent updates](/programming-model/nnint/) for the `set_add` representation, base matching, and negative-base rules. Balance provides a narrower API over that same storage primitive; it does not use a different merge mechanism.
 
 ## Map\<K, V\>
 
@@ -225,7 +250,7 @@ Use `Value<T>` for typed single-slot storage. Use `Bytestring` when you need raw
 
 | If your write pattern is... | Use | Why |
 |-----------------------------|-----|-----|
-| Nonnegative balance, allowance, or supply | Balance | Nonnegative amounts, zero default, and checked or lazy deltas. |
+| Nonnegative count, balance, allowance, or supply | Balance | Nonnegative amounts, zero default, and checked or lazy deltas. |
 | Signed delta or explicit integer base | NNInt | Signed deltas merge and `set` controls the base. |
 | Block-wide linear limit | CapacityConstraint | Concurrent transactions consume shared commit-time capacity. |
 | `INSERT INTO ... (key, value)` with unique keys | Map | Different keys are independent. |
@@ -244,7 +269,7 @@ Use exclusive writes when an operation needs sole write access to a storage loca
 
 ```rust
 self.config.set_exclusive(&new_value);          // Value<Config>
-self.counters.at_mut_exclusive(&owner).set(v);  // Map<_, NNInt>
+self.integer_state.at_mut_exclusive(&owner).set(v);  // Map<_, NNInt>
 ```
 
 If two concurrent transactions write exclusively to the same key, one is excluded. Mixing exclusive and non-exclusive writes to the same key in the same block excludes the non-exclusive writers. Prefer `Balance` or `NNInt` deltas when the operation can tolerate concurrent updates.
@@ -254,8 +279,8 @@ If two concurrent transactions write exclusively to the same key, one is exclude
 An exclusive write requests `ExclusiveLock` after the write succeeds. Later ordinary writes to the key in the same transaction keep the request, including writes from other call frames. The admitted transaction then holds the key's exclusive lock for the whole block. `clear_flags` withdraws the request.
 
 ```rust
-self.counters.at_mut_exclusive(&owner).set(0);
-self.counters.at_mut(&owner).inc(1);  // The lock request remains.
+self.integer_state.at_mut_exclusive(&owner).set(0);
+self.integer_state.at_mut(&owner).inc(1);  // The lock request remains.
 ```
 
 Leaf handles (`Value`, `NNInt`, `Balance`, and `Bytestring`) implement `Flaggable`. Import it with `use sdk::storage::Flaggable;`. `flags()` reads the flags, `set_flags(flags)` adds flags, and `clear_flags()` removes them. Setting flags requires a pending write to that key in the current call frame.

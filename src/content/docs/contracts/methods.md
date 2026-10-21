@@ -8,30 +8,30 @@ Start with a [generated project](/cli/create-project/) so its host tests and RV3
 ## Define state and behavior
 
 ```rust
-use sdk::storage::NNInt;
+use sdk::storage::Balance;
 use sdk::*;
 
 #[derive(Debug)]
 #[sdk::storage]
 pub struct Counter {
-    value: NNInt,
+    value: Balance,
 }
 
 #[contract]
 impl Counter {
     pub fn increment(&mut self, amount: u64) {
-        self.value.strict_inc(amount as i128);
+        self.value.increase(amount as i128);
     }
 
     pub fn get(&self) -> i128 {
-        self.value.try_get().none_if_missing().unwrap_or(0)
+        self.value.get()
     }
 }
 ```
 
 `#[sdk::storage]` assigns each field a storage path. The field is a handle to persisted data, not an in-memory integer that you must save manually. `#[contract]` generates entrypoints, a `CounterClient`, and interface metadata.
 
-`none_if_missing()` gives the never-written counter a zero default while preserving other storage errors. Do not turn every read error into zero with `unwrap_or(0)` on the original `Result`.
+`Balance::get()` gives the never-written counter a zero default while preserving other storage errors. `increase` records a relative change and checks for overflow. Start with [Balance](/programming-model/storage-types/#balance) for nonnegative counts and amounts; use [NNInt](/programming-model/nnint/) when you need signed deltas or an explicit base.
 
 ## Expose methods
 

@@ -18,41 +18,49 @@ thruput new counter --template counter
 cd counter
 ```
 
-Keep the generated manifest and toolchain settings. Open `src/implementation.rs`. The scaffold includes the counter used by this guide; focus on its storage and these methods.
+Keep the generated manifest and toolchain settings. Open `src/implementation.rs`. The scaffold includes the Balance-based counter used by this guide; focus on its storage and these methods.
 
 ## Store a relative count
 
 ```rust
+use thruput_sdk::storage::Balance;
+
 #[derive(Debug)]
-#[sdk::storage]
+#[thruput_sdk::storage]
 pub struct Counter {
-    value: NNInt,
+    value: Balance,
 }
 ```
 
-`value` is a persistent storage handle. Increment and decrement record signed deltas:
+`value` is a persistent storage handle. `Balance` stores nonnegative amounts and reads zero before the first update. Increment and decrement record relative changes:
 
 ```rust
+pub fn initialize(&mut self, initial_value: u64) {
+    self.value.increase(initial_value as i128);
+}
+
 pub fn increment(&mut self, amount: u64) {
-    self.value.strict_inc(amount as i128);
+    self.value.increase(amount as i128);
 }
 
 pub fn decrement(&mut self, amount: u64) {
-    self.value.strict_inc(-(amount as i128));
+    self.value.decrease(amount as i128);
 }
 ```
 
-`strict_inc` checks the invocation for underflow and records the relative change. Compatible deltas can merge across concurrent transactions. See [NNInt and concurrent updates](/programming-model/nnint/) for the merge rules.
+Both methods take a nonnegative amount. `increase` checks for overflow, and `decrease` fails during execution if this invocation would take the count below zero. Both record deltas that can merge across compatible concurrent transactions within bounds. See [Balance](/programming-model/storage-types/#balance) for checked and lazy updates.
 
-The read defaults only missing storage to zero:
+`Balance::get` returns zero for missing storage and preserves other storage errors:
 
 ```rust
 pub fn get(&self) -> u64 {
-    self.value.try_get().none_if_missing().unwrap_or(0) as u64
+    self.value.get() as u64
 }
 ```
 
-The scaffold's `initialize` method adds its initial amount. It is an ordinary method, so call it once during this deployment flow. This teaching counter allows any caller to update it. Leave the extra scaffold event and error methods in place; the app does not need them.
+`initialize` adds its initial amount. It is an ordinary method, so call it once during this deployment flow. This teaching counter allows any caller to update it. Leave the extra scaffold event and error methods in place; the app does not need them.
+
+Balance uses the same mergeable integer storage as NNInt. Once you understand the Balance API, read [NNInt and concurrent updates](/programming-model/nnint/) for signed deltas, explicit bases, and the underlying merge rules.
 
 ## Run both test modes
 

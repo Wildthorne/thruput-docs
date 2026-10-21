@@ -18,7 +18,8 @@ The sibling source repos are authoritative for SDK APIs, protocol semantics, exe
 
 Key rules:
 
-- NNInt uses a `set + add` model with a commit-time floor: `value >= min(set, 0)`. Negative explicit `set` values are allowed by current source, but ordinary balances and counters should still use nonnegative bases.
+- Teach Balance first for nonnegative counters and amounts. All Counter examples and tutorials use Balance. Explain NNInt afterward as the lower-level API for signed deltas and explicit bases.
+- NNInt uses a `set + add` model with a commit-time floor: `value >= min(set, 0)`. Negative explicit `set` values are allowed by current source; Balance requires nonnegative values.
 - Two `set_add` calls commute if and only if their resolved set values match.
 - `strict_inc(delta)` and `inc(delta)` are both commutative. `strict_inc` loads the current base for early underflow detection. `inc` skips that read.
 - Gas costs zero tokens. Root transactions use the declared gas limit for scheduling capacity. There is no unused-gas refund path.

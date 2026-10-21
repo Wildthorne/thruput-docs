@@ -9,6 +9,31 @@ description: API reference for Stellar Thruput storage types.
 | Generated type, guard, and trait APIs | [`sdk::storage`](https://crates.thruput.network/docs/sdk/0.42.2/doc/sdk/storage/index.html), [Rust API Docs](/tools/rust-api-docs/) |
 | Encoding | CXS; serialization traits retain the names `ReadXDR` and `WriteXDR` |
 
+## Balance
+
+| Property | Value |
+| --- | --- |
+| Representation | `i128`, backed by NNInt |
+| Range | `0..=i128::MAX`; `Balance::MAX` is `i128::MAX` |
+| Missing value | Zero |
+| Negative amount | Rejected with `NonNegativeIntUnderflow` |
+| Operations | No absolute `set` or signed adjustment |
+| Traits | `Deletable` |
+| Usage | [Balance guidance](/programming-model/storage-types/#balance), [Counter tutorial](/tutorials/build-a-counter/) |
+
+| Method | Signature | Description |
+|--------|-----------|-------------|
+| `get` | `fn get(&self) -> i128` | Read the balance. A never-written location returns zero. |
+| `try_get` | `fn try_get(&self) -> Result<i128, LibraryExn>` | Read without aborting. A never-written location returns `Ok(0)`. |
+| `increase` | `fn increase(&mut self, amount: i128)` | Load and increase the balance. Aborts immediately on overflow. |
+| `try_increase` | `fn try_increase(&mut self, amount: i128) -> Result<(), LibraryExn>` | Checked increase that leaves storage unmodified on `Err`. |
+| `decrease` | `fn decrease(&mut self, amount: i128)` | Load and decrease the balance. Aborts immediately if funds are insufficient. |
+| `try_decrease` | `fn try_decrease(&mut self, amount: i128) -> Result<(), LibraryExn>` | Checked decrease that leaves storage unmodified on `Err`. |
+| `lazy_increase` | `fn lazy_increase(&mut self, amount: i128)` | Record an increase without loading the committed balance. Aggregate overflow is checked during reservation. |
+| `try_lazy_increase` | `fn try_lazy_increase(&mut self, amount: i128) -> Result<(), LibraryExn>` | Report a negative amount or accumulated-delta overflow. |
+| `lazy_decrease` | `fn lazy_decrease(&mut self, amount: i128)` | Record a decrease without loading the committed balance. Aggregate sufficiency is checked during reservation. |
+| `try_lazy_decrease` | `fn try_lazy_decrease(&mut self, amount: i128) -> Result<(), LibraryExn>` | Report a negative amount or accumulated-delta underflow. |
+
 ## NNInt
 
 | Property | Value |
@@ -27,30 +52,6 @@ description: API reference for Stellar Thruput storage types.
 | `inc` | `fn inc(&mut self, increment: i128)` | Add `increment` without forcing a snapshot read. Underflow is caught by later runtime checks, not immediately. |
 | `strict_inc` | `fn strict_inc(&mut self, increment: i128)` | Add `increment`, loading the current base for early underflow detection. Aborts immediately if the result would be negative. |
 | `try_strict_inc` | `fn try_strict_inc(&mut self, increment: i128) -> Result<(), LibraryExn>` | Checked increment that reports overflow, underflow, or storage failure instead of aborting. Leaves storage unmodified on `Err`. |
-
-## Balance
-
-| Property | Value |
-| --- | --- |
-| Representation | `i128`, backed by NNInt |
-| Range | `0..=i128::MAX`; `Balance::MAX` is `i128::MAX` |
-| Missing value | Zero |
-| Negative amount | Rejected with `NonNegativeIntUnderflow` |
-| Operations | No absolute `set` or signed adjustment |
-| Traits | `Deletable` |
-
-| Method | Signature | Description |
-|--------|-----------|-------------|
-| `get` | `fn get(&self) -> i128` | Read the balance. A never-written location returns zero. |
-| `try_get` | `fn try_get(&self) -> Result<i128, LibraryExn>` | Read without aborting. A never-written location returns `Ok(0)`. |
-| `increase` | `fn increase(&mut self, amount: i128)` | Load and increase the balance. Aborts immediately on overflow. |
-| `try_increase` | `fn try_increase(&mut self, amount: i128) -> Result<(), LibraryExn>` | Checked increase that leaves storage unmodified on `Err`. |
-| `decrease` | `fn decrease(&mut self, amount: i128)` | Load and decrease the balance. Aborts immediately if funds are insufficient. |
-| `try_decrease` | `fn try_decrease(&mut self, amount: i128) -> Result<(), LibraryExn>` | Checked decrease that leaves storage unmodified on `Err`. |
-| `lazy_increase` | `fn lazy_increase(&mut self, amount: i128)` | Record an increase without loading the committed balance. Aggregate overflow is checked during reservation. |
-| `try_lazy_increase` | `fn try_lazy_increase(&mut self, amount: i128) -> Result<(), LibraryExn>` | Report a negative amount or accumulated-delta overflow. |
-| `lazy_decrease` | `fn lazy_decrease(&mut self, amount: i128)` | Record a decrease without loading the committed balance. Aggregate sufficiency is checked during reservation. |
-| `try_lazy_decrease` | `fn try_lazy_decrease(&mut self, amount: i128) -> Result<(), LibraryExn>` | Report a negative amount or accumulated-delta underflow. |
 
 ## CapacityConstraint
 

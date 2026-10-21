@@ -27,18 +27,18 @@ Here, consumers can filter on `by` and read `amount` from the payload. Strings a
 Add the event to a counter method to record the amount and caller:
 
 ```rust
-use sdk::storage::NNInt;
+use sdk::storage::Balance;
 
 #[derive(Debug)]
 #[sdk::storage]
 pub struct Counter {
-    value: NNInt,
+    value: Balance,
 }
 
 #[contract(emits(CounterIncremented))]
 impl Counter {
     pub fn increment(&mut self, amount: u64) {
-        self.value.strict_inc(amount as i128);
+        self.value.increase(amount as i128);
         log_event(&CounterIncremented {
             by: get_caller(),
             amount,

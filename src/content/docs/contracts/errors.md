@@ -129,13 +129,13 @@ The SDK throws `LibraryExn` errors automatically when internal preconditions fai
 
 | Operation | Throws when |
 |-----------|------------|
-| `strict_inc(delta)` | Result would be negative (`NonNegativeIntUnderflow`) |
-| `strict_inc(delta)` | Result would overflow (`NonNegativeIntOverflow`) |
 | `Balance::decrease(amount)` | Balance is insufficient (`NonNegativeIntUnderflow`) |
 | `Balance::increase(amount)` | Balance would overflow (`NonNegativeIntOverflow`) |
+| `NNInt::strict_inc(delta)` | Result would be negative (`NonNegativeIntUnderflow`) |
+| `NNInt::strict_inc(delta)` | Result would overflow (`NonNegativeIntOverflow`) |
 | `CapacityConstraint::set_capacity(value)` | Another non-idempotent write already occurred this transaction (`CapacityConstraintAlreadyWritten`) |
 | `bytestring_get_sized` | Stored length does not match expected (`BytestringWrongSize`) |
-| Storage read | Key does not exist (syscall error) |
+| `NNInt::get()` | Key does not exist (syscall error); `Balance::get()` defaults missing storage to zero |
 
 ```rust
 // Aborts automatically if balance would go below zero.

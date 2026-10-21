@@ -125,7 +125,7 @@ Markdown files live in `src/content/docs/`, organized by section. The sidebar is
 | Tutorials | `start/`, `tutorials/` | Getting Started + step-by-step contract builds |
 | Tools | `tools/` | TypeScript SDK, block explorer, wallet, faucet |
 | How It Works | `how-it-works/` | Architecture, execution model, contracts |
-| Programming Model | `programming-model/` | Working model for contract authors: execution, storage types, NNInt, testing |
+| Programming Model | `programming-model/` | Working model for contract authors: execution, Balance, storage types, NNInt, testing |
 | Reference | `reference/` | Storage types, syscalls, SDK macros, error handling |
 | Ecosystem Guides | `ecosystem/` | EVM, Solana, and Stellar comparison guides |
 | Community | `community/` | Contributing, security, roadmap |

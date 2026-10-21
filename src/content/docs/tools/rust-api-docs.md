@@ -23,7 +23,8 @@ Run this from the generated contract project after [Cargo access setup](/cli/ins
 | Contract types | [`ContractAddress`](https://crates.thruput.network/docs/sdk/0.42.2/doc/sdk/types/struct.ContractAddress.html), [`SHA256Hash`](https://crates.thruput.network/docs/sdk/0.42.2/doc/sdk/types/struct.SHA256Hash.html) |
 | Native tests | [`TestEnvironment`](https://crates.thruput.network/docs/sdk/0.42.2/doc/sdk/struct.TestEnvironment.html) |
 | Storage types and traits | [`sdk::storage`](https://crates.thruput.network/docs/sdk/0.42.2/doc/sdk/storage/index.html) |
-| Balances and counters | [`Balance`](https://crates.thruput.network/docs/sdk/0.42.2/doc/sdk/storage/balance/struct.Balance.html), [`NNInt`](https://crates.thruput.network/docs/sdk/0.42.2/doc/sdk/storage/nnint/struct.NNInt.html) |
+| Nonnegative balances and counters | [`Balance`](https://crates.thruput.network/docs/sdk/0.42.2/doc/sdk/storage/balance/struct.Balance.html) |
+| Lower-level signed deltas and explicit bases | [`NNInt`](https://crates.thruput.network/docs/sdk/0.42.2/doc/sdk/storage/nnint/struct.NNInt.html) |
 | Shared capacity | [`CapacityConstraint`](https://crates.thruput.network/docs/sdk/0.42.2/doc/sdk/storage/capacity_constraint/struct.CapacityConstraint.html) |
 | Keyed and indexed storage | [`Map`](https://crates.thruput.network/docs/sdk/0.42.2/doc/sdk/storage/map/struct.Map.html), [`Vector`](https://crates.thruput.network/docs/sdk/0.42.2/doc/sdk/storage/vector/struct.Vector.html) |
 | Typed and raw values | [`Value`](https://crates.thruput.network/docs/sdk/0.42.2/doc/sdk/storage/value/struct.Value.html), [`Bytestring`](https://crates.thruput.network/docs/sdk/0.42.2/doc/sdk/storage/bytestring/struct.Bytestring.html) |

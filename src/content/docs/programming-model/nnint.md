@@ -5,9 +5,15 @@ description: The set_add primitive underneath NNInt and why concurrent transacti
 
 `NNInt` is the lower-level signed-integer storage API underneath [`Balance`](/programming-model/storage-types/#balance). This page explains its `set_add` representation and why concurrent transactions can merge safely.
 
-Most contracts should use `Balance` for balances, allowances, and supply. Read this page when you need signed changes, an explicit integer base, or the exact representation that makes checked and lazy balance deltas compatible.
+Start with `Balance` for nonnegative counters, balances, allowances, and supply. Read this page when you need signed changes, an explicit integer base, or the exact representation that makes checked and lazy balance deltas compatible.
 
 For exact SDK method signatures, see [Rust API Docs](/tools/rust-api-docs/) or [Storage Types Reference](/reference/storage-types/#nnint).
+
+## From Balance to NNInt
+
+Balance gives each direction a name: `increase(5)` adds five and `decrease(3)` subtracts three. NNInt exposes the signed delta directly: `strict_inc(5)` and `strict_inc(-3)`. Both APIs record relative changes. Checked operations load the base for early bound checks; lazy operations defer snapshot-bound checks to reservation.
+
+Balance also enforces a nonnegative value and supplies zero for missing storage. NNInt adds control over the base through `set`, and its `get` fails on missing storage. Use that lower-level control only when the state model needs it.
 
 ## The set_add Primitive
 
@@ -83,7 +89,7 @@ non_negative_int_inc(key, 1);  // The value becomes -4.
 
 An increment can move a negative base upward without making the result nonnegative. The commit-time floor remains `value >= min(set, 0)`. `strict_inc`, however, rejects an invocation total that remains negative.
 
-Use `Balance` for ordinary balances and allowances. Use nonnegative NNInt bases for ordinary counters.
+Use `Balance` for ordinary nonnegative counters, balances, and allowances. A negative NNInt base is a separate state model, not a way to represent a Balance.
 
 ## Why This Matters
 

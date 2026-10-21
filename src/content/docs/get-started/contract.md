@@ -14,7 +14,7 @@ thruput new my-counter --template counter
 cd my-counter
 ```
 
-The project includes a Rust counter and tests. Its main methods are `initialize`, `increment`, `decrement`, and `get`.
+The project includes a Rust counter and tests. Its main methods are `initialize`, `increment`, `decrement`, and `get`. The counter uses [Balance](/programming-model/storage-types/#balance) for nonnegative counts.
 
 ## 2. Build and test
 
