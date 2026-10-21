@@ -70,7 +70,7 @@ Ethereum account transactions use a sequential nonce. Stellar Thruput replay pro
 
 An absolute allowance replacement can grant new spending authority after the previous allowance has already been spent. The example Stellar Thruput token instead uses relative allowance adjustments. The caller requests an increase or decrease, not a replacement amount.
 
-This does not remove the need to inspect outcomes or choose an authorization policy. See the [token implementation](/tutorials/build-a-token/#apply-supply-and-allowance-policy) for its exact allowance methods and exclusive-update option.
+This does not remove the need to inspect outcomes or choose an authorization policy. See the [token implementation](/guides/build-a-token/#apply-supply-and-allowance-policy) for its exact allowance methods and exclusive-update option.
 
 ## Pattern Adaptations
 
@@ -108,7 +108,7 @@ Define events with `#[derive(Event)]`, mark filterable fields with `#[topic]`, a
 
 <span id="erc-20-side-by-side"></span>
 
-[Build a token](/tutorials/build-a-token/) walks through the maintained ERC-20 implementation, including allowances, supply policy, events, and tests.
+[Build a token](/guides/build-a-token/) walks through the maintained ERC-20 implementation, including allowances, supply policy, events, and tests.
 
 ## What Doesn't Exist
 
@@ -125,6 +125,6 @@ Block context and gas inspection do exist: `get_block_timepoint()`, `get_block_h
 ## Next Steps
 
 - [Contract quickstart](/get-started/contract/): build and deploy a counter
-- [Build a token](/tutorials/build-a-token/): maintained token code and tests
+- [Build a token](/guides/build-a-token/): maintained token code and tests
 - [Contract Execution](/programming-model/execution/): snapshots and deltas
 - [Storage Types](/programming-model/storage-types/): choose a storage API

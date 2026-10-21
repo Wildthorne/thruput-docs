@@ -32,7 +32,22 @@ test('sitemap lists canonical pages and excludes URL aliases and redirect pages'
   const xml = await (await request.get(origin + '/sitemap-0.xml')).text();
   expect(xml).toContain('<loc>https://thruput.network/</loc>');
   expect(xml).toContain('<loc>https://thruput.network/docs/cli/install/</loc>');
-  for (const path of ['/cli/install/', '/docs/', '/start/', '/docs/start/']) {
+  for (const path of ['/cli/install/', '/docs/', '/start/', '/docs/start/',
+    '/docs/tutorials/build-a-token/', '/docs/tutorials/build-an-amm/', '/docs/tutorials/consume-the-firehose/']) {
     expect(xml).not.toContain(`<loc>https://thruput.network${path}</loc>`);
+  }
+});
+
+test('moved guides preserve tutorial URLs, queries, and fragments', async ({ page }) => {
+  for (const [slug, fragment] of [
+    ['build-a-token', 'prepare-the-project'],
+    ['build-an-amm', 'understand-acceptance-and-execution'],
+    ['consume-the-firehose', 'reconnect-and-resume'],
+  ]) {
+    for (const prefix of ['', '/docs']) {
+      await page.goto(`${origin}${prefix}/tutorials/${slug}/?via=old#${fragment}`);
+      await expect(page).toHaveURL(`${origin}/docs/guides/${slug}/?via=old#${fragment}`);
+      await expect(page.locator(`[id="${fragment}"]`)).toBeVisible();
+    }
   }
 });

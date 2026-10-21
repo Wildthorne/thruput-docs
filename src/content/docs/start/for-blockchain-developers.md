@@ -33,7 +33,7 @@ The code stays familiar. `balances` is a `Map<ContractAddress, Balance>`. Callin
 
 `decrease(amount)` loads the sender's snapshot balance because the contract needs to fail immediately when funds are insufficient. `lazy_increase(amount)` skips the receiver load because the contract does not need an immediate overflow result. Its bound is checked when the transaction's completed delta batch is admitted. Both calls produce deltas that can merge with compatible transactions. `Balance` accepts only nonnegative amounts and exposes no absolute `set` operation.
 
-[Build a Token](/tutorials/build-a-token/) uses this pattern in a complete contract. [Merged Deltas](/programming-model/execution/#merged-deltas) explains how Stellar Thruput combines changes across a block.
+[Build a Token](/guides/build-a-token/) uses this pattern in a complete contract. [Merged Deltas](/programming-model/execution/#merged-deltas) explains how Stellar Thruput combines changes across a block.
 
 ---
 
@@ -77,7 +77,7 @@ The transfer example uses relative balance adjustments so compatible transfers c
 Continue in layers:
 
 1. [Contract quickstart](/get-started/contract/) builds and deploys your first contract.
-2. [Build a Token](/tutorials/build-a-token/) applies checked and lazy balance operations in a complete ERC-20-style contract.
+2. [Build a Token](/guides/build-a-token/) applies checked and lazy balance operations in a complete ERC-20-style contract.
 3. [Contract Execution](/programming-model/execution/) and [Storage Types](/programming-model/storage-types/) give the full contract-author model.
 4. [How Conflicts Are Resolved](/how-it-works/execution-model/#how-conflicts-are-resolved) explains the engine's reservation machinery.
 

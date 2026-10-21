@@ -8,6 +8,7 @@ const sections = [
   ['Smart Contracts', '/docs/contracts/', 'Smart Contracts'],
   ['TypeScript', '/docs/typescript/', 'TypeScript'],
   ['React', '/docs/react/', 'React'],
+  ['Tutorials', '/docs/tutorials/', 'Tutorials'],
   ['Guides', '/docs/guides/', 'Guides'],
 ] as const;
 
@@ -47,12 +48,13 @@ test('entry pages keep site navigation separate from expandable documentation se
     ['Smart Contracts', '/docs/programming-model/nnint/', 'NNInt and concurrent updates'],
     ['Smart Contracts', '/docs/programming-model/storage-types/', 'Storage Types'],
     ['Smart Contracts', '/docs/how-it-works/contracts/', 'Contract artifacts and addresses'],
-    ['Guides', '/docs/tutorials/build-a-counter/', 'Build a counter, part 1: Contract'],
-    ['Guides', '/docs/tutorials/work-with-thruput-from-typescript/', 'Build a counter, part 2: TypeScript'],
-    ['Guides', '/docs/tutorials/build-a-counter-with-react/', 'Build a counter, part 3: React'],
-    ['Guides', '/docs/tutorials/connect-a-wallet-to-your-app/', 'Build a counter, part 4: Connect a wallet'],
-    ['Guides', '/docs/tutorials/build-a-token/', 'Build a token'],
-    ['Guides', '/docs/tutorials/build-an-amm/', 'Build an AMM'],
+    ['Tutorials', '/docs/tutorials/build-a-counter/', 'Build a counter, part 1: Contract'],
+    ['Tutorials', '/docs/tutorials/work-with-thruput-from-typescript/', 'Build a counter, part 2: TypeScript'],
+    ['Tutorials', '/docs/tutorials/build-a-counter-with-react/', 'Build a counter, part 3: React'],
+    ['Tutorials', '/docs/tutorials/connect-a-wallet-to-your-app/', 'Build a counter, part 4: Connect a wallet'],
+    ['Guides', '/docs/guides/build-a-token/', 'Build a token'],
+    ['Guides', '/docs/guides/build-an-amm/', 'Build an AMM'],
+    ['Guides', '/docs/guides/consume-the-firehose/', 'Consume the Firehose'],
     ['TypeScript', '/docs/tools/typescript-bindings/', 'Use contract bindings'],
     ['TypeScript', '/docs/tools/typescript-sdk/', 'Client API reference'],
     ['TypeScript', '/docs/tools/wallet-integration/', 'Connect a wallet'],
@@ -120,15 +122,15 @@ test('entry pages keep site navigation separate from expandable documentation se
   }
 });
 
-test('deep links open their section and tutorials belong to Guides', async ({ page }) => {
+test('deep links open their section and tutorials and guides have separate sections', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   for (const [path, label] of [
     ['/docs/reference/storage-types/', 'Smart Contracts'],
     ['/docs/tools/typescript-bindings/', 'TypeScript'],
-    ['/docs/tutorials/build-a-counter/', 'Guides'],
-    ['/docs/tutorials/build-an-amm/', 'Guides'],
+    ['/docs/tutorials/build-a-counter/', 'Tutorials'],
+    ['/docs/guides/build-an-amm/', 'Guides'],
     ['/docs/start/build-with-an-agent/', 'Get Started'],
-    ['/docs/tutorials/connect-a-wallet-to-your-app/', 'Guides'],
+    ['/docs/tutorials/connect-a-wallet-to-your-app/', 'Tutorials'],
     ['/docs/start/for-blockchain-developers/', 'Understand Stellar Thruput'],
     ['/docs/tools/faucet/', 'Tools'],
     ['/docs/tools/block-explorer/', 'Tools'],
@@ -230,7 +232,7 @@ test('retired tutorial links reach the matching task and mapped heading', async 
     ['/docs/tutorials/develop-on-devnet/#2-configure-devnet-identity', '/docs/cli/configuration/#devnet'],
     ['/docs/tutorials/add-events-to-a-contract/#step-1-define-the-event', '/docs/contracts/events/#define-an-event'],
     ['/docs/tutorials/add-events-to-a-contract/#resume-without-missing-events', '/docs/typescript/events/#resume-without-missing-events'],
-    ['/docs/tutorials/design-a-swap/#the-problem', '/docs/tutorials/build-an-amm/#understand-acceptance-and-execution'],
+    ['/docs/tutorials/design-a-swap/#the-problem', '/docs/guides/build-an-amm/#understand-acceptance-and-execution'],
   ]) {
     await page.goto(origin + oldPath);
     await expect(page).toHaveURL(origin + destination);

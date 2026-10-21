@@ -141,6 +141,6 @@ Stellar Thruput does not use Solana account arrays, associated token accounts, P
 ## Next Steps
 
 - [Contract quickstart](/get-started/contract/): build and deploy a counter
-- [Build a token](/tutorials/build-a-token/): token state and tests
+- [Build a token](/guides/build-a-token/): token state and tests
 - [Storage Types](/programming-model/storage-types/): map and balance APIs
 - [Authorization](/how-it-works/authorization/): caller and auth-token rules

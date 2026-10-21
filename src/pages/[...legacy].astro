@@ -12,6 +12,8 @@ export async function getStaticPaths() {
     './programming-model/advanced.astro',
     './tutorials/develop-on-devnet.astro', './tutorials/develop-locally.astro',
     './tutorials/build-a-swap.astro', './tutorials/design-a-swap.astro',
+    './tutorials/build-a-token.astro', './tutorials/build-an-amm.astro',
+    './tutorials/consume-the-firehose.astro',
     './tutorials/add-events-to-a-contract.astro',
   ], { eager: true, import: 'default' });
   const paths: { params: { legacy: string }, props: Props }[] = [

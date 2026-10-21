@@ -33,7 +33,7 @@ fn transfer(&mut self, receiver: &ContractAddress, amount: Amount) {
 }
 ```
 
-Here, `balances` is `Map<ContractAddress, Balance>`. The checked debit detects insufficient funds during execution; the lazy credit records a relative change. Compatible transactions can merge if aggregate bounds and their other changes permit it. See [Build a token](/tutorials/build-a-token/) for the complete implementation and events.
+Here, `balances` is `Map<ContractAddress, Balance>`. The checked debit detects insufficient funds during execution; the lazy credit records a relative change. Compatible transactions can merge if aggregate bounds and their other changes permit it. See [Build a token](/guides/build-a-token/) for the complete implementation and events.
 
 ### 2. Multi-Operation Transactions
 
@@ -56,7 +56,7 @@ Two designs are possible:
 - **Synchronous calls:** execute a swap and return its result in one transaction. Reserve-dependent writes to the same pair can conflict.
 - **Queued requests:** accept a request first, then process it in a later transaction. The client tracks a request ID through outcome events or stored state.
 
-The maintained [AMM example](/tutorials/build-an-amm/) uses the queued design. Request acceptance is not proof that the swap completed. A synchronous result refers to execution within a transaction, not immediate network confirmation.
+The maintained [AMM example](/guides/build-an-amm/) uses the queued design. Request acceptance is not proof that the swap completed. A synchronous result refers to execution within a transaction, not immediate network confirmation.
 
 ### 5. Account & Trust Management
 
@@ -114,5 +114,5 @@ The venue determines that. A queued venue requires the bot to connect accepted r
 - [Stellar operations and transactions](https://developers.stellar.org/docs/learn/fundamentals/transactions/operations-and-transactions)
 - [Stellar state archival](https://developers.stellar.org/docs/learn/fundamentals/contract-development/storage/state-archival)
 - [Contract quickstart](/get-started/contract/)
-- [Build a token](/tutorials/build-a-token/)
-- [Build an AMM](/tutorials/build-an-amm/)
+- [Build a token](/guides/build-a-token/)
+- [Build an AMM](/guides/build-an-amm/)

@@ -26,7 +26,7 @@ try {
     visit(parseMarkdown(source), 'code', node => { result.push(node.value); });
     return result;
   };
-  for (const page of ['get-started/react', 'get-started/contract', 'tutorials/build-a-token', 'reference/json-rpc-api']) {
+  for (const page of ['get-started/react', 'get-started/contract', 'guides/build-a-token', 'reference/json-rpc-api']) {
     assert.deepEqual(codes(readFileSync(resolve(output, `pages/${page}.md`), 'utf8')),
       codes(readFileSync(resolve(`src/content/docs/${page}.md`), 'utf8')), `Code changed in ${page}`);
   }

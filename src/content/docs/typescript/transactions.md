@@ -93,7 +93,7 @@ Keep a batch within the wallet's advertised limit, up to 16 calls. For explicit 
 
 If batching is unsupported, offer a single-call action only when it meets the user's intended operation. Do not split an operation that requires atomicity. After a batch is rejected or its submission is uncertain, never fall back to individual transactions. Retain its signed evidence and [inspect the original hash](/typescript/transaction-status/).
 
-A batch that enqueues requests commits their acceptance, not their later execution. Track the resulting request IDs and outcomes as described in [Build an AMM](/tutorials/build-an-amm/#understand-acceptance-and-execution).
+A batch that enqueues requests commits their acceptance, not their later execution. Track the resulting request IDs and outcomes as described in [Build an AMM](/guides/build-an-amm/#understand-acceptance-and-execution).
 
 ## Set gas and funding
 

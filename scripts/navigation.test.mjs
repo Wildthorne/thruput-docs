@@ -23,15 +23,33 @@ test('every published documentation page has exactly one sidebar owner', () => {
 test('legacy deep links resolve to their task area before matching URL roots', () => {
   assert.equal(sectionForPath('/reference/storage-types/')?.id, 'contracts');
   assert.equal(sectionForPath('/reference/json-rpc-api/')?.id, 'reference');
-  assert.equal(sectionForPath('/tutorials/connect-a-wallet-to-your-app/')?.id, 'guides');
+  assert.equal(sectionForPath('/tutorials/connect-a-wallet-to-your-app/')?.id, 'tutorials');
   assert.equal(sectionForPath('/start/build-with-an-agent/')?.id, 'get-started');
   assert.equal(sectionForPath('/tools/faucet/')?.id, 'tools');
   assert.equal(sectionForPath('/tools/block-explorer/')?.id, 'tools');
   assert.equal(sectionForPath('/cli/reference/')?.id, 'cli');
   assert.equal(sectionForPath('/contracts/errors/')?.id, 'contracts');
-  assert.equal(sectionForPath('/tutorials/build-a-counter/')?.id, 'guides');
+  assert.equal(sectionForPath('/tutorials/build-a-counter/')?.id, 'tutorials');
   assert.equal(sectionForPath('/react')?.id, 'react');
   assert.equal(sectionForPath('/react/wallets/')?.id, 'react');
   assert.equal(sectionForPath('/reactive/'), undefined);
   assert.equal(sectionForPath('/'), undefined);
+});
+
+test('tutorials and guides own their ordered pages at hosted and snapshot paths', () => {
+  const expected = {
+    tutorials: ['tutorials', 'tutorials/build-a-counter', 'tutorials/work-with-thruput-from-typescript',
+      'tutorials/build-a-counter-with-react', 'tutorials/connect-a-wallet-to-your-app'],
+    guides: ['guides', 'guides/build-a-token', 'guides/build-an-amm', 'guides/consume-the-firehose'],
+  };
+  assert.equal(sections.findIndex(section => section.id === 'guides'),
+    sections.findIndex(section => section.id === 'tutorials') + 1);
+  for (const [id, pages] of Object.entries(expected)) {
+    assert.deepEqual(sections.find(section => section.id === id)?.items, pages);
+    for (const page of pages) {
+      for (const prefix of ['', '/docs']) {
+        assert.equal(sectionForPath(`${prefix}/${page}/`)?.id, id);
+      }
+    }
+  }
 });

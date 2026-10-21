@@ -92,12 +92,18 @@ export const sections: DocumentationSection[] = [
     ],
   },
   {
+    id: 'tutorials', label: 'Tutorials', href: '/tutorials/',
+    items: [
+      'tutorials',
+      'tutorials/build-a-counter', 'tutorials/work-with-thruput-from-typescript',
+      'tutorials/build-a-counter-with-react', 'tutorials/connect-a-wallet-to-your-app',
+    ],
+  },
+  {
     id: 'guides', label: 'Guides', href: '/guides/',
     items: [
       'guides',
-      'tutorials/build-a-counter', 'tutorials/work-with-thruput-from-typescript',
-      'tutorials/build-a-counter-with-react', 'tutorials/connect-a-wallet-to-your-app',
-      'tutorials/build-a-token', 'tutorials/build-an-amm',
+      'guides/build-a-token', 'guides/build-an-amm', 'guides/consume-the-firehose',
     ],
   },
   {
@@ -107,7 +113,7 @@ export const sections: DocumentationSection[] = [
   {
     id: 'reference', label: 'Reference', href: '/reference/json-rpc-api/',
     items: [
-      'reference/json-rpc-api', 'reference/contract-spec', 'reference/xdr-protocol',
+      'reference/json-rpc-api', 'reference/contract-spec', 'reference/xdr-protocol', 'reference/firehose',
       { label: 'TypeScript Client API', link: 'https://client-ts.thruput.network/' },
       { label: 'TypeScript Protocol API', link: 'https://protocol-ts.thruput.network/' },
     ],
