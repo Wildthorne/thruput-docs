@@ -18,7 +18,7 @@ Use `#[contract_exception]` to define error types. It generates `Debug`, `Partia
 You can use `thiserror` with `#[contract_exception]` when you want `Display` messages for logs, tests, or off-chain tooling. Put `#[derive(thiserror::Error)]` on the exception type and use `#[error("...")]` on each variant:
 
 ```rust
-use sdk::*;
+use thruput_sdk::*;
 
 #[derive(thiserror::Error)]
 #[contract_exception]
@@ -43,7 +43,7 @@ Avoid `anyhow` for contract exception types and public contract method surfaces.
 Enum errors carry variant-level meaning. Each variant gets an explicit `i32` discriminant. The macro adds `#[repr(i32)]` for you.
 
 ```rust
-use sdk::*;
+use thruput_sdk::*;
 
 #[contract_exception]
 pub enum ERC20Error {
@@ -59,7 +59,7 @@ pub enum ERC20Error {
 Struct errors work when you only need a single error type with no variants.
 
 ```rust
-use sdk::*;
+use thruput_sdk::*;
 
 #[contract_exception]
 pub struct Unauthorized;
@@ -81,7 +81,7 @@ pub struct InsufficientBalance {
 Aborts the current frame with the given error. Never returns.
 
 ```rust
-use sdk::*;
+use thruput_sdk::*;
 
 fn transfer(&mut self, receiver: &ContractAddress, amount: Amount) {
     if amount == 0 {
@@ -96,7 +96,7 @@ fn transfer(&mut self, receiver: &ContractAddress, amount: Amount) {
 Throws `error` if `condition` is false. A convenience wrapper around `throw`.
 
 ```rust
-use sdk::*;
+use thruput_sdk::*;
 
 fn mint(&mut self, receiver: &ContractAddress, amount: Amount) {
     let caller = get_caller();
@@ -116,7 +116,7 @@ fn mint(&mut self, receiver: &ContractAddress, amount: Amount) {
 Extension method on `Result`. Returns the `Ok` value, or throws `exn` on `Err`. Useful for converting fallible operations into contract exceptions.
 
 ```rust
-use sdk::*;
+use thruput_sdk::*;
 
 pub fn amount_to_diff(n: u128) -> i128 {
     n.try_into().or_throw(ERC20Error::TooLarge)

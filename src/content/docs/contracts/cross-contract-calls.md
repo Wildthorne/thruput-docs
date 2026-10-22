@@ -234,12 +234,12 @@ A contract that calls an ERC20 token contract:
 ```rust
 #![cfg_attr(not(feature = "dev"), no_std)]
 
-pub use groundhog_erc20_if as erc20_if;
+pub use thruput_erc20_if as erc20_if;
 
 use erc20_if::Amount;
 use erc20_if::ERC20Client;
-use sdk::storage::Value;
-use sdk::*;
+use thruput_sdk::storage::Value;
+use thruput_sdk::*;
 
 #[storage]
 pub struct Caller {

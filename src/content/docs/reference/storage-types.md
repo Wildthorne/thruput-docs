@@ -6,7 +6,7 @@ description: API reference for Stellar Thruput storage types.
 | Area | Links |
 |------|-------|
 | Type choice and conflict semantics | [Storage guidance](/programming-model/storage-types/) |
-| Generated type, guard, and trait APIs | [`sdk::storage`](https://crates.thruput.network/docs/sdk/0.42.2/doc/sdk/storage/index.html), [Rust API Docs](/tools/rust-api-docs/) |
+| Generated type, guard, and trait APIs | [`thruput_sdk::storage`](https://crates.thruput.network/docs/sdk/0.42.2/doc/sdk/storage/index.html), [Rust API Docs](/tools/rust-api-docs/) |
 | Encoding | CXS; serialization traits retain the names `ReadXDR` and `WriteXDR` |
 
 ## Balance
@@ -40,7 +40,7 @@ description: API reference for Stellar Thruput storage types.
 | --- | --- |
 | Data model | Signed changes, explicit `set`, and a commit-time floor |
 | Decrement | Negative `inc` or `strict_inc` argument |
-| Exclusive writes | Keypath flag, or `non_negative_int_set_exclusive` in `sdk::sys_exn::nnint`; no handle `set_exclusive` method |
+| Exclusive writes | Keypath flag, or `non_negative_int_set_exclusive` in `thruput_sdk::sys_exn::nnint`; no handle `set_exclusive` method |
 | Traits | `Deletable` |
 | Usage | [Merged deltas](/programming-model/execution/#merged-deltas), [NNInt and concurrent updates](/programming-model/nnint/) |
 
@@ -157,7 +157,7 @@ description: API reference for Stellar Thruput storage types.
 | Property | Value |
 | --- | --- |
 | Data | Raw bytes |
-| Exclusive writes | Keypath flag, or `bytestring_set_exclusive` in `sdk::sys_exn::bytestring`; no handle `set_exclusive` method |
+| Exclusive writes | Keypath flag, or `bytestring_set_exclusive` in `thruput_sdk::sys_exn::bytestring`; no handle `set_exclusive` method |
 | Traits | `Deletable` |
 
 | Method | Signature | Description |
@@ -177,7 +177,7 @@ description: API reference for Stellar Thruput storage types.
 | Data | CXS-encoded `T`; multi-producer queue |
 | Concurrency | Inserts commute; consumes are sequential |
 | Traits | `StorageType`, `Deletable` |
-| Modules | Typed wrapper in `sdk::storage`; raw-key functions in `sdk::sys_exn::rcq` |
+| Modules | Typed wrapper in `thruput_sdk::storage`; raw-key functions in `thruput_sdk::sys_exn::rcq` |
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
@@ -197,7 +197,7 @@ description: API reference for Stellar Thruput storage types.
 | `try_peek_sized` | `fn try_peek_sized<const N: usize>(&self) -> Result<[u8; N], LibraryExn>` | Fixed-size peek without aborting. |
 | `key` | `fn key(&self) -> &StorageKey` | Reference to the queue's resolved storage key. |
 
-### Lower-level free functions (`sdk::sys_exn::rcq`)
+### Lower-level free functions (`thruput_sdk::sys_exn::rcq`)
 
 | Function | Signature | Description |
 |----------|-----------|-------------|
@@ -274,6 +274,6 @@ description: API reference for Stellar Thruput storage types.
 
 | Module | Behavior |
 | --- | --- |
-| `sdk::sys_exn::flags` | Throwing versions, re-exported at crate root |
-| `sdk::sys_result::flags` | Non-throwing versions returning `Result` |
+| `thruput_sdk::sys_exn::flags` | Throwing versions, re-exported at crate root |
+| `thruput_sdk::sys_result::flags` | Non-throwing versions returning `Result` |
 | Usage | [Lock requests](/programming-model/storage-types/#lock-requests) |

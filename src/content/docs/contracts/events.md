@@ -8,7 +8,7 @@ Events expose contract activity to applications. A contract emits topics for fil
 ## Define an event
 
 ```rust
-use sdk::*;
+use thruput_sdk::*;
 
 #[derive(Event, Clone, Debug)]
 pub struct CounterIncremented {
@@ -27,10 +27,10 @@ Here, consumers can filter on `by` and read `amount` from the payload. Strings a
 Add the event to a counter method to record the amount and caller:
 
 ```rust
-use sdk::storage::Balance;
+use thruput_sdk::storage::Balance;
 
 #[derive(Debug)]
-#[sdk::storage]
+#[thruput_sdk::storage]
 pub struct Counter {
     value: Balance,
 }

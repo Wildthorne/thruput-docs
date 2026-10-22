@@ -24,7 +24,7 @@ Stellar Thruput discovers storage access during execution. Typed merge rules all
 | Anchor concept | Stellar Thruput SDK concept |
 | --- | --- |
 | `#[program]` | `#[contract]` on an interface or implementation |
-| Account-data structure | Typed fields under `#[sdk::storage]` |
+| Account-data structure | Typed fields under `#[thruput_sdk::storage]` |
 | `#[derive(Accounts)]` constraints | Explicit argument and authorization checks; no caller-supplied account array |
 | Initialization instruction | Ordinary initializer, optionally called atomically with deployment |
 
@@ -93,7 +93,7 @@ Stellar Thruput's `get_caller()` returns the immediate calling contract, not the
 ### PDA State Accounts → Map Fields
 
 ```rust
-#[sdk::storage]
+#[thruput_sdk::storage]
 pub struct Registry {
     user_states: Map<ContractAddress, Value<UserState>>,
 }

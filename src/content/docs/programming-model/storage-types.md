@@ -5,17 +5,17 @@ description: "SDK storage types, their conflict semantics, and how to choose bet
 
 Start with `Balance` for nonnegative counts and amounts. It exposes reads, increases, and decreases without requiring you to manage the underlying integer base. The storage type you choose determines whether concurrent writes merge, conflict, or ignore each other.
 
-This page explains behavior and tradeoffs. For exact method signatures, see [Storage Types Reference](/reference/storage-types/) or [`sdk::storage` Rustdoc](https://crates.thruput.network/docs/sdk/0.42.2/doc/sdk/storage/index.html).
+This page explains behavior and tradeoffs. For exact method signatures, see [Storage Types Reference](/reference/storage-types/) or [`thruput_sdk::storage` Rustdoc](https://crates.thruput.network/docs/sdk/0.42.2/doc/sdk/storage/index.html).
 
 ## Balance
 
 Nonnegative, zero-defaulting storage for counters, balances, allowances, and supply. `Balance` uses `i128` amounts in `0..=i128::MAX`, rejects negative inputs, and exposes no signed adjustment or absolute `set`.
 
 ```rust
-use sdk::storage::Balance;
+use thruput_sdk::storage::Balance;
 
 #[derive(Debug)]
-#[sdk::storage]
+#[thruput_sdk::storage]
 pub struct Counter {
     value: Balance,
 }
@@ -37,10 +37,10 @@ Both methods check bounds during execution and record relative changes. The runt
 For per-account amounts, combine Balance with a Map:
 
 ```rust
-use sdk::storage::{Balance, Map};
+use thruput_sdk::{storage::{Balance, Map}, ContractAddress};
 
 #[derive(Debug)]
-#[sdk::storage]
+#[thruput_sdk::storage]
 pub struct Token {
     balances: Map<ContractAddress, Balance>,
 }
@@ -74,10 +74,10 @@ The `try_` variants report errors that are available during contract execution, 
 `NNInt` is the lower-level integer API behind Balance. Use it when your state model needs a signed delta or an explicit base. For ordinary nonnegative counts and amounts, keep using Balance.
 
 ```rust
-use sdk::storage::NNInt;
+use thruput_sdk::storage::NNInt;
 
 #[derive(Debug)]
-#[sdk::storage]
+#[thruput_sdk::storage]
 pub struct IntegerState {
     value: NNInt,
 }
@@ -101,10 +101,10 @@ Continue with [NNInt and concurrent updates](/programming-model/nnint/) for the 
 Key-value store. Different keys use independent storage locations. Same-key behavior follows the value type's rules. Other shared writes or storage-funding limits can still prevent the complete transactions from landing together.
 
 ```rust
-use sdk::storage::{Balance, Map};
+use thruput_sdk::{storage::{Balance, Map}, ContractAddress};
 
 #[derive(Debug)]
-#[sdk::storage]
+#[thruput_sdk::storage]
 pub struct Token {
     balances: Map<ContractAddress, Balance>,
 }
@@ -127,10 +127,10 @@ Maps can nest: `Map<K, Map<K2, Balance>>` gives composite keys with independent 
 Raw bytes. Concurrent writes of the same value commute. Concurrent writes of different values conflict.
 
 ```rust
-use sdk::storage::Bytestring;
+use thruput_sdk::storage::Bytestring;
 
 #[derive(Debug)]
-#[sdk::storage]
+#[thruput_sdk::storage]
 pub struct Config {
     owner: Bytestring,
 }
@@ -163,9 +163,9 @@ Use `RCQ<T>` when producers are concurrent but consumers process items in order.
 A commit-time limit shared by changes from multiple transactions. Use it when one transaction cannot determine whether a block-wide linear constraint will still hold, such as an aggregate withdrawal limit.
 
 ```rust
-use sdk::storage::CapacityConstraint;
+use thruput_sdk::storage::CapacityConstraint;
 
-#[sdk::storage]
+#[thruput_sdk::storage]
 pub struct WithdrawalLimit {
     remaining: CapacityConstraint,
 }
@@ -186,7 +186,7 @@ Consumption is staged on the handle and written when the handle is flushed or dr
 Ordered collection. Each element is an independent storage slot. Internally backed by a `Map<u32, S>` for elements and a length counter.
 
 ```rust
-use sdk::storage::{Vector, Node, Value};
+use thruput_sdk::{storage::{Vector, Node, Value}, Storage};
 
 #[derive(Storage)]
 pub struct Item {
@@ -194,7 +194,7 @@ pub struct Item {
 }
 
 #[derive(Debug)]
-#[sdk::storage]
+#[thruput_sdk::storage]
 pub struct Registry {
     items: Vector<Node<Item>>,
 }
@@ -227,10 +227,10 @@ Use Vector for ordered collections where elements are accessed by index. Wrap co
 Typed storage slot. Stores any CXS-serializable value. Conflict semantics are the same as Bytestring: concurrent writes of the same value commute, different values conflict.
 
 ```rust
-use sdk::storage::Value;
+use thruput_sdk::{storage::Value, ContractAddress};
 
 #[derive(Debug)]
-#[sdk::storage]
+#[thruput_sdk::storage]
 pub struct Config {
     owner: Value<ContractAddress>,
     threshold: Value<u64>,
@@ -283,7 +283,7 @@ self.integer_state.at_mut_exclusive(&owner).set(0);
 self.integer_state.at_mut(&owner).inc(1);  // The lock request remains.
 ```
 
-Leaf handles (`Value`, `NNInt`, `Balance`, and `Bytestring`) implement `Flaggable`. Import it with `use sdk::storage::Flaggable;`. `flags()` reads the flags, `set_flags(flags)` adds flags, and `clear_flags()` removes them. Setting flags requires a pending write to that key in the current call frame.
+Leaf handles (`Value`, `NNInt`, `Balance`, and `Bytestring`) implement `Flaggable`. Import it with `use thruput_sdk::storage::Flaggable;`. `flags()` reads the flags, `set_flags(flags)` adds flags, and `clear_flags()` removes them. Setting flags requires a pending write to that key in the current call frame.
 
 The raw-key functions `storage_flags`, `set_storage_flags`, and `clear_storage_flags` provide the same operations for a `StorageKey`. A reverted frame or failed `try_invoke` discards its flag changes along with its writes. See [Storage Flags](/reference/syscalls/#storage-flags) for the host API.
 

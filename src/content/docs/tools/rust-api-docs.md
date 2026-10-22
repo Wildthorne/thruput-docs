@@ -10,7 +10,7 @@ Use Rustdoc for exact signatures, trait bounds, and source links. Use this site 
 The hosted links below select one SDK release. If your project's dependency differs, select its version at [crates.thruput.network](https://crates.thruput.network) or build its resolved SDK documentation locally:
 
 ```bash
-cargo doc -p sdk --no-deps --open
+cargo doc -p thruput-sdk --no-deps --open
 ```
 
 Run this from the generated contract project after [Cargo access setup](/cli/install/#configure-cargo-access). Hosted Rustdoc may require your onboarding credentials.
@@ -19,10 +19,10 @@ Run this from the generated contract project after [Cargo access setup](/cli/ins
 
 | Need | Rustdoc |
 | --- | --- |
-| SDK overview and re-exports | [`sdk`](https://crates.thruput.network/docs/sdk/0.42.2/doc/sdk/index.html) |
+| SDK overview and re-exports | [`thruput_sdk`](https://crates.thruput.network/docs/sdk/0.42.2/doc/sdk/index.html) |
 | Contract types | [`ContractAddress`](https://crates.thruput.network/docs/sdk/0.42.2/doc/sdk/types/struct.ContractAddress.html), [`SHA256Hash`](https://crates.thruput.network/docs/sdk/0.42.2/doc/sdk/types/struct.SHA256Hash.html) |
 | Native tests | [`TestEnvironment`](https://crates.thruput.network/docs/sdk/0.42.2/doc/sdk/struct.TestEnvironment.html) |
-| Storage types and traits | [`sdk::storage`](https://crates.thruput.network/docs/sdk/0.42.2/doc/sdk/storage/index.html) |
+| Storage types and traits | [`thruput_sdk::storage`](https://crates.thruput.network/docs/sdk/0.42.2/doc/sdk/storage/index.html) |
 | Nonnegative balances and counters | [`Balance`](https://crates.thruput.network/docs/sdk/0.42.2/doc/sdk/storage/balance/struct.Balance.html) |
 | Lower-level signed deltas and explicit bases | [`NNInt`](https://crates.thruput.network/docs/sdk/0.42.2/doc/sdk/storage/nnint/struct.NNInt.html) |
 | Shared capacity | [`CapacityConstraint`](https://crates.thruput.network/docs/sdk/0.42.2/doc/sdk/storage/capacity_constraint/struct.CapacityConstraint.html) |

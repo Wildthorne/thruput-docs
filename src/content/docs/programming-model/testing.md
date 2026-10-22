@@ -54,12 +54,12 @@ Compare with a fresh scaffold, then add `tests/integration.rs`, its feature and 
 
 ## Test Setup
 
-Your `lib.rs` must include `sdk::declare_mock_contract!()` to generate the `register_mock_contract` function used in tests:
+Your `lib.rs` must include `thruput_sdk::declare_mock_contract!()` to generate the `register_mock_contract` function used in tests:
 
 ```rust
 #![cfg_attr(not(feature = "dev"), no_std)]
 
-sdk::declare_mock_contract!();
+thruput_sdk::declare_mock_contract!();
 
 mod implementation;
 pub use implementation::*;
@@ -68,11 +68,11 @@ pub use implementation::*;
 ## Basic Pattern
 
 ```rust
-use sdk::*;
+use thruput_sdk::*;
 
 use my_counter::{CounterClient, register_mock_contract};
 
-static NONCE: SHA256Hash = sdk::sha256_static!("COUNTER_NONCE");
+static NONCE: SHA256Hash = thruput_sdk::sha256_static!("COUNTER_NONCE");
 
 fn setup() -> (TestEnvironmentHandle, SHA256Hash) {
     let env = TestEnvironment::no_cost();
@@ -187,4 +187,4 @@ fn transfer_between_known_addresses() {
 }
 ```
 
-The `Named` trait that provides this method is re-exported through `sdk::*` when the `dev` feature is enabled.
+The `Named` trait that provides this method is re-exported through `thruput_sdk::*` when the `dev` feature is enabled.

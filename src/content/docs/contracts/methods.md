@@ -8,11 +8,11 @@ Start with a [generated project](/cli/create-project/) so its host tests and RV3
 ## Define state and behavior
 
 ```rust
-use sdk::storage::Balance;
-use sdk::*;
+use thruput_sdk::storage::Balance;
+use thruput_sdk::*;
 
 #[derive(Debug)]
-#[sdk::storage]
+#[thruput_sdk::storage]
 pub struct Counter {
     value: Balance,
 }
@@ -29,7 +29,7 @@ impl Counter {
 }
 ```
 
-`#[sdk::storage]` assigns each field a storage path. The field is a handle to persisted data, not an in-memory integer that you must save manually. `#[contract]` generates entrypoints, a `CounterClient`, and interface metadata.
+`#[thruput_sdk::storage]` assigns each field a storage path. The field is a handle to persisted data, not an in-memory integer that you must save manually. `#[contract]` generates entrypoints, a `CounterClient`, and interface metadata.
 
 `Balance::get()` gives the never-written counter a zero default while preserving other storage errors. `increase` records a relative change and checks for overflow. Start with [Balance](/programming-model/storage-types/#balance) for nonnegative counts and amounts; use [NNInt](/programming-model/nnint/) when you need signed deltas or an explicit base.
 
@@ -46,7 +46,7 @@ Exported methods return their normal values. Use [contract exceptions](/contract
 Put a trait in a shared interface crate when callers need the interface without importing its implementation:
 
 ```rust
-use sdk::*;
+use thruput_sdk::*;
 
 #[contract]
 pub trait CounterApi {

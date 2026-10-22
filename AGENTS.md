@@ -50,12 +50,14 @@ Verify technical claims against source code first, then reconcile published docs
 
 Other repos:
 
-- SDK: `../sdk_rs/`
+- Rust contract SDK (`thruput-sdk`): `../thruput-sdk-rs/`
 - Core engine: `../hogd/`
-- JSON-RPC gateway: `../groundhog-rpc/`
-- Protocol definitions: `../protocol/`
-- TypeScript protocol bindings: `../protocol-ts/`
-- TypeScript client/SDK: `../client-ts/`
+- CLI and JSON-RPC gateway: `../thruput-tools/` (`crates/cli`, `crates/json-rpc`)
+- Protocol definitions: `../thruput-protocol/`
+- TypeScript protocol bindings: `../thruput-protocol-ts/`
+- TypeScript client/SDK: `../thruput-sdk-ts/`
+- Examples: `../thruput-examples/`
+- Reference wallet: `../freighter/`
 
 Common gotchas:
 

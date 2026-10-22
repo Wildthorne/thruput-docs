@@ -53,7 +53,7 @@ Stellar Thruput exposes these rules to contract developers:
 - **Ordering-sensitive balance updates.** Commutative balance deltas have the same merged outcome in any execution order. Application flows that conflict still need protocol-aware design.
 - **Nonces.** Replay protection uses a unique expiry-height and nonce pair, without a sequential account counter.
 - **Access lists.** Stellar Thruput discovers storage access during execution. Compare [Solana account declarations](/ecosystem/solana/#access-lists-vs-type-based-parallelism) with Ethereum's optional [EIP-2930 access lists](https://eips.ethereum.org/EIPS/eip-2930).
-- **Storage slot packing.** Typed fields via `#[sdk::storage]`. No manual layout, no packing variables into 256-bit slots.
+- **Storage slot packing.** Typed fields via `#[thruput_sdk::storage]`. No manual layout, no packing variables into 256-bit slots.
 - **TTL management.** No storage expiry. Data persists as long as its native-token deposit is held. Delete the data, get the deposit back.
 
 ---

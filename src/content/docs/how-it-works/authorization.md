@@ -138,7 +138,7 @@ Each key slot is optional. Empty slots do not contribute weight.
 An address can mutate only its own auth data. The SDK exposes the current syscalls as:
 
 ```rust
-use sdk::{
+use thruput_sdk::{
     add_address_public_key,
     remove_address_public_key,
     set_address_required_weight,
@@ -158,7 +158,7 @@ Use these for source-address accounts, wallet contracts, and contracts that are 
 Inside a contract, [`get_caller()`](https://crates.thruput.network/docs/sdk/0.34.3/doc/sdk/contract_op/fn.get_caller.html) returns the direct caller of the current invocation frame:
 
 ```rust
-use sdk::get_caller;
+use thruput_sdk::get_caller;
 
 let caller = get_caller();
 ```
@@ -172,7 +172,7 @@ Use [`get_current_address()`](https://crates.thruput.network/docs/sdk/0.34.3/doc
 Contracts can verify arbitrary messages with [`verify_signature_ed25519()`](https://crates.thruput.network/docs/sdk/0.34.3/doc/sdk/crypto/fn.verify_signature_ed25519.html):
 
 ```rust
-use sdk::crypto::verify_signature_ed25519;
+use thruput_sdk::crypto::verify_signature_ed25519;
 
 let ok = verify_signature_ed25519(&public_key, &signature, message);
 ```
@@ -198,7 +198,7 @@ An auth token carries:
 To make a payload type usable in a token, mark it as a contract type:
 
 ```rust
-use sdk::*;
+use thruput_sdk::*;
 
 #[contract_type]
 pub struct TransferAuth {
@@ -210,7 +210,7 @@ pub struct TransferAuth {
 Mint with [`mint_auth_token()`](https://crates.thruput.network/docs/sdk/0.34.3/doc/sdk/signer/fn.mint_auth_token.html):
 
 ```rust
-use sdk::*;
+use thruput_sdk::*;
 
 let token: Signed<TransferAuth> = mint_auth_token(
     expiry,
@@ -224,7 +224,7 @@ let token: Signed<TransferAuth> = mint_auth_token(
 Consume with `Signed<T>::consume()`:
 
 ```rust
-use sdk::*;
+use thruput_sdk::*;
 
 pub fn transfer_from(
     amount: i128,
@@ -264,7 +264,7 @@ Generated clients assign returned token handles to `Signed<T>` fields in the ret
 A token payload can contain `Signed<U>` fields. When the outer token is consumed, the runtime creates child-token handles for those fields. Child tokens keep the same minter and expiry as the parent, but each child has its own consumer address and payload.
 
 ```rust
-use sdk::*;
+use thruput_sdk::*;
 
 #[contract_type]
 pub struct DexIntent {
