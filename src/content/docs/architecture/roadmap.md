@@ -7,7 +7,7 @@ sidebar:
 
 These are candidate improvements to Stellar Thruput, roughly ordered by what they could unblock. The order is provisional. Scope and priorities can change as people build on Devnet; there are no committed delivery dates.
 
-Last reviewed: October 13, 2026.
+Last reviewed: October 21, 2026.
 
 ## Proposed next work
 
@@ -22,6 +22,10 @@ Failures inside wallet or other nested contract calls can be difficult to locate
 ### State preserving upgrades
 
 Supported upgrade paths and migration tooling would reduce the need to recreate applications after network changes. This work is deferred. Devnet can still reset, as described in [Get Started](/get-started/). Upgrade fixtures, compatibility tests, and operator feedback would help define the supported paths.
+
+### Sharded state storage
+
+Splitting state across multiple HogDB shards is the planned path for scaling state. Each account's state is owned by one shard, and execution routes reads and writes to the owning shard. Initial support is in review in the core engine. Cross-shard snapshot reads and protocol support for shard identity still need to land. Large-state workloads and benchmarks across shard counts would help.
 
 ## Exploring
 
