@@ -25,15 +25,23 @@ Supported upgrade paths and migration tooling would reduce the need to recreate 
 
 ### Sharded state storage
 
-Splitting state across multiple HogDB shards is the planned path for scaling state. Each account's state is owned by one shard, and execution routes reads and writes to the owning shard. Initial support is in review in the core engine. Cross-shard snapshot reads and protocol support for shard identity still need to land. Large-state workloads and benchmarks across shard counts would help.
+Partitioning state across multiple HogDB shards within each validator is the planned path for scaling state. This is not chain sharding: applications see one key space and never choose a shard. Each account's state is owned by one shard, and execution routes reads and writes to the owning shard. Initial support is in review in the core engine. Cross-shard snapshot reads, protocol support for shard identity, and a two-phase block commit across shards still need to land. Large-state workloads and benchmarks across shard counts would help.
+
+### Post-quantum signatures
+
+Each address can register multiple keys, and authorization is abstracted over the signature scheme, so users can add or revoke keys without changing addresses. Ed25519 and ML-DSA-65 (FIPS 204) are supported. Validator key migration still needs design, and more schemes may follow as they are standardized. Threat-model, performance, and migration-design reviews would help.
 
 ## Exploring
 
-### Post quantum readiness
+### External calls
 
-Thruput's authorization model already supports multiple keys per address and is designed to accommodate multiple cryptographic key types. Ed25519 is the currently supported scheme. We're evaluating post-quantum options and their performance impact. The migration design also needs to cover account and validator keys. Threat-model, performance, and migration-design reviews would help.
+Contracts could call services outside the chain within one atomic transaction. While a call is pending, executors run other transactions. The proposer records the response in the block proposal, so other nodes replay it without making the call. Responses must be self-authenticating, and each call's timeout is bounded by block time. This is not implemented. The contract API and protections against using the chain to flood other services still need design. Use cases such as market-maker quotes, on-demand oracle reads, and compliance checks would help shape it.
 
 ## Open to builders
+
+### Additional storage types
+
+Contracts use the [storage types](/programming-model/storage-types/) the SDK provides today. Earlier research prototypes also used ordered sets and bitmaps, and new types will follow developer demand. If an application is hard to express with the current types, describe the workload and where it conflicts.
 
 ### Ecosystem tooling
 
