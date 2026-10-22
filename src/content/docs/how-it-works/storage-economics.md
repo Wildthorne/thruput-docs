@@ -3,7 +3,7 @@ title: Compute, Capacity & Storage
 description: How the native token provides scheduling capacity and refundable storage deposits without conventional gas fees.
 ---
 
-Stellar Thruput has no conventional gas fees. Its native token backs onchain storage and provides scheduling capacity under load. The current experimental network's native token has no monetary value.
+Project Thruput has no conventional gas fees. Its native token backs onchain storage and provides scheduling capacity under load. The current experimental network's native token has no monetary value.
 
 Removing the sequential execution bottleneck is intended to make compute abundant rather than keep it scarce by design. Parallel execution does not remove hardware limits or contention: the network still meters computation and allocates capacity when demand exceeds it.
 

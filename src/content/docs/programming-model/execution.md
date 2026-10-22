@@ -90,7 +90,7 @@ client.with_gas_limit(100_000).transfer(&to, amount);
 
 Gas has no token fee, but lower gas limits use less scheduling capacity. Choose a limit that covers execution and design storage operations to avoid unnecessary conflicts.
 
-Stellar Thruput needs no gas price estimation because the token price of gas is zero. Gas usage still matters when choosing an execution limit.
+Project Thruput needs no gas price estimation because the token price of gas is zero. Gas usage still matters when choosing an execution limit.
 
 ## Throughput
 

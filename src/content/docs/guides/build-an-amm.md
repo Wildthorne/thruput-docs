@@ -19,7 +19,7 @@ Read [Build a token](/guides/build-a-token/) first. Complete [CLI and Cargo setu
 | `contracts/swap-router` | User-facing liquidity and swap requests |
 | `helpers/batch-driver` | Shared queue capacity and processing logic |
 
-The pair is an internal engine used by the handler, not another public contract entry point. The suite adapts [Uniswap V2 pair operations](https://github.com/Uniswap/v2-core/blob/master/contracts/UniswapV2Pair.sol) to Stellar Thruput's execution model.
+The pair is an internal engine used by the handler, not another public contract entry point. The suite adapts [Uniswap V2 pair operations](https://github.com/Uniswap/v2-core/blob/master/contracts/UniswapV2Pair.sol) to Project Thruput's execution model.
 
 ## Create a pool
 

@@ -1,9 +1,9 @@
 ---
 title: Syscalls
-description: Host function numbers, parameters, and errors for Stellar Thruput contracts.
+description: Host function numbers, parameters, and errors for Project Thruput contracts.
 ---
 
-These are the host functions available to Stellar Thruput guest contracts. Most developers use the SDK rather than calling syscalls directly. See [Programming Model: Storage Types](/programming-model/storage-types/) for the high-level API.
+These are the host functions available to Project Thruput guest contracts. Most developers use the SDK rather than calling syscalls directly. See [Programming Model: Storage Types](/programming-model/storage-types/) for the high-level API.
 
 The tables below describe the protocol's logical typed interface. The generated low-level bindings map it to each guest target's ABI. User contracts use RV32. Variable-length buffers are passed as spans.
 

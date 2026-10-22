@@ -5,7 +5,7 @@ description: Create a Futurenet wallet, request native test tokens, and inspect 
 
 Create a wallet on Futurenet, fund it with native test tokens, and inspect the funding transaction. These tokens have no monetary value. You do not need a contract project or a local node.
 
-**Before you start:** [install the latest CLI](/cli/install/). Run these commands outside an existing Stellar Thruput project so they use your global configuration.
+**Before you start:** [install the latest CLI](/cli/install/). Run these commands outside an existing Project Thruput project so they use your global configuration.
 
 ## 1. Set up the CLI
 

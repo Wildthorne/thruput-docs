@@ -1,6 +1,6 @@
-# Stellar Thruput Developer Docs
+# Project Thruput Developer Docs
 
-Developer documentation for the [Stellar Thruput](https://thruput.network) blockchain. Built with [Astro](https://astro.build) + [Starlight](https://starlight.astro.build).
+Developer documentation for the [Project Thruput](https://thruput.network) blockchain. Built with [Astro](https://astro.build) + [Starlight](https://starlight.astro.build).
 
 ## Hosted routing
 

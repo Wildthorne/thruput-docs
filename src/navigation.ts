@@ -29,7 +29,7 @@ export const sections: DocumentationSection[] = [
     ],
   },
   {
-    id: 'architecture', label: 'Understand Stellar Thruput', href: '/architecture/',
+    id: 'architecture', label: 'Understand Project Thruput', href: '/architecture/',
     items: [
       'architecture',
       'how-it-works/architecture',

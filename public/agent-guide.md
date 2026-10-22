@@ -1,4 +1,4 @@
-# Thruput agent setup
+# Project Thruput agent setup
 
 Install the maintained Thruput skill for your coding agent:
 

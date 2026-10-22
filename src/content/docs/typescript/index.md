@@ -1,6 +1,6 @@
 ---
 title: TypeScript
-description: Connect applications and services to Stellar Thruput with the TypeScript client and typed contract bindings.
+description: Connect applications and services to Project Thruput with the TypeScript client and typed contract bindings.
 sidebar:
   label: Overview
 ---

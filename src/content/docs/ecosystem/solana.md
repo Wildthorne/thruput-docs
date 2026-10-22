@@ -1,27 +1,27 @@
 ---
 title: Solana & Anchor
-description: Translate Solana account, storage, and CPI patterns into Stellar Thruput contracts.
+description: Translate Solana account, storage, and CPI patterns into Project Thruput contracts.
 ---
 
-Both ecosystems support Rust contract development. Stellar Thruput changes how a contract addresses state and how concurrent writes combine. The comparison below follows Solana's [account model](https://solana.com/docs/core/accounts) and [CPI rules](https://solana.com/docs/core/cpi).
+Both ecosystems support Rust contract development. Project Thruput changes how a contract addresses state and how concurrent writes combine. The comparison below follows Solana's [account model](https://solana.com/docs/core/accounts) and [CPI rules](https://solana.com/docs/core/cpi).
 
 ## Accounts vs. Storage
 
 Solana state lives in accounts with an address, owner, lamport balance, and data. Instructions receive declared accounts; Anchor expresses their expected types and constraints.
 
-Stellar Thruput stores typed fields under contract addresses. For example, a token implementation uses `Map<ContractAddress, Balance>` rather than receiving separate token-account objects for each balance. Contract code still checks caller authority and application rules.
+Project Thruput stores typed fields under contract addresses. For example, a token implementation uses `Map<ContractAddress, Balance>` rather than receiving separate token-account objects for each balance. Contract code still checks caller authority and application rules.
 
 ## Access Lists vs. Type-Based Parallelism
 
 Solana transactions declare account access before execution. The runtime uses read/write access to schedule work; transactions that contend for a writable account cannot execute together in that schedule.
 
-Stellar Thruput discovers storage access during execution. Typed merge rules allow compatible changes to the same location to combine. Different map keys use separate locations, but other shared writes and storage-funding limits can still conflict.
+Project Thruput discovers storage access during execution. Typed merge rules allow compatible changes to the same location to combine. Different map keys use separate locations, but other shared writes and storage-funding limits can still conflict.
 
 ## The Contract Lifecycle
 
 ### Writing
 
-| Anchor concept | Stellar Thruput SDK concept |
+| Anchor concept | Project Thruput SDK concept |
 | --- | --- |
 | `#[program]` | `#[contract]` on an interface or implementation |
 | Account-data structure | Typed fields under `#[thruput_sdk::storage]` |
@@ -30,7 +30,7 @@ Stellar Thruput discovers storage access during execution. Typed merge rules all
 
 ### Compiling
 
-Solana programs compile to SBF. Stellar Thruput contracts compile to RV32 through:
+Solana programs compile to SBF. Project Thruput contracts compile to RV32 through:
 
 ```bash
 thruput build
@@ -40,7 +40,7 @@ The build produces a deployable artifact and contract spec. Keep the generated t
 
 ### Deploying
 
-Stellar Thruput deployment derives an address from the deployer, nonce, and code hash. This shares a PDA's predictability, not its derivation or authorization model. See [Contract artifacts and addresses](/how-it-works/contracts/).
+Project Thruput deployment derives an address from the deployer, nonce, and code hash. This shares a PDA's predictability, not its derivation or authorization model. See [Contract artifacts and addresses](/how-it-works/contracts/).
 
 ### Calling
 
@@ -55,7 +55,7 @@ The receiver sees the calling contract as its immediate caller. [Cross-Contract 
 
 ## Mental Model Shifts
 
-| Solana / Anchor pattern | Stellar Thruput pattern |
+| Solana / Anchor pattern | Project Thruput pattern |
 | --- | --- |
 | Per-user state account | Often a `Map` entry under the contract |
 | Serialized account data | Typed storage handles |
@@ -68,15 +68,15 @@ The receiver sees the calling contract as its immediate caller. [Cross-Contract 
 
 ### Account Arrays and Validation
 
-Stellar Thruput has no caller-supplied account array. That removes account-list construction, not authorization. Validate caller identities, contract addresses, amounts, and application conditions before applying changes.
+Project Thruput has no caller-supplied account array. That removes account-list construction, not authorization. Validate caller identities, contract addresses, amounts, and application conditions before applying changes.
 
 ### Rent and Account Lifecycle
 
-Solana accounts hold a refundable minimum lamport balance for their storage. Stellar Thruput storage also requires funding: it locks native tokens according to the data's type and size, and releases the deposit when data is deleted. The runtime accounts for it, but the owning address must have enough funds.
+Solana accounts hold a refundable minimum lamport balance for their storage. Project Thruput storage also requires funding: it locks native tokens according to the data's type and size, and releases the deposit when data is deleted. The runtime accounts for it, but the owning address must have enough funds.
 
 ### Compute Unit Budgets
 
-Stellar Thruput gas limits bound computation, including child calls. Gas costs zero tokens, but a root transaction's declared limit consumes scheduling capacity. Account funding and execution bounds still matter. See [Compute, Capacity & Storage](/how-it-works/storage-economics/).
+Project Thruput gas limits bound computation, including child calls. Gas costs zero tokens, but a root transaction's declared limit consumes scheduling capacity. Account funding and execution bounds still matter. See [Compute, Capacity & Storage](/how-it-works/storage-economics/).
 
 ### PDA Seed Management
 
@@ -86,7 +86,7 @@ A PDA used only for per-user state often maps to a `Map` entry. A PDA used as an
 
 Solana CPI passes existing signer and writable privileges to the callee. `invoke_signed` additionally supplies seeds when the calling program must authorize a PDA. Ordinary CPI does not always require signer seeds.
 
-Stellar Thruput's `get_caller()` returns the immediate calling contract, not the root signer. Use contract policy, allowances, or [typed auth tokens](/how-it-works/authorization/#auth-tokens-and-signedt) when authority must pass through several calls.
+Project Thruput's `get_caller()` returns the immediate calling contract, not the root signer. Use contract policy, allowances, or [typed auth tokens](/how-it-works/authorization/#auth-tokens-and-signedt) when authority must pass through several calls.
 
 ## Pattern Adaptations
 
@@ -136,7 +136,7 @@ Unlike signer-account validation, this checks the immediate contract caller. A f
 
 ## What Doesn't Exist
 
-Stellar Thruput does not use Solana account arrays, associated token accounts, PDA bump seeds, or account `space`/`realloc` arguments. It has its own contract-address, storage, and authorization models. These are pattern translations, not wire or tooling compatibility.
+Project Thruput does not use Solana account arrays, associated token accounts, PDA bump seeds, or account `space`/`realloc` arguments. It has its own contract-address, storage, and authorization models. These are pattern translations, not wire or tooling compatibility.
 
 ## Next Steps
 

@@ -1,8 +1,8 @@
-<a class="site-brand" href="/" aria-label="Stellar Thruput homepage">
+<a class="site-brand" href="/" aria-label="Project Thruput homepage">
   <img class="stellar-light" src="/brand/stellar.svg" width="100" height="25" alt="Stellar" />
   <img class="stellar-dark" src="/brand/stellar-dark.svg" width="100" height="25" alt="Stellar" />
   <span class="brand-divider" aria-hidden="true"></span>
-  <span>Thruput</span>
+  <span class="brand-name">Project Thruput</span>
 </a>
 
 <style>
@@ -11,6 +11,9 @@
   .brand-divider { width: 1px; height: 1.25rem; background: var(--brand-border); }
   .stellar-light, :global([data-theme='light']) .stellar-dark { display: none; }
   :global([data-theme='light']) .stellar-light { display: block; }
+  @media (max-width: 30rem) {
+    .brand-name { max-width: 7ch; white-space: normal; }
+  }
   @media (max-width: 24rem) {
     .site-brand { gap: .5rem; font-size: 1.0625rem; }
     img { width: 5rem; height: 1.25rem; }

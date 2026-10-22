@@ -69,7 +69,7 @@ for (const width of [320, 375, 701, 800, 1024, 1280, 1920]) {
       await expect(page.getByRole('heading', { name: title, level: 2 })).toBeVisible();
     }
     await expect(page.locator('.workflow a')).toHaveCount(5);
-    await expect(page.locator('header .release-badge')).toHaveText('alpha-pre.1');
+    await expect(page.locator('header .release-badge')).toHaveCount(0);
     await page.keyboard.press('Tab');
     await expect(page.getByRole('link', { name: 'Skip to content' })).toBeFocused();
     await page.keyboard.press('Enter');
@@ -186,7 +186,7 @@ test('system theme follows docs until a manual toggle persists across the dark h
   await page.emulateMedia({ colorScheme: 'light' });
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
   expect(await page.evaluate(() => localStorage.getItem('starlight-theme'))).toBeNull();
-  await page.getByRole('link', { name: 'Stellar Thruput homepage' }).click();
+  await page.getByRole('link', { name: 'Project Thruput homepage' }).click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   await page.emulateMedia({ colorScheme: 'dark' });
   await page.emulateMedia({ colorScheme: 'light' });
@@ -203,7 +203,7 @@ test('system theme follows docs until a manual toggle persists across the dark h
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
   await page.reload();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
-  await page.getByRole('link', { name: 'Stellar Thruput homepage' }).click();
+  await page.getByRole('link', { name: 'Project Thruput homepage' }).click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   expect(await page.evaluate(() => localStorage.getItem('starlight-theme'))).toBe('light');
   await page.getByRole('link', { name: 'Start Building', exact: true }).click();
@@ -265,14 +265,14 @@ test('header is centered on homepage and full-width with 20px gutters on docs', 
   }
 });
 
-test('header and page titles use Stellar Thruput while preserving the exact CLI install prompt', async ({ page }) => {
+test('header and page titles use Project Thruput while preserving the exact CLI install prompt', async ({ page }) => {
   for (const route of ['/', docs]) {
     await page.goto(origin + route);
-    const brand = page.locator('header').getByRole('link', { name: 'Stellar Thruput homepage', exact: true });
-    await expect(brand).toHaveText('Thruput');
+    const brand = page.locator('header').getByRole('link', { name: 'Project Thruput homepage', exact: true });
+    await expect(brand).toHaveText('Project Thruput');
     await expect(brand.locator('img:visible')).toHaveAttribute('alt', 'Stellar');
     await expect(brand).toHaveAttribute('href', '/');
-    await expect(page).toHaveTitle(/Stellar Thruput/);
+    await expect(page).toHaveTitle(/Project Thruput/);
     await expect(page.locator('header').getByRole('link', { name: 'About', exact: true }))
       .toHaveAttribute('href', '/docs/architecture/');
     if (route === '/') {

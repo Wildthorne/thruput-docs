@@ -65,7 +65,7 @@ Use [Read contract data](/typescript/reads/) for arguments, caller context, and 
 ## Use a coding agent
 
 ```text
-Build the Stellar Thruput TypeScript quickstart:
+Build the Project Thruput TypeScript quickstart:
 https://thruput.network/docs/get-started/typescript/
 Use the latest published SDK packages and the hosted Futurenet.
 Configure package access through my environment. Create the typed native-token

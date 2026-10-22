@@ -1,11 +1,11 @@
 ---
-title: Thruput roadmap
-description: Candidate improvements, open questions, and ways to help shape Stellar Thruput.
+title: Project Thruput roadmap
+description: Candidate improvements, open questions, and ways to help shape Project Thruput.
 sidebar:
   label: Roadmap
 ---
 
-These are candidate improvements to Stellar Thruput, roughly ordered by what they could unblock. The order is provisional. Scope and priorities can change as people build on Futurenet; there are no committed delivery dates.
+These are candidate improvements to Project Thruput, roughly ordered by what they could unblock. The order is provisional. Scope and priorities can change as people build on Futurenet; there are no committed delivery dates.
 
 Last reviewed: October 21, 2026.
 

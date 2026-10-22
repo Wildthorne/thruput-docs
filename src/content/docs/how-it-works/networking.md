@@ -7,7 +7,7 @@ The [System Overview](/how-it-works/architecture/#components) maps the main comp
 
 ## Topology
 
-Stellar Thruput's services are organized into an execution layer and a consensus layer.
+Project Thruput's services are organized into an execution layer and a consensus layer.
 
 The **coordinator** (chuckd, written in Go) sits above the execution layer. It drives consensus with other validators, manages peer topology, and tells the local mempool when to produce and commit blocks.
 

@@ -3,7 +3,7 @@ title: Cache and refresh data
 description: Share query results, reuse query factories, and refresh the original data after a transaction.
 ---
 
-Stellar Thruput query hooks use your application's TanStack Query cache. Keep the public client and QueryClient stable so components reading the same inputs can share data and in-flight requests.
+Project Thruput query hooks use your application's TanStack Query cache. Keep the public client and QueryClient stable so components reading the same inputs can share data and in-flight requests.
 
 ## Understand cache scope
 

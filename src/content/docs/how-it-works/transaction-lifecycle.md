@@ -29,7 +29,7 @@ A transaction passes through six stages:
 
 ## Stage 1: Submission
 
-The client signs the domain-separated preimage containing the network hash and inner transaction, then submits the signed wrapper through the JSON-RPC gateway. The network hash prevents replay on another Stellar Thruput network. The gateway submits directly to the hogd scheduler.
+The client signs the domain-separated preimage containing the network hash and inner transaction, then submits the signed wrapper through the JSON-RPC gateway. The network hash prevents replay on another Project Thruput network. The gateway submits directly to the hogd scheduler.
 
 ## Stage 2: Authorization
 

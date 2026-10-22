@@ -5,7 +5,7 @@ description: How SCP coordinates proposals, validation, and finalized blocks.
 
 ## Overview
 
-Stellar Thruput uses the Stellar Consensus Protocol (SCP) for agreement. Each validator chooses **quorum slices**: sets of validators whose agreement it considers sufficient. Overlapping quorum slices allow validators to agree on a block.
+Project Thruput uses the Stellar Consensus Protocol (SCP) for agreement. Each validator chooses **quorum slices**: sets of validators whose agreement it considers sufficient. Overlapping quorum slices allow validators to agree on a block.
 
 Nomination uses a priority function to favor a proposed value in each round. Validators still need agreement under the configured quorum rules before finalizing a block.
 

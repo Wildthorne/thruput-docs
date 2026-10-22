@@ -1,6 +1,6 @@
 ---
 title: XDR Protocol
-description: Encoding boundaries and source definitions for the Stellar Thruput protocol.
+description: Encoding boundaries and source definitions for the Project Thruput protocol.
 ---
 
 ## Encodings

@@ -7,7 +7,7 @@ description: How the engine executes transactions against snapshots and reserves
 
 Every transaction reads from a consistent snapshot and records typed deltas. The storage type determines how those deltas combine.
 
-Commutativity describes operations whose combined result does not depend on their order. Stellar Thruput still enforces resource limits, including gas limits, bounded return values, and a maximum encoded transaction size.
+Commutativity describes operations whose combined result does not depend on their order. Project Thruput still enforces resource limits, including gas limits, bounded return values, and a maximum encoded transaction size.
 
 This page explains the engine: snapshots, concurrent reservation, and conflict selection. For the rules your code relies on, read [Contract Execution](/programming-model/execution/).
 
@@ -33,16 +33,16 @@ balances[from] = balances[from] - amount;
 balances[to] = balances[to] + amount;
 ```
 
-In Stellar Thruput:
+In Project Thruput:
 
 ```rust
-// Stellar Thruput: write deltas. Two compatible transfers to the same
+// Project Thruput: write deltas. Two compatible transfers to the same
 // account produce two deltas that merge cleanly.
 balances.at_mut(&from).decrease(amount);
 balances.at_mut(&to).increase(amount);
 ```
 
-Two compatible increments to the same balance produce the same result regardless of order. `(x + 3) + 5 = (x + 5) + 3`. That is commutativity, and it is why Stellar Thruput can execute transactions in parallel without declared access lists.
+Two compatible increments to the same balance produce the same result regardless of order. `(x + 3) + 5 = (x + 5) + 3`. That is commutativity, and it is why Project Thruput can execute transactions in parallel without declared access lists.
 
 ## What Commutes and What Doesn't
 

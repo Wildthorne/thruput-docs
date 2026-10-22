@@ -1,6 +1,6 @@
 ---
 title: Contract quickstart
-description: Create, test, and deploy a Rust counter contract to Stellar Thruput Futurenet.
+description: Create, test, and deploy a Rust counter contract to Project Thruput Futurenet.
 ---
 
 Deploy a counter to Futurenet, increase its value, and read the result.
@@ -70,7 +70,7 @@ The result should be **15**. You have built, tested, deployed, and called a cont
 ## Use a coding agent
 
 ```text
-Help me complete the Stellar Thruput contract quickstart:
+Help me complete the Project Thruput contract quickstart:
 https://thruput.network/docs/get-started/contract/
 Use the latest CLI, install the thruput skill for this project, and read
 thruput skill show contracts. Scaffold with --template counter. Check CLI setup and

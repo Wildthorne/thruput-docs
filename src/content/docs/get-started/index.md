@@ -1,6 +1,6 @@
 ---
 title: Get Started
-description: Choose a starting point for Stellar Thruput contracts, applications, or coding agents.
+description: Choose a starting point for Project Thruput contracts, applications, or coding agents.
 sidebar:
   label: Choose a path
 ---

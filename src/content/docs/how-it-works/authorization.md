@@ -1,9 +1,9 @@
 ---
 title: Authorization
-description: How transaction signatures, address auth data, caller identity, and auth tokens work in Stellar Thruput.
+description: How transaction signatures, address auth data, caller identity, and auth tokens work in Project Thruput.
 ---
 
-Stellar Thruput treats addresses uniformly. An address can hold code, store auth data, receive calls, and originate transactions through either supported admission model.
+Project Thruput treats addresses uniformly. An address can hold code, store auth data, receive calls, and originate transactions through either supported admission model.
 
 Authorization has two layers:
 
@@ -47,7 +47,7 @@ The source address is the root invocation's `invoked_address`. Every transaction
 cxs(DomainSeparator("Transaction")) || networkHash || txs(transaction)
 ```
 
-`txs(value)` denotes its standard XDR encoding. The domain separator prevents a transaction signature from being interpreted as a signature over another object. The network hash binds the signature to one Stellar Thruput network and prevents cross-network replay.
+`txs(value)` denotes its standard XDR encoding. The domain separator prevents a transaction signature from being interpreted as a signature over another object. The network hash binds the signature to one Project Thruput network and prevents cross-network replay.
 
 The canonical transaction hash is `sha256(txs(transaction))`. It identifies the inner transaction and excludes signatures. It is distinct from both the signature preimage and the encoded `SignedTransaction` wrapper.
 
@@ -163,7 +163,7 @@ use thruput_sdk::get_caller;
 let caller = get_caller();
 ```
 
-This is Stellar Thruput's equivalent of `msg.sender`: immediate caller identity. It is not a signer set and it does not tell you which key signed the root transaction. A root frame has no caller, so the underlying syscall errors there.
+This is Project Thruput's equivalent of `msg.sender`: immediate caller identity. It is not a signer set and it does not tell you which key signed the root transaction. A root frame has no caller, so the underlying syscall errors there.
 
 Use [`get_current_address()`](https://crates.thruput.network/docs/sdk/0.34.3/doc/sdk/contract_op/fn.get_current_address.html) when a contract needs its own address.
 

@@ -1,9 +1,9 @@
 ---
 title: System Overview
-description: How Stellar Thruput's public gateway, execution services, storage, and consensus coordinator fit together.
+description: How Project Thruput's public gateway, execution services, storage, and consensus coordinator fit together.
 ---
 
-Stellar Thruput separates three responsibilities: serving applications, executing transactions and storing state, and agreeing on blocks. This page maps those responsibilities to the services that handle them.
+Project Thruput separates three responsibilities: serving applications, executing transactions and storing state, and agreeing on blocks. This page maps those responsibilities to the services that handle them.
 
 ## Components
 

@@ -7,7 +7,7 @@ An artifact is compiled contract code. Its code hash identifies that code; a dep
 
 This page explains those identities and the rules of deployment. For deployment commands, see [Deploy and call](/cli/deploy-and-call/).
 
-User contracts compile to RV32, Stellar Thruput's 32-bit RISC-V contract target. Native system contracts serve separate purposes, described below.
+User contracts compile to RV32, Project Thruput's 32-bit RISC-V contract target. Native system contracts serve separate purposes, described below.
 
 ## Contract Types
 
@@ -41,15 +41,15 @@ Entrypoint IDs can be arbitrary 8-byte values at the protocol layer. The SDK pro
 Most developers should let the [Thruput CLI](/cli/build-and-test/) produce RV32 artifacts. Under the hood, the RV32 lowerer:
 
 - Parses the `riscv32im-unknown-none-elf` contract binary.
-- Validates the layout expected by the Stellar Thruput RV32 runtime.
+- Validates the layout expected by the Project Thruput RV32 runtime.
 - Packs code, initial memory, metadata, and section digests into the `.rv32a` artifact.
 - Self-verifies the artifact before writing it.
 
-The node executes the lowered artifact through the RV32 runtime. Contract state does not live in guest memory. Durable state must be written through Stellar Thruput storage APIs.
+The node executes the lowered artifact through the RV32 runtime. Contract state does not live in guest memory. Durable state must be written through Project Thruput storage APIs.
 
 ### Native Precompiled Contracts
 
-Native precompiled contracts are implemented directly inside the Stellar Thruput runtime. They are used for trusted system behavior, such as the native token contract, and can have permissions that user-deployed guest contracts do not have.
+Native precompiled contracts are implemented directly inside the Project Thruput runtime. They are used for trusted system behavior, such as the native token contract, and can have permissions that user-deployed guest contracts do not have.
 
 Users cannot deploy native contracts. Network configuration assigns system contract addresses; implementations are identified by values from `HogexecPrecompiledNativeContracts`.
 
@@ -194,7 +194,7 @@ The metadata is set during deployment and persists for the lifetime of the contr
 
 ## Deployment Concurrency
 
-Multiple transactions may deploy the same contract to the same address in the same block. Stellar Thruput does not consider concurrent deployments of the same contract to the same address to be in conflict. Collision resistance of SHA256 implies that different contracts cannot be deployed to the same address.
+Multiple transactions may deploy the same contract to the same address in the same block. Project Thruput does not consider concurrent deployments of the same contract to the same address to be in conflict. Collision resistance of SHA256 implies that different contracts cannot be deployed to the same address.
 
 If a contract requires one-time initialization, implement that guard in contract storage.
 

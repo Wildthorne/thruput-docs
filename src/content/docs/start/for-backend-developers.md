@@ -1,9 +1,9 @@
 ---
 title: "For Backend Developers"
-description: Map your Postgres and database experience to Stellar Thruput's programming model.
+description: Map your Postgres and database experience to Project Thruput's programming model.
 ---
 
-Database snapshot isolation is a useful starting point for Stellar Thruput. Transactions share a committed block snapshot, but their writes follow typed storage merge rules rather than SQL conflict rules.
+Database snapshot isolation is a useful starting point for Project Thruput. Transactions share a committed block snapshot, but their writes follow typed storage merge rules rather than SQL conflict rules.
 
 ## Shared Snapshot
 

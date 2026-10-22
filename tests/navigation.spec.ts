@@ -3,7 +3,7 @@ import { expect, test, type Page } from '@playwright/test';
 const origin = 'http://127.0.0.1:4322';
 const sections = [
   ['Get Started', '/docs/get-started/', 'Get Started'],
-  ['Understand Stellar Thruput', '/docs/architecture/', 'Introduction'],
+  ['Understand Project Thruput', '/docs/architecture/', 'Introduction'],
   ['CLI', '/docs/cli/', 'CLI'],
   ['Smart Contracts', '/docs/contracts/', 'Smart Contracts'],
   ['TypeScript', '/docs/typescript/', 'TypeScript'],
@@ -85,14 +85,14 @@ test('entry pages keep site navigation separate from expandable documentation se
     ['Tools', '/docs/tools/faucet/', 'Faucet'],
     ['Tools', '/docs/tools/block-explorer/', 'Explorer'],
     ['Tools', '/docs/tools/wallet-extension/', 'Wallet Extension'],
-    ['Understand Stellar Thruput', '/docs/how-it-works/architecture/', 'System Overview'],
-    ['Understand Stellar Thruput', '/docs/how-it-works/execution-model/', 'Parallel Execution'],
-    ['Understand Stellar Thruput', '/docs/how-it-works/transaction-lifecycle/', 'Transaction Lifecycle'],
-    ['Understand Stellar Thruput', '/docs/how-it-works/storage-economics/', 'Compute, Capacity & Storage'],
-    ['Understand Stellar Thruput', '/docs/how-it-works/consensus/', 'Consensus'],
-    ['Understand Stellar Thruput', '/docs/how-it-works/networking/', 'Networking'],
-    ['Understand Stellar Thruput', '/docs/start/for-blockchain-developers/', 'For Blockchain Developers'],
-    ['Understand Stellar Thruput', '/docs/start/for-backend-developers/', 'For Backend Developers'],
+    ['Understand Project Thruput', '/docs/how-it-works/architecture/', 'System Overview'],
+    ['Understand Project Thruput', '/docs/how-it-works/execution-model/', 'Parallel Execution'],
+    ['Understand Project Thruput', '/docs/how-it-works/transaction-lifecycle/', 'Transaction Lifecycle'],
+    ['Understand Project Thruput', '/docs/how-it-works/storage-economics/', 'Compute, Capacity & Storage'],
+    ['Understand Project Thruput', '/docs/how-it-works/consensus/', 'Consensus'],
+    ['Understand Project Thruput', '/docs/how-it-works/networking/', 'Networking'],
+    ['Understand Project Thruput', '/docs/start/for-blockchain-developers/', 'For Blockchain Developers'],
+    ['Understand Project Thruput', '/docs/start/for-backend-developers/', 'For Backend Developers'],
     ['Smart Contracts', '/docs/programming-model/execution/', 'Contract Execution'],
   ]) {
     const response = await page.goto(origin + path);
@@ -131,7 +131,7 @@ test('deep links open their section and tutorials and guides have separate secti
     ['/docs/guides/build-an-amm/', 'Guides'],
     ['/docs/start/build-with-an-agent/', 'Get Started'],
     ['/docs/tutorials/connect-a-wallet-to-your-app/', 'Tutorials'],
-    ['/docs/start/for-blockchain-developers/', 'Understand Stellar Thruput'],
+    ['/docs/start/for-blockchain-developers/', 'Understand Project Thruput'],
     ['/docs/tools/faucet/', 'Tools'],
     ['/docs/tools/block-explorer/', 'Tools'],
   ]) {
@@ -145,7 +145,7 @@ test('deep links open their section and tutorials and guides have separate secti
   await expect(typescript.locator('a[href="/docs/tutorials/connect-a-wallet-to-your-app/"]')).toHaveCount(0);
   await expect(sectionGroup(page, 'CLI').locator('details')).toHaveCount(0);
   await expect(sectionGroup(page, 'Get Started').locator('a[href="/docs/tools/faucet/"], a[href="/docs/tools/block-explorer/"]')).toHaveCount(0);
-  await expect(sectionGroup(page, 'Understand Stellar Thruput').getByRole('link', { name: 'Introduction', exact: true, includeHidden: true })).toHaveCount(1);
+  await expect(sectionGroup(page, 'Understand Project Thruput').getByRole('link', { name: 'Introduction', exact: true, includeHidden: true })).toHaveCount(1);
   await expect(page.locator('.sidebar .top-level a[href="/docs/start/"]')).toHaveCount(0);
 
   await page.goto(origin + '/docs/react/');

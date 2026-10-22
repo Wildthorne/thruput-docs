@@ -5,7 +5,7 @@ sidebar:
   label: Introduction
 ---
 
-`thruput` is the command-line tool for working with Stellar Thruput projects and networks. Use it to create a project, build and test a contract, run a local node, or interact with a deployed contract.
+`thruput` is the command-line tool for working with Project Thruput projects and networks. Use it to create a project, build and test a contract, run a local node, or interact with a deployed contract.
 
 ## Projects and networks
 

@@ -1,9 +1,9 @@
 ---
 title: Handle errors
-description: How errors work in Stellar Thruput contracts.
+description: How errors work in Project Thruput contracts.
 ---
 
-Exported Stellar Thruput contract methods return their declared values and signal failure by throwing an exception. The frame aborts, all state changes in that frame are discarded, and control returns to the caller. Private helpers may use `Result` when they translate failures into a contract or library exception.
+Exported Project Thruput contract methods return their declared values and signal failure by throwing an exception. The frame aborts, all state changes in that frame are discarded, and control returns to the caller. Private helpers may use `Result` when they translate failures into a contract or library exception.
 
 You cannot catch a thrown exception within the same frame. Use `Result`-returning helpers for local fallible work and generated `try_*` client methods for another contract. See [Cross-Contract Calls](/contracts/cross-contract-calls/).
 

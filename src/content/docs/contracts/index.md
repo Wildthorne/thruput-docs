@@ -1,6 +1,6 @@
 ---
 title: Smart Contracts
-description: Write, test, and understand Stellar Thruput contracts with the Rust SDK.
+description: Write, test, and understand Project Thruput contracts with the Rust SDK.
 sidebar:
   label: Overview
 ---

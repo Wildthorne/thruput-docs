@@ -1,6 +1,6 @@
 ---
 title: Build with an Agent
-description: Give your coding agent one prompt to install the Thruput CLI, fund a wallet, and deploy and call a counter contract on Stellar Thruput Futurenet.
+description: Give your coding agent one prompt to install the Thruput CLI, fund a wallet, and deploy and call a counter contract on Project Thruput Futurenet.
 ---
 
 Paste this prompt into your coding agent. It will install the CLI and skill, read an exported copy of the docs, and build and verify a counter contract on Futurenet.
@@ -8,7 +8,7 @@ Paste this prompt into your coding agent. It will install the CLI and skill, rea
 ## Copy the prompt
 
 ```text
-Help me deploy and use my first Stellar Thruput counter contract on Futurenet.
+Help me deploy and use my first Project Thruput counter contract on Futurenet.
 
 1. Install the latest Thruput CLI and run thruput init. Use
    thruput --help to see all available commands. Follow the installation

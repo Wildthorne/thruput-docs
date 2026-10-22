@@ -1,6 +1,6 @@
 ---
 title: JSON-RPC API
-description: Stellar Thruput native JSON-RPC methods, wire types, and error codes for wire format 14.
+description: Project Thruput native JSON-RPC methods, wire types, and error codes for wire format 14.
 ---
 
 | API property | Value |

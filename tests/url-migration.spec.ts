@@ -9,7 +9,7 @@ test('landing and docs have distinct canonical URLs and retain root downloads', 
   await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', 'https://thruput.network/docs/get-started/');
   const links = await page.locator('main a[href^="/"]').evaluateAll(links => links.map(link => link.getAttribute('href')));
   expect(links.every(link => link!.startsWith('/docs/') || link!.startsWith('/markdown/'))).toBe(true);
-  await page.getByRole('link', { name: 'Stellar Thruput homepage' }).click();
+  await page.getByRole('link', { name: 'Project Thruput homepage' }).click();
   await expect(page).toHaveURL(origin + '/');
   for (const path of ['/markdown/pages/cli/install.md', '/llms.txt', '/agents/historical.json', '/agent-guide.md']) {
     expect((await request.get(origin + path)).status()).toBe(200);

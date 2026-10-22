@@ -42,4 +42,4 @@ Unmounting `WalletProvider` disposes its signing binding without revoking remote
 
 In a server-rendered framework, initialize the client and mount these providers in the application's client-rendered boundary. Server rendering starts disconnected; browser discovery runs after mounting.
 
-Stellar Thruput query keys contain in-memory client identities. Use them within one query-cache lifetime, not as persisted keys or server-to-browser hydration identifiers. See [Cache and refresh data](/react/queries/) for cache scope and reusable query factories.
+Project Thruput query keys contain in-memory client identities. Use them within one query-cache lifetime, not as persisted keys or server-to-browser hydration identifiers. See [Cache and refresh data](/react/queries/) for cache scope and reusable query factories.

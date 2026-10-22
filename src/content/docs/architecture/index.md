@@ -1,11 +1,11 @@
 ---
 title: Introduction
-description: Learn what Stellar Thruput is and how compatible updates let contracts share state.
+description: Learn what Project Thruput is and how compatible updates let contracts share state.
 sidebar:
   label: Introduction
 ---
 
-Stellar Thruput is a moonshot project exploring how parallel execution can make compute abundant. Transactions record compatible changes to shared state, allowing the network to combine them without requiring sequential execution.
+Project Thruput is a moonshot project exploring how parallel execution can make compute abundant. Transactions record compatible changes to shared state, allowing the network to combine them without requiring sequential execution.
 
 The project's future is open. No decisions have been made about mainnet or its relationship to Stellar. These docs describe the development network and tools available today.
 
@@ -28,7 +28,7 @@ These increases can combine if the rest of the transactions are compatible and n
 
 This is useful for shared counters and balances. It does not make every operation independent: replacing a value, enforcing uniqueness, or choosing a winning order can require different rules. Your storage choices determine which changes can combine.
 
-[Parallel Execution](/how-it-works/execution-model/) explains how Stellar Thruput applies these rules. [Storage types](/programming-model/storage-types/) shows how to use them in a contract.
+[Parallel Execution](/how-it-works/execution-model/) explains how Project Thruput applies these rules. [Storage types](/programming-model/storage-types/) shows how to use them in a contract.
 
 ## Build in two layers
 
