@@ -47,11 +47,21 @@ The binding provides typed methods and decodes the contract's results. Regenerat
 
 ## Configure the client
 
-Create `.env`. Set `COUNTER_ADDRESS` to the deployment address from part 1 and use the endpoint and network hash for that deployment:
+Get the network hash for the deployment with [`getNetworkInfo`](/reference/json-rpc-api/#getnetworkinfo):
+
+```bash
+curl -s https://rpc.thruput.network \
+  -H 'content-type: application/json' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"getNetworkInfo","params":{}}'
+```
+
+Futurenet resets can change this hash, so fetch it again after a reset.
+
+Create `.env`. Set `NETWORK_HASH` to the `networkHash` value from the response and `COUNTER_ADDRESS` to the deployment address from part 1:
 
 ```dotenv title=".env"
 RPC_URL=https://rpc.thruput.network
-NETWORK_HASH=0xabb9cdbc56285d0e71c9845273ca06211fedf7ee2f58c43cfac6060f9402aa0f
+NETWORK_HASH=<network-hash>
 COUNTER_ADDRESS=<your-deployed-counter-address>
 ```
 
@@ -59,8 +69,8 @@ These public values identify one deployment. A different network needs its own e
 
 ```ts title="chain.ts"
 import {
-  addressFromHex, createThruputClient, createPubkeyAccount, createWalletClient,
-  defineCluster, fromHex0x, hashFromHex, networkHash, PrivateKeySigner,
+  addressFromBase58, createThruputClient, createPubkeyAccount, createWalletClient,
+  defineCluster, fromHex0x, hashFromBase58, networkHash, PrivateKeySigner,
 } from "@thruputchain/client";
 import { Counter } from "./src/contracts/counter.js";
 
@@ -71,11 +81,11 @@ function required(name: string) {
 }
 
 export const rpcUrl = required("RPC_URL");
-export const contract = addressFromHex(required("COUNTER_ADDRESS"));
+export const contract = addressFromBase58(required("COUNTER_ADDRESS"));
 export const client = await createThruputClient({
   cluster: defineCluster({
     rpcUrl,
-    networkHash: networkHash(hashFromHex(required("NETWORK_HASH"))),
+    networkHash: networkHash(hashFromBase58(required("NETWORK_HASH"))),
     capabilities: ["airdrop"],
   }),
 });
@@ -92,9 +102,9 @@ export function developmentWallet() {
 ```ts title="read.ts"
 import { client, contract, Counter } from "./chain.js";
 
-const result = await Counter.v0_1.get.view({ client, contract });
+const result = await Counter.v0_1.get.view({ client, address: contract });
 console.log("Counter:", result.value.toString());
-console.log("Read at block:", result.height.toString());
+console.log("Read at block:", result.stateBlockHeight.toString());
 ```
 
 ```bash
@@ -110,14 +120,13 @@ export COUNTER_SIGNING_PRIVATE_KEY="$(node -e 'process.stdout.write("0x" + requi
 Keep this terminal environment for funding and the server. A persistent account should load its existing seed from secret configuration. Never put this key in a browser file or a `VITE_` variable.
 
 ```ts title="fund.ts"
-import { toHex0x } from "@thruputchain/client";
+import { toBase58 } from "@thruputchain/client";
 import { developmentWallet } from "./chain.js";
 
 const wallet = developmentWallet();
 const funding = await wallet.requestAirdrop();
-if (funding.status.result !== "ok") throw new Error("Funding did not execute successfully");
-console.log("Development signer:", toHex0x(wallet.account.address));
-console.log("Funding transaction:", toHex0x(funding.txHash));
+console.log("Development signer:", toBase58(wallet.account.address));
+console.log("Funding transaction:", toBase58(funding.transactionHash));
 ```
 
 ```bash
@@ -135,9 +144,9 @@ import { client, contract, Counter, developmentWallet, rpcUrl } from "./chain.js
 
 const wallet = process.env.COUNTER_SIGNING_PRIVATE_KEY ? developmentWallet() : null;
 const allowed = new Set([
-  "groundhog_networkInfo", "groundhog_chainTip", "groundhog_view",
-  "groundhog_getBalance", "groundhog_getTransactionStatus",
-  "groundhog_getTransactionReceipt", "groundhog_sendRawTransaction",
+  "getVersionInfo", "getNetworkInfo", "getServerLimits", "getChainTip", "simulateInvocation",
+  "getBalance", "getTransactionStatus", "getTransactionReceipt",
+  "sendTransaction",
 ]);
 function json(response: ServerResponse, status: number, value: unknown) {
   response.writeHead(status, { "Content-Type": "application/json", "Cache-Control": "no-store" });

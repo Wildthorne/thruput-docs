@@ -49,7 +49,7 @@ description: TypeScript client entry points, common operations, and links to foc
 
 | API | Inputs / behavior |
 | --- | --- |
-| `createPubkeyAccount({ signer, nonce? })` | Ed25519 signer; address nonce defaults to `0n` |
+| `createPubkeyAccount({ signer, nonce? })` | Ed25519 or ML-DSA-65 signer; address nonce defaults to `0n` |
 | `createSourceAddressAccount({ address, signers, allowedKeys, requiredWeight })` | Existing stored-auth account; does not write auth data |
 | `createWalletClient({ client, account, invocationAdapter? })` | Separate signer-bound client; pubkey accounts default to DefaultWallet |
 | `networkHash` wallet option | Required for a client without validated network identity |
@@ -92,7 +92,8 @@ description: TypeScript client entry points, common operations, and links to foc
 | API | Result / requirement |
 | --- | --- |
 | `localnet(options?)` | Local endpoint and pinned local network identity |
-| `PrivateKeySigner(seed)` | Explicit signer seed from the application environment |
+| `PrivateKeySigner(seed)` | Ed25519 signer from a 32-byte seed in the application environment |
+| `MlDsa65Signer.fromSeed(seed, { deterministic? })` | ML-DSA-65 signer from a 32-byte FIPS 204 seed; signing is randomized unless `deterministic` is set |
 | `createPubkeyAccount({ signer })` | Native pubkey account derived from the signer |
 | `wallet.requestAirdrop()` | Fund the account through the local faucet |
 | Usage | [Local development accounts](/typescript/accounts/#use-a-local-development-account) |
@@ -185,7 +186,7 @@ description: TypeScript client entry points, common operations, and links to foc
 | `@thruputchain/client/wallet` | Execution and provider adapters |
 | `@thruputchain/client/provider` | Provider wire types, validation, discovery |
 | `@thruputchain/client/transaction` | Construction, signing, serialization |
-| `@thruputchain/client/signers` | Signer interface and private-key signer |
+| `@thruputchain/client/signers` | Signer interface, `PrivateKeySigner`, `MlDsa65Signer`, `verifyMlDsa65` |
 | `@thruputchain/client/signed-op` | Network-bound offchain signed operations |
 
 ## Maintained Examples

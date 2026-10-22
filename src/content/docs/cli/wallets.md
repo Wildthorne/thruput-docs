@@ -18,6 +18,22 @@ Confirm wallet creation. The CLI derives a native account and saves its address,
 
 An ordinary stored key can also use its native account without a saved binding. Saving a binding is useful when you want a name for selection and inspection. Existing legacy wallet bindings keep their original account identity and transaction format.
 
+### ML-DSA-65 keys
+
+ML-DSA-65 keys require CLI `0.30.0` or later. Check with `thruput --version`.
+
+```bash
+thruput keys generate carol --scheme mldsa65
+thruput airdrop carol --profile futurenet
+```
+
+An ML-DSA-65 key always uses its native account. `balance`, `transfer`, `tx`, and `call` work the same way as with Ed25519 keys. These commands are Ed25519 only:
+
+- `wallet create` does not accept ML-DSA-65 keys.
+- `keys import` accepts Ed25519 seeds only.
+- `keys export --format strkey` does not apply, because ML-DSA-65 keys have no StrKey form.
+- `init --generate-key` creates an Ed25519 key.
+
 ## Inspect accounts
 
 ```bash

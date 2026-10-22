@@ -37,12 +37,12 @@ description: Thruput CLI commands, common options, and links to task instruction
 
 | Command | Purpose | Usage |
 | --- | --- | --- |
-| `keys generate [NAME]` | Generate a stored Ed25519 key | [Keys and wallets](/cli/wallets/) |
-| `keys import NAME` | Import key material through the supported input flow | `thruput keys import --help` |
+| `keys generate [NAME] [--scheme ed25519\|mldsa65]` | Generate a stored key; Ed25519 by default | [Keys and wallets](/cli/wallets/) |
+| `keys import NAME` | Import an Ed25519 secret seed through the supported input flow | `thruput keys import --help` |
 | `keys ls` / `keys use NAME` | List or select a global key | [Select an account](/cli/wallets/#select-an-account) |
 | `keys export NAME` | Print private key material | Intended export only; exclude from logs |
 | `keys rm NAME` | Delete a local key | Requires confirmation |
-| `wallet create [--key NAME] [--name NAME]` | Derive and save an empty native account binding | [Create a wallet](/cli/wallets/#create-a-key-and-wallet) |
+| `wallet create [--key NAME] [--name NAME]` | Derive and save an empty native account binding; Ed25519 keys only | [Create a wallet](/cli/wallets/#create-a-key-and-wallet) |
 | `wallet ls` / `wallet use NAME` | List or select a profile wallet | [Select an account](/cli/wallets/#select-an-account) |
 | `wallet rm NAME` | Remove a local binding | Does not remove onchain state |
 | `balance [TARGET]` | Read the native-token balance | [Funding](/cli/wallets/#fund-and-transfer) |

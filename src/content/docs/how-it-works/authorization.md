@@ -26,7 +26,7 @@ Define `AccessError` with [a contract exception](/contracts/errors/#defining-err
 
 ## Transaction Admission
 
-A `SignedTransaction` contains an inner transaction plus decorated signatures:
+A `SignedTransaction` contains an inner transaction, decorated signatures, and, for pubkey accounts, the signing public key:
 
 ```text
 struct DecoratedSignature {
@@ -37,6 +37,7 @@ struct DecoratedSignature {
 struct SignedTransaction {
   Transaction tx;
   DecoratedSignature signatures<>;
+  PublicKey *pubkey_claim_key;
 };
 ```
 
@@ -49,6 +50,15 @@ cxs(DomainSeparator("Transaction")) || networkHash || txs(transaction)
 `txs(value)` denotes its standard XDR encoding. The domain separator prevents a transaction signature from being interpreted as a signature over another object. The network hash binds the signature to one Stellar Thruput network and prevents cross-network replay.
 
 The canonical transaction hash is `sha256(txs(transaction))`. It identifies the inner transaction and excludes signatures. It is distinct from both the signature preimage and the encoded `SignedTransaction` wrapper.
+
+### Signature Schemes
+
+| Scheme | Public key | Signature | Notes |
+|---|---|---|---|
+| Ed25519 | 32 bytes | 64 bytes | Default scheme in the CLI |
+| ML-DSA-65 (FIPS 204) | 1,952 bytes | 3,309 bytes | Pure ML-DSA with an empty context string, not HashML-DSA |
+
+Both schemes sign the preimage above directly, with no extra pre-hash. ML-DSA-65 signing is randomized by default, so two valid signatures over one transaction can differ. The transaction hash stays the same because it excludes signatures.
 
 ## Admission Models
 
@@ -69,18 +79,29 @@ case kPubkeySignature:
 
 ### Pubkey Accounts
 
-`kPubkeySignature` authorizes an account whose address is derived from `PubkeyAccountPreimage { pubkey, nonce }`. hogd accepts the claim only when:
+`kPubkeySignature` authorizes an account whose address is derived from `PubkeyAccountPreimage { pubkey_hash, nonce }`. The preimage holds a hash of the public key, not the key itself:
+
+```text
+pubkey_hash = sha256(cxs(DomainSeparator("PublicKey")) || cxs(PublicKey))
+```
+
+The `PublicKey` encoding includes its scheme, so the same key bytes under Ed25519 and ML-DSA-65 give different addresses. The full key travels in `SignedTransaction.pubkey_claim_key`.
+
+This derivation also changed Ed25519 addresses. A pubkey-account address saved before the Futurenet reset that introduced ML-DSA-65 does not match the same key now. Derive the address again from the key and update saved addresses.
+
+hogd accepts the claim only when:
 
 - the derived address equals the root invocation's `invoked_address`;
 - the source address has no registered `AddressAuthData`;
-- the transaction has exactly one Ed25519 signature, with `public_key_id` 0;
-- that signature verifies against the public key in the preimage.
+- the transaction has exactly one signature, with `public_key_id` 0;
+- `pubkey_claim_key` is present and its hash equals `pubkey_hash`;
+- the signature uses the same scheme as `pubkey_claim_key` (Ed25519 or ML-DSA-65) and verifies against it.
 
 During root execution at an undeployed pubkey-account address, the runtime falls back to the network's configured DefaultWallet contract. This gives a new pubkey account wallet behavior without first deploying code at its derived address. The fallback applies only to the root invocation.
 
 ### Source-Address Accounts
 
-`kSourceAddressAuthData` authorizes the root invocation from auth data stored at its source address. The source address must have `AddressAuthData`; a source-address claim without it is rejected.
+`kSourceAddressAuthData` authorizes the root invocation from auth data stored at its source address. The source address must have `AddressAuthData`; a source-address claim without it is rejected. A source-address claim must not carry `pubkey_claim_key`.
 
 hogd checks:
 
@@ -88,12 +109,12 @@ hogd checks:
 - Every signature's `public_key_id` appears in `allowed_keys`.
 - Signature `public_key_id` values are strictly increasing, so duplicates and out-of-order signatures are rejected.
 - Each referenced key exists in the source address's `AddressAuthData`.
-- Each signature verifies against its registered public key. The current helper path supports Ed25519.
+- Each signature uses its registered key's scheme and verifies against that key.
 - The sum of matched key weights is at least `max(address.required_weight, claim.required_weight)`.
 
 The threshold is `max(address.required_weight, claim.required_weight)`. This lets the address set a standing minimum while each transaction can require an equal or higher threshold.
 
-Contracts can inspect the root transaction's auth claim with [`get_auth_claim()`](https://crates.thruput.network/docs/sdk/0.34.3/doc/sdk/auth_claim/fn.get_auth_claim.html), but admission has already happened by the time contract code runs.
+Contracts can inspect the root transaction's auth claim with [`get_auth_claim()`](https://crates.thruput.network/docs/sdk/0.34.3/doc/sdk/auth_claim/fn.get_auth_claim.html), but admission has already happened by the time contract code runs. For a pubkey account, the claim exposes `pubkey_hash` and `nonce`, not the public key.
 
 ## Address Auth Data
 
@@ -128,6 +149,8 @@ set_address_required_weight(1)?;
 remove_address_public_key(0)?;
 ```
 
+Registered keys are Ed25519 only. `add_address_public_key` rejects ML-DSA-65 keys, so a source-address account cannot register one yet. Use a pubkey account for ML-DSA-65.
+
 Use these for source-address accounts, wallet contracts, and contracts that are meant to originate later transactions. Replay protection is transaction-level, through the transaction `Uniquifier`. `AddressAuthData` does not contain nonce policy or gas-sponsorship policy fields.
 
 ## Caller Identity
@@ -149,10 +172,12 @@ Use [`get_current_address()`](https://crates.thruput.network/docs/sdk/0.34.3/doc
 Contracts can verify arbitrary messages with [`verify_signature_ed25519()`](https://crates.thruput.network/docs/sdk/0.34.3/doc/sdk/crypto/fn.verify_signature_ed25519.html):
 
 ```rust
-use sdk::verify_signature_ed25519;
+use sdk::crypto::verify_signature_ed25519;
 
 let ok = verify_signature_ed25519(&public_key, &signature, message);
 ```
+
+Contract signature checks support Ed25519 only. The SDK has no ML-DSA-65 verify function, and the `VerifySignature` syscall rejects other schemes.
 
 This is runtime logic, separate from transaction admission. A wallet contract can use it to accept an off-chain signature, apply its own policy, and then mint an auth token in the wallet contract's name.
 

@@ -12,8 +12,8 @@ Account authorization and wallet call behavior are separate. Authorization deter
 | | Pubkey account | Source-address account |
 | --- | --- | --- |
 | Constructor | `createPubkeyAccount` | `createSourceAddressAccount` |
-| Address | Derived from an Ed25519 public key and account nonce | Existing address supplied by the application |
-| Authorization | One Ed25519 signer matching the account preimage | Signer entries and a claim checked against stored authorization data |
+| Address | Derived from a hash of an Ed25519 or ML-DSA-65 public key and an account nonce | Existing address supplied by the application |
+| Authorization | One Ed25519 or ML-DSA-65 signer whose key matches the account preimage | Signer entries and a claim checked against stored authorization data |
 | Wallet behavior | DefaultWallet adapter selected automatically | Application-call wrapping requires an appropriate adapter |
 | Typical use | A script account without a separate wallet deployment | An existing account contract with configured signer policy |
 
@@ -29,7 +29,7 @@ import { createPubkeyAccount } from "@thruputchain/client";
 const account = createPubkeyAccount({ signer, nonce: 0n });
 ```
 
-The same public key and account nonce produce the same address. The nonce defaults to zero and is separate from each transaction's replay-protection nonce.
+The same public key and account nonce produce the same address. The key hash includes the scheme, so one seed gives different addresses under Ed25519 and ML-DSA-65. The nonce defaults to zero and is separate from each transaction's replay-protection nonce.
 
 An undeployed pubkey account uses the network's DefaultWallet behavior for its root invocation. No separate wallet deployment is needed. See [Use a signer in scripts](/typescript/accounts/) for key loading and funding.
 
