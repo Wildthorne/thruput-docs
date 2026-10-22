@@ -1,470 +1,454 @@
 ---
 title: JSON-RPC API
-description: Stellar Thruput JSON-RPC methods, wire types, and error codes.
+description: Stellar Thruput native JSON-RPC methods, wire types, and error codes for wire format 14.
 ---
 
 | API property | Value |
 | --- | --- |
-| Wire format | `11.1.0` |
-| Compatibility | Breaking wire changes increase the major version of `groundhog_version.wireFormat` |
-| Schema | [Generated OpenRPC specification](https://github.com/groundhogchain/groundhog-rpc/blob/main/crates/json-rpc/open-rpc-spec/snapshots/groundhog-spec.json) for method signatures and field types |
-
-The Stellar Thruput gateway exposes JSON-RPC 2.0 over HTTP. For its place in the node topology, see [Networking](/how-it-works/networking/).
+| Wire format | `14.x`. Tools `0.33.0` serves `14.0.0`; `14.1.0` adds `stated.maxTxGas` and the `gasLimitTooHigh` transaction detail |
+| Compatibility | Breaking wire changes increase the major version of `getVersionInfo.wireFormat`. Clients accept one major version and do not fall back |
+| Schema | [Generated OpenRPC specification](https://github.com/thruputchain/thruput-tools/blob/main/crates/json-rpc/open-rpc-spec/snapshots/thruput-spec.json) for exact method signatures and field types |
+| Transport | JSON-RPC 2.0 over HTTP. For the node topology, see [Networking](/how-it-works/networking/) |
 
 ## Request Format
 
 ```json
 {
   "jsonrpc": "2.0",
-  "method": "groundhog_chainTip",
-  "params": [],
+  "method": "getTransactionStatus",
+  "params": { "transactionHash": "<base58 transaction hash>" },
   "id": 1
 }
 ```
 
-Public response fields use camelCase. Addresses, hashes, calldata, event topics, and other byte fields use `0x`-prefixed lowercase hex.
+| Request rule | Contract |
+| --- | --- |
+| Parameter shape | One named-parameter object. Positional arrays, wrapped objects, and unknown fields return `-32602` |
+| No-parameter methods | Accept `{}`, `[]`, `null`, or omitted `params`; clients send `{}` |
+| Method names | Unprefixed core names. Optional groups use `faucet_` and `dev_` prefixes |
+| Discovery | `getVersionInfo.supportedMethods` lists the methods that this endpoint registered. An unlisted method returns `Method not found` (`-32601`) |
+| Field names | camelCase in requests, responses, and error data |
 
-| Integer field | JSON representation | TypeScript client representation |
-| --- | --- | --- |
-| 64-bit and wider integers, including heights, nanosecond timestamps, gas, counts, and balances | Canonical decimal string, including `"0"` and `"42"` | `bigint` |
-| Smaller bounded integers, including protocol versions, page limits, and event sequence numbers | JSON number | Protocol-specific type or `number` |
+## Value Encoding
 
-The wide-integer rule applies to requests, responses, and structured error data. Numeric JSON is rejected for wide fields, even for small values. Strings must fit the field's signed or unsigned range and must not contain leading zeros, a leading `+`, negative zero, whitespace, fractions, or exponent notation. CLI JSON reports follow the same precision policy. Binary XDR and CXS encodings are unchanged.
+| Value | JSON encoding |
+| --- | --- |
+| Addresses, transaction hashes, block and network hashes, config hashes, public keys, public-key hashes, validator IDs | Unprefixed, case-sensitive base58 (Bitcoin/Solana alphabet). Must decode to exactly 32 bytes. `0x` hex is rejected |
+| Signed transactions, calldata, entrypoints, return and abort data, storage keys and bytes, event topics and data, cursors, client nonces, upgrade entries | `0x`-prefixed lowercase hex with an even number of digits |
+| 64-bit and wider integers: heights, nanosecond timestamps, gas, counts, balances, amounts | Canonical decimal string, including `"0"` |
+| Smaller bounded integers: protocol versions, page limits, event sequence numbers, key IDs, weights | JSON number |
+| Encoding choice | By field meaning, not byte length. A raw event topic stays hex even when its decoded value is an address or hash |
+| Decimal string rejects | Numeric JSON, leading zeros, `+`, negative zero, whitespace, fractions, exponents, overflow |
+| Binary payloads | Transactions use classic XDR; contract arguments and return values use CXS. See [XDR Protocol](/reference/xdr-protocol/) |
+| Tagged unions | Discriminator field such as `status`, `result`, `kind`, or `attemptStatus`. Accept unknown tag values (for example `other` or `unknown`) without treating them as success or absence |
 
 ## JSON-RPC Arrays
 
 | Property | Contract |
 | --- | --- |
-| Maximum entries | 1,000 per array on the supported embedded node and standalone gateway |
+| Maximum entries | 1,000 per array on the gateway and local node |
 | Correlation | Match responses by request ID; response order is not execution order |
 | Errors | Per-entry RPC errors remain independent; transport failures can affect the shared exchange |
 | Guarantees | No shared snapshot, ordering, or atomicity between independent requests |
-| Other limits | Request/response byte limits and concurrency settings are separate |
+| Other limits | Request and response byte limits and concurrency settings are separate |
 | Client defaults | Opt-in HTTP batching uses 100 entries and a 0ms scheduling window; see [client transport](/typescript/transport/#http-batching) |
 
-## Wire Design
+## Discovery Methods
 
-Stellar Thruput returns JSON-native objects with typed fields. Transactions use classic XDR; contract arguments and return values use CXS. Clients use the corresponding codecs for those bytes. RPC responses themselves are JSON. See [XDR Protocol](/reference/xdr-protocol/) for the encoding boundary.
-
-Storage reads preserve the protocol value kind:
-
-```json
-{
-  "blockHeight": "4567",
-  "item": {
-    "kind": "nonnegativeInt",
-    "value": "1000000000"
-  }
-}
-```
-
-Clients switch on tags such as `item.kind` and `status.result`. This avoids reconstructing storage types from packed slots or decoding a universal XDR value for routine reads.
-
-If you are coming from another ecosystem, see [EVM and Solidity](/ecosystem/evm/) or [Stellar and Soroban](/ecosystem/stellar/).
-
-## Methods
-
-### `groundhog_sendRawTransaction`
-
-Submit a signed transaction to the scheduler.
-
-| Parameter | Type | Description |
-| --- | --- | --- |
-| `tx_hex` | string | `0x`-prefixed XDR encoding of `SignedTransaction` |
-
-**Returns:** `TxHash`, the `0x`-prefixed hash of the inner transaction.
-
-A successful response acknowledges scheduler admission, not commitment or execution. Authentication rejection returns `TX_REJECTED`; retryable admission pressure returns `OVERLOADED`. After a timeout, query the original hash before preparing a replacement.
-
-Transactions whose `blockExpiryHeight` is at or below the current chain tip are rejected when the tip is available.
-
-### `groundhog_getTransactionReceipt`
-
-Get a committed transaction's execution result and events.
-
-| Parameter | Type | Description |
-| --- | --- | --- |
-| `tx_hash` | `TxHash` | `0x`-prefixed transaction hash |
-
-**Returns:** `TransactionReceipt` or `null` if no committed receipt exists.
-
-```json
-{
-  "txHash": "0x<64 lowercase hex characters>",
-  "height": "12345",
-  "status": { "result": "ok" },
-  "events": [],
-  "returnData": "0x42",
-  "gasUsed": "1500"
-}
-```
-
-`returnData` is optional and appears for successful transactions when recorded by the executing chain version. `abortData` is optional and may appear for reverted transactions.
-
-**Execution status values:**
-
-| Status | Meaning |
-| --- | --- |
-| `{"result":"ok"}` | Root execution succeeded |
-| `{"result":"reverted","message":"..."}` | The root call reverted; `message` may be `null` |
-| `{"result":"deterministicError","kind":"fault"}` | The execution engine reported a deterministic fault |
-| `{"result":"nonDeterministicError"}` | Proposal-time storage conflict or race |
-| `{"result":"failedGasSponsorship"}` | Gas sponsorship failed |
-| `{"result":"other"}` | Unrecognized result from the backend |
-
-A receipt proves that the transaction committed. Only `status.result: "ok"` proves successful execution.
-
-| Field | Meaning |
-| --- | --- |
-| `gasUsed` | Consumed root/child execution gas plus pre-execution validation of attached contracts; an unsigned 64-bit decimal string, parsed as `bigint` by the TypeScript client |
-| Gas billing | No token fee or unused-gas refund; declared root gas remains the scheduling quantity |
-
-### `groundhog_getTransactionStatus`
-
-Check committed history first, then the scheduler's retained outcomes when needed.
-
-| Parameter | Type | Description |
-| --- | --- | --- |
-| `tx_hash` | `TxHash` | `0x`-prefixed transaction hash |
-
-**Returns:** `TransactionStatus`.
-
-| `status` | Meaning |
-| --- | --- |
-| `pending` | In the scheduler, not committed |
-| `committed` | Included in a block; scheduler commitment can omit `height`; indexed commitment includes the actual height as a decimal string, including `"0"` |
-| `invalid` | Rejected; includes `reason` |
-| `recentFailure` | Recent two-phase-commit conflict; includes `attemptHeight` and `conflict` |
-| `retry` | Scheduler processing failed; includes `error`; resubmitting the same signed transaction may succeed |
-| `dropped` | Scheduler processing failed permanently; includes `error`; modify the transaction before resubmitting |
-| `unknown` | Absent from both scheduler and committed history |
-| `other` | Status from a newer server version |
-
-`recentFailure` is advisory. A later retry of the same transaction may commit. If the scheduler is unavailable and committed history has no record, the gateway returns `BACKEND_UNAVAILABLE` instead of `unknown`.
-
-| Scheduler error field | Contract |
-| --- | --- |
-| `error.source` | `auth`, `scheduler`, `executor`, or `other` |
-| `error.code` | Signed 32-bit JSON number from `AuthErrorCode`, `SchedulerErrorCode`, or `ExecResult` for the indicated source |
-| Usage | [Handle scheduler processing errors](/typescript/transaction-status/#handle-scheduler-processing-errors) |
-
-### `groundhog_chainTip`
-
-Get the current committed chain tip.
-
-**Parameters:** None.
-
-**Returns:** `{ "height": "42", "blockHash": "0x..." }`. Height is a signed 64-bit decimal string.
-
-### `groundhog_chainConfig`
-
-| Property | Contract |
-| --- | --- |
-| Parameters | None |
-| Result | `ChainConfig`: explicitly stated execution parameters, plus optional authoritative `execution` context |
-| Optional integer fields | `maxSha256Buffers`, `maxCrossInvokeDepth`, `maxNewContractsPerTx`, `maxBytestringLen`, `maxContractSizeBytes`, `maxSavepointDepth`, `maxAuthTokenDepth`, `maxRv32CodeBytes`, `maxRv32MemoryBytes` |
-| Integer encoding | These bounds are `u32` JSON numbers |
-| Missing field | Unspecified by this config, not zero and not an SDK-selected default |
-| `execution.observedTip` | Committed `height` and `blockHash` read together with the rules |
-| `execution.configHash` | Configuration and storage-model commitment for that reading |
-| `execution.effectiveLimits` | Runtime-resolved limits; omitted fields are unavailable, not zero |
-| `execution.storageCosts` | `baseDataItemCost`, `bytestringCostPerByte`, `baseContractDeploymentCost`, `contractDeploymentCostPerByte`, `authPerKeyCost`, `rcqCostPerEntry`, `replayCacheCostPerEntry`, and `balanceCost`, in native-token base units as decimal strings |
-| Reading freshness | `execution` is fetched during the request without stale-cache fallback; later transaction inclusion may use newer rules |
-| Missing `execution` | Backend cannot supply authoritative rules; do not infer zero prices from its absence |
-| Usage | [Estimate deployment funding](/cli/deploy-and-call/#estimate-deployment-funding) |
-
-### `groundhog_serverLimits`
-
-| Property | Contract |
-| --- | --- |
-| Parameters | None |
-| Result | Endpoint request limits, returned without contacting a backend |
-| Scope | Operator settings; values can differ between endpoints on the same chain |
-| `maxViewGas` | Maximum `view` gas limit and default when `gasLimit` is omitted; `u64` decimal string |
-| `maxViewCalldataBytes` | Maximum view calldata size in bytes; `u64` decimal string |
-| `maxEventsPerPage` | Maximum event-query `limit`; `u32` JSON number |
-| `maxTransactionsPerPage` | Maximum address-transaction-query `limit`; `u32` JSON number |
-| `maxCursorBytes` | Maximum pagination cursor size in bytes; `u64` decimal string |
-| `viewBatch` | Optional batch-limit object; omitted when shared-read limits are not advertised |
-| `viewBatch.maxCalls`, `viewBatch.maxCalldataBytes`, `viewBatch.maxResponseBytes` | `u32` JSON numbers; the response bound covers encoded backend results, including events, before JSON encoding |
-| `viewBatch.maxGas`, `viewBatch.timeoutMs` | `u64` decimal strings; aggregate gas budget per attempt and response-wait limit; per-call view and transport limits also apply |
-| Consensus limits | Reported separately by `groundhog_chainConfig` |
-
-### `groundhog_networkInfo`
-
-
-Get the network identity used for transaction signing.
-
-**Parameters:** None.
-
-**Returns:**
-
-```json
-{
-  "networkHash": "0x<64 lowercase hex characters>"
-}
-```
-
-Clients should compare `networkHash` with the expected network before signing. The hash is part of every transaction signature preimage. See [Authorization](/how-it-works/authorization/).
-
-### `groundhog_requestAirdrop`
-
-Request an idempotent native-token airdrop.
-
-| Parameter | Type | Description |
-| --- | --- | --- |
-| `request.recipient` | address | Recipient address as `0x`-prefixed 32-byte hex |
-| `request.clientNonce` | string | Caller-selected idempotency nonce as `0x`-prefixed 1-to-32-byte hex |
-
-| Availability | Contract |
-| --- | --- |
-| Configured airdrop backend | Method is registered |
-| No airdrop backend | Standard JSON-RPC `Method not found` (`-32601`) |
-
-The same recipient and `clientNonce` identify the same logical attempt on a network. Poll a pending attempt by repeating the exact request. Do not generate a new nonce for that attempt.
-
-**Pending response:**
-
-```json
-{
-  "attemptStatus": "pending",
-  "recipient": "0x<64 lowercase hex characters>",
-  "rawAmount": "100000000",
-  "txHash": "0x<64 lowercase hex characters>",
-  "retryAfterSeconds": "5"
-}
-```
-
-`txHash` is optional while pending.
-
-**Succeeded response:**
-
-```json
-{
-  "attemptStatus": "succeeded",
-  "recipient": "0x<64 lowercase hex characters>",
-  "txHash": "0x<64 lowercase hex characters>",
-  "rawAmount": "100000000",
-  "height": "12345",
-  "status": { "result": "ok" }
-}
-```
-
-`succeeded` means the transaction committed. Inspect `status.result` to confirm execution success. A client timeout does not prove that the airdrop failed. Retry the same request to recover the attempt's state.
-
-### `groundhog_version`
-
-Get wire, implementation, build, and packaging-platform versions.
+### `getVersionInfo`
 
 **Parameters:** None.
 
 | Response field | Contract |
 | --- | --- |
-| `wireFormat` | Wire-format SemVer, `"11.1.0"` for this contract; clients may use it for compatibility checks |
+| `wireFormat` | Wire-format SemVer, for example `"14.1.0"`. The only field that selects client codecs |
+| `supportedMethods` | Sorted names of the methods registered on this endpoint |
 | `implementation` | Diagnostic implementation version |
-| `commitHash` | Diagnostic build commit or `null` |
-| `platformVersion` | Optional packaging-platform version, independent of validated release identity |
-| `releaseVersion` | Present when the binary matches a validated installed release bundle; otherwise omitted |
-| `bundleManifestDigest` | Validated bundle manifest digest; otherwise omitted |
+| `commitHash`, `platformVersion`, `releaseVersion`, `bundleManifestDigest` | Optional diagnostics; omitted when unavailable |
 
-### `groundhog_view`
+### `getNetworkInfo`
 
-Execute a read-only contract invocation against committed state. The invocation does not enter the scheduler.
+**Parameters:** None.
+
+```json
+{ "networkHash": "<base58, 32 bytes>" }
+```
+
+`networkHash` is the signing network identity. It is part of every transaction signature preimage. Compare it with the expected network before signing. See [Authorization](/how-it-works/authorization/).
+
+### `getServerLimits`
+
+**Parameters:** None. Answered without contacting a backend.
+
+| Response field | Contract |
+| --- | --- |
+| `maxSimulationGas` | Maximum simulation `gasLimit`, and the default when `gasLimit` is omitted; decimal string |
+| `maxSimulationCalldataBytes` | Maximum simulation calldata size in bytes; decimal string |
+| `maxEventsPerPage` | Maximum `getEvents` `limit`; JSON number |
+| `maxTransactionsPerPage` | Maximum transaction-page `limit`; JSON number |
+| `maxCursorBytes` | Maximum decoded cursor size in bytes; decimal string |
+| `simulationBatch` | Optional: `maxInvocations`, `maxCalldataBytes`, `maxBackendResponseBytes` (JSON numbers), `maxGas`, `timeoutMs` (decimal strings) |
+
+These are operator settings, not consensus parameters. Values can differ between endpoints on the same chain.
+
+### `getChainTip`
+
+**Parameters:** None.
+
+```json
+{ "blockHeight": "42", "blockHash": "<base58 block hash>" }
+```
+
+### `getChainConfig`
+
+**Parameters:** None.
+
+| Response field | Contract |
+| --- | --- |
+| `stated` | Explicit configuration values. A missing field is unspecified, not zero |
+| `stated.max*` | `maxSha256Buffers`, `maxCrossInvokeDepth`, `maxNewContractsPerTx`, `maxBytestringLen`, `maxContractSizeBytes`, `maxSavepointDepth`, `maxAuthTokenDepth`, `maxRv32CodeBytes`, `maxRv32MemoryBytes`: JSON numbers. `maxTxGas` (wire `14.1.0`): decimal string |
+| `execution` | Optional authoritative reading. A missing `execution` means the backend cannot supply it; do not infer zero prices |
+| `execution.observedTip` | `blockHeight` and `blockHash` that the rules were read with |
+| `execution.configHash` | Base58 configuration and storage-model commitment |
+| `execution.effectiveLimits` | Runtime-resolved limits, same fields as `stated` |
+| `execution.storageCosts` | `baseDataItemCost`, `bytestringCostPerByte`, `baseContractDeploymentCost`, `contractDeploymentCostPerByte`, `authPerKeyCost`, `rcqCostPerEntry`, `replayCacheCostPerEntry`, `balanceCost`: native-token base units as decimal strings |
+
+Later transactions can execute under newer rules. Usage: [Estimate deployment funding](/cli/deploy-and-call/#estimate-deployment-funding).
+
+## Transaction Methods
+
+### `sendTransaction`
 
 | Parameter | Type | Description |
 | --- | --- | --- |
-| `request.contract` | address | `0x`-prefixed 32-byte contract address |
-| `request.entrypoint` | bytes | `0x`-prefixed 8-byte entrypoint ID |
-| `request.calldata` | bytes | `0x`-prefixed call input |
-| `request.caller` | address | Optional simulated caller |
-| `request.gasLimit` | `u64` decimal string | Optional positive gas budget, at most `serverLimits.maxViewGas`; omission selects that maximum |
-| `request.minHeight` | signed 64-bit decimal string | Optional nonnegative minimum committed snapshot height; not an exact-height selector |
+| `signedTransaction` | hex | `0x` hex of the `SignedTransaction` XDR |
 
-| Response field or case | Contract |
+```json
+{ "transactionHash": "<base58 transaction hash>", "admission": "accepted" }
+```
+
+| Case | Contract |
 | --- | --- |
-| `output` | Root output tagged by `result`: `return` with `returnData`, `abort` with `abortData`, or `fault` |
-| `events` | Events emitted during the simulation |
-| `height` | Committed snapshot height as a signed 64-bit decimal string; requests cannot select a past height |
-| `gasUsed` | Required `u64` decimal string for gas consumed by the root and child invocations; equals the selected limit on an out-of-gas fault |
-| Invalid gas limit | Zero or above the endpoint maximum returns invalid params (`-32602`) |
-| Snapshot below `minHeight` | `-32011` with `{ requested, observed }` decimal-string heights; does not wait or request a refresh |
-| No view backend | Returns `-32052` |
+| Success | Scheduler admission only, not commitment or execution |
+| `transactionHash` | `sha256` of the inner `Transaction` XDR; excludes signatures |
+| `-32000` | Invalid encoding, envelope, size, or executor bound. `data.detail.reason` can be `tooManyContracts`, `contractTooLarge`, `duplicateContract`, `rv32MemoryTooLarge`, `rv32CodeTooLarge`, or `gasLimitTooHigh` (wire `14.1.0`) |
+| `-32001` | `data.reason` is `expired` (`blockExpiryHeight` at or below the tip) or `authenticationRejected` |
+| `data.admission` | `notAttempted`, `rejected`, or `unknown` for this attempt |
+| `-32051` or `-32050` | Admission can be unknown. Query `getTransactionStatus` with the hash before you prepare a replacement |
+| `-32053` | Retryable refusal; optional `data.retryAfterMs` |
 
-### `groundhog_viewBatch`
-
-| Parameter | Contract |
-| --- | --- |
-| `request.calls` | Nonempty ordered array of independent calls, within the endpoint's advertised batch limits |
-| Each call | Required `contract`, 8-byte `entrypoint`, and `calldata`; optional `caller` and positive `gasLimit`, encoded as for `groundhog_view` |
-| `request.minHeight` | Optional nonnegative signed 64-bit decimal string; freshness applies to the group, never an individual call |
-
-| Response field or case | Contract |
-| --- | --- |
-| `height` | One committed snapshot height as a signed 64-bit decimal string |
-| `results` | Exactly one result per call, in input order; each contains `output`, `events`, and `gasUsed` |
-| `output` | `return`, `abort`, or `fault`, using the single-view output shape |
-| `gasUsed` | Per-call consumed gas as a `u64` decimal string |
-| Isolation | All calls read the same snapshot; simulated writes do not pass between calls |
-| Contract abort or fault | Per-call outcome, not a whole-group RPC failure |
-| Insufficient snapshot height | `-32011` with `{ requested, observed }`; no waiting or request-driven refresh |
-| Invalid request or exceeded input limits | Invalid params (`-32602`) |
-| Exhausted snapshot retries, deadline, or malformed/incomplete response | Fail the group rather than return mixed or partial results; backend work can outlive the response deadline |
-| Unsupported backend | `-32052`; a server without the method can return standard `Method not found` (`-32601`) |
-| Usage | [Read related values from one snapshot](/typescript/reads/#read-related-values-from-one-snapshot) |
-
-### `groundhog_getBalance`
-
-Read the latest committed native-token balance.
+### `getTransactionStatus`
 
 | Parameter | Type | Description |
 | --- | --- | --- |
-| `address` | address | `0x`-prefixed 32-byte address |
+| `transactionHash` | base58 | Transaction hash |
 
-**Returns:**
+| `status` | Fields and meaning |
+| --- | --- |
+| `pending` | In the scheduler, not committed. Optional `recentFailure` |
+| `committed` | `blockHeight` of the block that included it, including `"0"` |
+| `retry` | Scheduler processing failed; `error`; optional `recentFailure`. Resubmitting the same signed transaction can succeed |
+| `dropped` | Permanent scheduler failure; `error`; optional `recentFailure`. Change the transaction before you resubmit |
+| `recentFailure` | Scheduler miss with a recent indexed failure: `attemptBlockHeight`, `cause` |
+| `unknown` | Both the scheduler and committed history reported a miss |
+| `other` | Status from a newer server version |
+
+| Field | Contract |
+| --- | --- |
+| `error.source` | `auth`, `scheduler`, `executor`, or `other` |
+| `error.code` | Signed 32-bit JSON number from `AuthErrorCode`, `SchedulerErrorCode`, or `ExecResult` |
+| `recentFailure` | Advisory `{ attemptBlockHeight, cause }`. It can describe a different attempt. It does not authorize resubmission |
+| `cause.kind` | `dbConflict` with `conflict { address, key, code }`, `contractRejected` with `contractIndex` and `code`, or `other` |
+
+Indexed commitment takes priority. No status proves nonexecution, and a failed backend lookup returns an error, not `unknown`. Usage: [Handle scheduler processing errors](/typescript/transaction-status/#handle-scheduler-processing-errors).
+
+### `getTransactionReceipt`
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `transactionHash` | base58 | Transaction hash |
+
+**Returns:** `TransactionReceipt`, or `null` if no receipt is available.
 
 ```json
 {
-  "address": "0x<64 lowercase hex characters>",
-  "rawBalance": "1000000000",
-  "height": "4567"
+  "transactionHash": "<base58 transaction hash>",
+  "blockHeight": "12345",
+  "execution": { "result": "return", "returnData": "0x42" },
+  "events": [],
+  "gasUsed": "1500"
 }
 ```
 
-`rawBalance` is a decimal string in indivisible protocol units.
+| `execution.result` | Meaning |
+| --- | --- |
+| `return` | Root call returned; `returnData` is required, possibly `"0x"` |
+| `abort` | Root call aborted; `abortData` is required, possibly `"0x"` |
+| `fault` | Deterministic execution fault |
+| `nonDeterministicError` | Proposal-time storage conflict or race |
+| `failedGasSponsorship` | Gas sponsorship failed |
+| `other` | Result from a newer server version |
 
-### `groundhog_getStorageAt`
+A receipt proves commitment. Only `execution.result: "return"` proves successful execution. `gasUsed` is metered work, not a fee: gas has no token cost and no refund.
 
-Read the latest committed storage item at an address and key.
+## State Methods
 
-| Parameter | Type | Description |
-| --- | --- | --- |
-| `address` | address | `0x`-prefixed 32-byte contract address |
-| `key` | bytes | `0x`-prefixed 32-byte storage key |
-
-**Returns:** `StorageItemRead { blockHeight, item }`. `item` is `null` when the key has no value. `blockHeight` identifies the snapshot used for either result.
-
-`item.kind` is one of `nonnegativeInt`, `bytestring`, `deployedContract`, `authData`, `retrocausalQueue`, `replayCacheEntry`, or `unknown`. Large integer values use decimal strings. `unknown` includes `typeId` for a storage kind added after the client's wire version.
-
-### `groundhog_getBlockByNumber`
-
-Get block information by height.
+### `getBalance`
 
 | Parameter | Type | Description |
 | --- | --- | --- |
-| `height` | decimal string | Signed 64-bit block height, for example `"42"` |
+| `address` | base58 | Account or contract address |
 
-**Returns:** `BlockInfo` or `null`.
+```json
+{ "address": "<base58 address>", "stateBlockHeight": "4567", "rawBalance": "1000000000" }
+```
+
+`rawBalance` is free native-token base units as a decimal string. Storage collateral is separate.
+
+### `getStorage`
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `address` | base58 | Contract address |
+| `key` | hex | Serialized storage key |
+
+```json
+{ "stateBlockHeight": "4567", "item": { "kind": "nonnegativeInt", "value": "1000000000" } }
+```
+
+| `item.kind` | Fields |
+| --- | --- |
+| `nonnegativeInt` | `value`: decimal string |
+| `bytestring` | `bytes`: hex |
+| `deployedContract` | `hash` (base58), `size`, `contractType` |
+| `authData`, `retrocausalQueue`, `replayCacheEntry` | None |
+| `unknown` | `typeId` for a storage kind newer than the client |
+
+`item` is `null` when the key has no value. `stateBlockHeight` names the snapshot for both cases.
+
+### `getRegisteredAuth`
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `address` | base58 | Account address |
+
+| Response field | Contract |
+| --- | --- |
+| `address`, `stateBlockHeight` | Echoed address and snapshot height |
+| `configuration` | `null`, or `{ signers, requiredWeight }` |
+| `signers[]` | `keyId`, `maxWeight`, and `publicKey`: `{ "scheme": "ed25519", "key": "<base58>" }` or `{ "scheme": "unknown", "schemeId": n }` |
+
+`null` does not prove that the account is absent. It does not recover the key of a pubkey-derived account.
+
+## Simulation Methods
+
+### `simulateInvocation`
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `address` | base58 | Contract address |
+| `entrypoint` | hex | 8-byte entrypoint ID |
+| `calldata` | hex | Call input |
+| `caller` | base58 | Optional parent contract |
+| `assumedAuth` | object | Optional assumed claim; see below |
+| `gasLimit` | decimal string | Optional, positive, at most `maxSimulationGas`; omission selects that maximum |
+| `minStateBlockHeight` | decimal string | Optional freshness floor; not a historical selector |
+
+| `assumedAuth.kind` | Fields |
+| --- | --- |
+| `sourceAddress` | `allowedKeys`, `requiredWeight`: JSON numbers |
+| `pubkeySignature` | `pubkeyHash` (base58), `accountNonce` (decimal string; account derivation nonce) |
+
+No signature is verified. Contract checks still run, and writes never commit. Omission supplies a zero-key, zero-weight source-address claim.
+
+| Response field or case | Contract |
+| --- | --- |
+| `stateBlockHeight` | Committed state height H. Execution uses context H+1 |
+| `output` | `{ "result": "return", "returnData" }`, `{ "result": "abort", "abortData" }`, or `{ "result": "fault" }` |
+| `events` | Events emitted during the simulation |
+| `gasUsed` | Decimal string. Equals the selected limit on an out-of-gas fault |
+| Snapshot below `minStateBlockHeight` | `-32012` with `requestedStateBlockHeight` and `observedStateBlockHeight`; no wait or refresh |
+
+### `simulateInvocations`
+
+| Parameter | Contract |
+| --- | --- |
+| `invocations` | Nonempty array. Each entry takes `address`, `entrypoint`, `calldata`, and optional `caller`, `assumedAuth`, `gasLimit` |
+| `minStateBlockHeight` | Optional floor for the whole group. A per-entry floor is rejected |
+
+| Response field or case | Contract |
+| --- | --- |
+| `stateBlockHeight` | One snapshot height for all invocations |
+| `results` | One `{ output, events, gasUsed }` per invocation, in input order |
+| Isolation | Invocations do not see each other's simulated writes |
+| Abort or fault | Per-invocation outcome, not a group failure |
+| Limits | `getServerLimits.simulationBatch` plus per-call limits; violations return `-32602` |
+| Snapshot failure or deadline | The group fails; no partial results. Backend work can outlive the deadline |
+
+Usage: [Read related values from one snapshot](/typescript/reads/#read-related-values-from-one-snapshot).
+
+## History Methods
+
+### `getEvents`
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `filters` | array | 1 to 5 filters. OR across filters |
+| `filters[].addresses` | base58 array | 1 to 5 contract addresses |
+| `filters[].topics` | object | Optional `topic0`, `topic1`, `topic2`: up to 16 32-byte hex values each. AND across positions, OR within one. Omitted or empty is a wildcard |
+| `start` | object | First page only; see [Pagination](/reference/json-rpc-api/#pagination) |
+| `cursor` | hex | Later pages only |
+| `limit` | number | Optional page size |
+
+**Returns:** `EventPage`.
+
+| Field | Contract |
+| --- | --- |
+| `events[]` | `{ transactionHash, blockHeight, sequenceNumber, event }` |
+| `event` | `address` (base58), `topics` (up to 3 hex values), `data` (hex) |
+| `nextCursor` | Hex, or `null` when the walk is complete |
+| `oldestIndexedBlockHeight`, `latestIndexedBlockHeight` | Serving bounds as decimal strings; not checkpoints |
+
+Event identity is `transactionHash` plus `sequenceNumber`. Usage: [Read events](/typescript/events/#query-events).
+
+### `getTransactionsByRootAddress`
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `address` | base58 | Root invocation target |
+| `start`, `cursor`, `limit` | | See [Pagination](/reference/json-rpc-api/#pagination) |
+
+**Returns:** `TransactionRefPage` with `transactions[]` of `{ transactionHash, blockHeight }`, plus `nextCursor` and the serving bounds. Internal calls and incoming transfers do not match. Hydrate a reference with `getTransactionReceipt`.
+
+### `getBlockByHeight`
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `blockHeight` | decimal string | Nonnegative block height |
+
+**Returns:** `BlockInfo`, or `null` outside indexed coverage (including genesis).
 
 ```json
 {
-  "blockHash": "0x...",
+  "blockHash": "<base58>",
   "protocol": 1,
-  "networkHash": "0x...",
-  "configHash": "0x...",
-  "proposer": "0x...",
+  "networkHash": "<base58>",
+  "configHash": "<base58>",
+  "proposer": "<base58 validator ID>",
   "blockTimepoint": "1791200000000000001",
   "blockHeight": "42",
-  "txsHash": "0x...",
-  "storageHash": "0x...",
-  "eventsHash": "0x...",
-  "prevBlockHash": "0x...",
-  "proposalTxsHash": "0x...",
+  "txsHash": "<base58>",
+  "storageHash": "<base58>",
+  "eventsHash": "<base58>",
+  "prevBlockHash": "<base58>",
+  "proposalTxsHash": "<base58>",
   "upgrades": ["0x..."]
 }
 ```
 
-:::caution[Not Yet Implemented]
-The hosted gateway (`hog-gateway`) has no block query backend yet and returns `-32052` for this method.
-:::
+An unavailable or corrupt index returns an error, not `null`. The index can lag behind `getChainTip`.
 
-### `groundhog_pendingTransactionCount`
-
-Get the number of transactions in the scheduler.
-
-**Parameters:** None.
-
-**Returns:** unsigned 64-bit decimal string, for example `"0"`.
-
-:::caution[Gateway Only]
-The hosted gateway (`hog-gateway`) returns `-32052` for this method. `thruput node` serves it for the local chain.
-:::
-
-### `groundhog_getEvents`
-
-Query contract events with cursor pagination and topic filters.
+### `getTransactionsByBlock`
 
 | Parameter | Type | Description |
 | --- | --- | --- |
-| `query` | `EventQuery` | Order, anchor, cursor, limit, contract addresses, and positional topic filters |
+| `blockHeight` | decimal string | Committed block height |
+| `start` | object | First page only: `{ "order": "ascending" }` or `{ "order": "descending" }` |
+| `cursor`, `limit` | | See [Pagination](/reference/json-rpc-api/#pagination) |
 
-**Returns:** `EventPage` with events, the next cursor, latest indexed block, and oldest retained block.
+**Returns:** `TransactionRefPage`. References are ordered by unsigned transaction-hash bytes, not execution order. An empty page does not prove that the block exists; use `getBlockByHeight`.
 
-| Pagination field | JSON type |
+## Pagination
+
+| Rule | Contract |
 | --- | --- |
-| `anchor.height` for `{"kind":"atHeight","height":"42"}` | Signed 64-bit decimal string |
-| `latestBlock`, `oldestBlock`, and event `blockHeight` | Signed 64-bit decimal string |
-| `limit` and event `sequenceNumber` | Unsigned 32-bit JSON number |
+| First page | Send `start` and no `cursor` |
+| `start` for range history | `{ "order": "ascending", "anchor": { "kind": "atBeginning" } }`, `{ "order": "descending", "anchor": { "kind": "atEnd" } }`, or either order with `{ "kind": "atHeight", "blockHeight": "42" }` (inclusive) |
+| Later pages | Send the returned `cursor` verbatim with the same query fields and no `start`. The cursor owns direction and its snapshot bound |
+| `start` and `cursor` | Exactly one is required |
+| `limit` | Omission selects the smaller of 50 and the page cap. `0` or values above the cap return `-32602`. The cap is at most 200 |
+| Completion | `nextCursor: null`. An empty page with a non-null cursor is not the end |
+| Invalid cursor | Empty or oversized cursors return `-32602`. Rejected tokens return `-32602` with `data.kind: "invalidCursor"` and `reason` `malformed`, `unsupportedVersion`, or `queryMismatch` |
+| Retention | `-32013` with `reason: "outsideRetention"` and optional indexed bounds |
+| Subscriptions | A walk does not follow new blocks. Start a new walk to check for new activity |
 
-`query.filters` uses OR across filters and AND within each filter. Contract-address filters are required. Topic filters are positional: `topic0`, `topic1`, and `topic2`. See [Read events](/typescript/events/#query-events) for typed filters and queries.
+For an application pattern, see [Resume without missing events](/typescript/events/#resume-without-missing-events).
 
-### `groundhog_getTransactionsByAddress`
+## Optional Methods
 
-Query transactions whose root invocation targets an address.
+These methods appear in `supportedMethods` only when the endpoint configures them.
+
+### `faucet_requestAirdrop`
 
 | Parameter | Type | Description |
 | --- | --- | --- |
-| `query` | `AddressTransactionQuery` | Address, order, anchor, cursor, and limit |
+| `recipient` | base58 | Recipient address |
+| `clientNonce` | hex | Caller-selected 1-to-32-byte nonce |
 
-**Returns:** `TransactionRefPage` with transaction hashes and heights, the next cursor, latest indexed block, and oldest retained block. Hydrate a reference with `groundhog_getTransactionReceipt`.
-
-Anchor heights, reference heights, `latestBlock`, and `oldestBlock` use decimal strings, as in `groundhog_getEvents`.
-
-The initial cursor is `"0x"`. A limit of `0` selects the server default of 50. Values above the configured cap, normally 200, are rejected. Nested calls to the address do not match.
-
-## Pagination Contract
-
-| Field or case | Rule for event and address-transaction pages |
+| `attemptStatus` | Fields |
 | --- | --- |
-| Initial cursor | Send `"0x"`; TypeScript actions use an empty `Uint8Array` or an omitted initial cursor |
-| Non-empty cursor | Continue the same historical walk with the same network, target, and filters |
-| `order` and `anchor` | Required raw request fields even when the cursor supplies continuation state |
-| Returned `"0x"` | This walk is exhausted; it does not subscribe to future blocks |
-| Empty rows, non-empty cursor | Continue; row count alone does not indicate exhaustion |
-| `latestBlock` | Indexer's head at response time, not an application coverage checkpoint |
-| `oldestBlock` | Retained-history lower bound; detect/report a gap if a checkpoint is older |
-| Event identity | Transaction hash plus event sequence number, scoped to the network/query |
-| Transaction-ref identity | Transaction hash; address history matches only root invocation targets |
-| Later ascending scan | Start a new ascending walk with an empty cursor at the last stored row height from ascending ingestion; deduplicate that block |
-| Descending refresh | Start a new descending walk with an empty cursor and `atEnd` anchor; the last (oldest) row is not a forward-ingestion checkpoint |
-| Persistence | Save rows and progress together; never advance past a partially processed block |
-| Invalid filters | Empty filter lists or empty contract-address lists return invalid params, not all-contract results |
-| Cursor validity | Opaque backend format; current malformed-cursor handling can report false exhaustion, so explicit rejection is not guaranteed |
+| `pending` | `recipient`, `rawAmount`, `retryAfterSeconds`, optional `transactionHash` |
+| `succeeded` | `recipient`, `rawAmount`, `transactionHash`, `blockHeight`, `execution: { "result": "return", "returnData" }` |
 
-For the executable application pattern and retention limitations, see
-[Resume without missing events](/typescript/events/#resume-without-missing-events).
+Each call advances one attempt bound to `recipient` and `clientNonce`. Do not repeat it automatically. Poll a returned `transactionHash` with `getTransactionStatus` and `getTransactionReceipt`. `pending` does not prove admission. `-32030` means the faucet stopped the attempt; it does not prove nonexecution.
+
+### `dev_fundAccount`
+
+Local node only.
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `recipient` | base58 | Recipient address |
+| `rawAmount` | decimal string | Positive amount in base units |
+| `clientNonce` | hex | 1-to-32-byte nonce |
+| `faucet` | base58 | Expected local faucet address |
+
+**Returns:** `{ recipient, rawAmount, transactionHash, signedTransaction }`. Check the receipt before you treat the transfer as successful. `-32031` means signed evidence exists without a resolved outcome. Retry with the same request.
+
+### `dev_getPendingTransactionCount`
+
+Local node only. **Parameters:** None. **Returns:** `{ "count": "0" }`, the local scheduler's pending count as a decimal string.
+
+## Method Availability
+
+| Methods | Registered when the endpoint has |
+| --- | --- |
+| `getVersionInfo`, `getNetworkInfo`, `getServerLimits` | Always |
+| `sendTransaction` | Scheduler |
+| `getTransactionStatus` | Scheduler and indexer |
+| `getTransactionReceipt`, `getEvents`, `getTransactionsByRootAddress`, `getBlockByHeight`, `getTransactionsByBlock` | Indexer |
+| `getChainTip`, `getChainConfig`, `getBalance`, `getStorage`, `getRegisteredAuth` | State database |
+| `simulateInvocation`, `simulateInvocations` | Simulation backend |
+| `faucet_requestAirdrop` | Hosted faucet, or local node funding |
+| `dev_fundAccount` | Local node funding |
+| `dev_getPendingTransactionCount` | Local node only |
+
+A configured backend that is down returns a backend error. It does not remove the method.
 
 ## Error Codes
 
-Standard JSON-RPC 2.0 errors apply. The gateway also defines:
+Standard JSON-RPC 2.0 errors also apply, including `-32601` for unregistered methods. Error `data` carries a `kind` discriminator in camelCase.
 
-| Code | Name | Meaning |
+| Code | `data.kind` | Meaning |
 | --- | --- | --- |
-| `-32602` | Invalid params | Malformed or invalid parameters |
-| `-32000` | TX_INVALID | Transaction bytes could not be decoded or validated; resource-limit failures include a typed `data.reason` |
-| `-32001` | TX_REJECTED | Scheduler or airdrop backend rejected the transaction |
-| `-32002` | TX_NOT_FOUND | Transaction not found |
-| `-32010` | BLOCK_NOT_FOUND | Block not found at the requested height |
-| `-32011` | VIEW_HEIGHT_UNAVAILABLE | Selected view snapshot is below `minHeight`; `data` carries `requested` and `observed` decimal-string heights |
-| `-32050` | BACKEND_UNAVAILABLE | Required backend is unavailable |
-| `-32051` | BACKEND_TIMEOUT | Backend did not respond before the deadline |
-| `-32052` | NOT_IMPLEMENTED | Method is not implemented by the backend |
-| `-32053` | OVERLOADED | Gateway or backend is overloaded; retry with backoff |
+| `-32602` | `invalidParams`, `invalidCursor` | Invalid named request or continuation token; optional `reason` and JSON-pointer `path` |
+| `-32000` | `transactionInvalid` | Invalid transaction framing, envelope, or executor bound |
+| `-32001` | `transactionRejected` | Expiry or scheduler authentication refusal for this attempt |
+| `-32012` | `stateHeightUnavailable` | Simulation snapshot below the requested floor |
+| `-32013` | `historyUnavailable` | Required history cannot be served |
+| `-32030` | `fundingAttemptStopped` | Funding service stopped this attempt |
+| `-32031` | `localFundingUnresolved` | Local funding has signed evidence without a resolved outcome |
+| `-32050` | `backendUnavailable` | Required backend is unavailable |
+| `-32051` | `backendTimeout` | Deadline exceeded; writes may have been dispatched |
+| `-32053` | `overloaded` | Temporary refusal; retry with backoff |
+| `-32054` | `backendDataInvalid` | Backend data cannot satisfy the method contract |
 
 ## Client Libraries
 
-The `@thruputchain/client` packages provide TypeScript transports, codecs, and higher-level actions. See [TypeScript SDK](/tools/typescript-sdk/).
-
-Rust clients can use `groundhog-json-rpc-client` and its `GroundhogApiClient` trait.
+| Language | Package | Wire selection |
+| --- | --- | --- |
+| TypeScript | `@thruputchain/client` `0.22` | Calls `getVersionInfo` once at connect and requires major `14`. See [TypeScript SDK](/tools/typescript-sdk/) |
+| Rust | `thruput-json-rpc-client` (`NativeClient`) | `thruput-client`'s `check_endpoint` requires major `14` and the methods you name |
 
 ## Related Documentation
 

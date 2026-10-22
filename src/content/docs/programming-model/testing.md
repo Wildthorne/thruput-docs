@@ -29,7 +29,7 @@ tests/
   integration.rs
 ```
 
-`tests/integration.rs` starts with one ignored RPC smoke test. It checks that the CLI provided a deployed contract, connects to the ephemeral node with `groundhog-json-rpc-client`, and calls `chainTip`. Replace or extend the final placeholder with assertions for your contract.
+`tests/integration.rs` starts with one ignored RPC smoke test. It checks that the CLI provided a deployed contract, connects to the ephemeral node with `thruput-json-rpc-client`, and calls `getChainTip`. Replace or extend the final placeholder with assertions for your contract.
 
 The starter remains ignored under ordinary `cargo test`, even if you explicitly enable its feature. `thruput test --integration` enables the feature and sets `THRUPUT_INTEGRATION_TEST=1`, which lets the scaffold's `build.rs` activate the live test. You can rename the module and test functions without changing how activation works.
 
