@@ -44,7 +44,7 @@ description: TypeScript client entry points, common operations, and links to foc
 | `toBase58(bytes)` | Base58 encoding for addresses and hashes that users see, store, or compare with RPC values |
 | `parseAddress(text)` | Typed address from base58 or a `C` StrKey |
 | `fromHex0x(text)` / `toHex0x(bytes)` | `0x` hex for signed transaction bytes and calldata |
-| `addressFromHex(text)` / `hashFromHex(text)` | Typed address or hash from `0x` hex |
+| `addressFromHex(text)` / `hashFromHex(text)` | Explicit hex conversion; use base58 for RPC and provider identifiers |
 | `gasAmount(bigint)` | Typed computation budget |
 | `ParseUnitsError` | `code: "malformed" \| "precision"`; invalid decimals throw `RangeError` |
 | Usage | [Addresses and amounts](/typescript/values/) |

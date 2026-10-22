@@ -9,7 +9,7 @@ Use the [hosted faucet](https://thruput-faucet.up.railway.app) to fund a Futuren
 
 1. Copy your public address from the [Wallet Extension](/tools/wallet-extension/) or your [CLI wallet](/cli/wallets/#create-a-key-and-wallet).
 2. Open the [faucet](https://thruput-faucet.up.railway.app).
-3. Paste the address into **Wallet address**. Use the full `0x`-prefixed value with 64 hexadecimal characters after `0x`.
+3. Paste your wallet address into **Wallet address**.
 4. Click **Request … HOG**, using the amount shown by the button.
 5. Wait for **Airdrop confirmed**, then check the receiving wallet's balance. Use **View transaction** when offered to inspect the result in the explorer.
 
