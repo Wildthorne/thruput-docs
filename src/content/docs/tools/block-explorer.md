@@ -1,13 +1,13 @@
 ---
 title: Explorer
-description: Use the Devnet explorer to look up transactions, inspect receipts and events, and check address activity.
+description: Use the Futurenet explorer to look up transactions, inspect receipts and events, and check address activity.
 ---
 
-Use the [Devnet explorer](https://explorer.thruput.network/) to look up transactions, inspect receipts and events, and check address balances and recent activity. Sign in if prompted.
+Use the [Futurenet explorer](https://explorer.thruput.network/) to look up transactions, inspect receipts and events, and check address balances and recent activity. Sign in if prompted.
 
 ## Look Up a Transaction or Address
 
-1. Open the [Devnet explorer](https://explorer.thruput.network/).
+1. Open the [Futurenet explorer](https://explorer.thruput.network/).
 2. Paste a transaction hash or address into the search field. Use the full `0x`-prefixed, 32-byte value (64 hexadecimal characters after `0x`).
 3. Select **Search**.
 
@@ -43,13 +43,13 @@ https://explorer.thruput.network/address/<address>
 Use the CLI for terminal workflows, local nodes, or when the explorer is unavailable:
 
 ```bash
-thruput balance <wallet-or-address> --profile devnet
-thruput tx show <transaction-hash> --profile devnet
-thruput view <contract-or-alias> <method> --profile devnet
-thruput storage <contract-or-alias> 0x<32-byte-key> --profile devnet
+thruput balance <wallet-or-address> --profile futurenet
+thruput tx show <transaction-hash> --profile futurenet
+thruput view <contract-or-alias> <method> --profile futurenet
+thruput storage <contract-or-alias> 0x<32-byte-key> --profile futurenet
 ```
 
-These commands use Devnet. For a local node, use `--profile local` instead. The hosted explorer does not show your local node's transactions.
+These commands use Futurenet. For a local node, use `--profile local` instead. The hosted explorer does not show your local node's transactions.
 
 Use the [JSON-RPC API](/reference/json-rpc-api/) directly for receipts, status, address-rooted history, and event pagination.
 

@@ -76,7 +76,7 @@ thruput toolchain which
 
 `list` shows the runtime catalog and installed versions. `install` downloads and verifies the selected runtime bundle. `which` shows the selected binary's path.
 
-These commands manage the local-node runtime. Rust is managed through `rustup`, and the CLI is installed separately as shown above. You do not need a local node to use Devnet.
+These commands manage the local-node runtime. Rust is managed through `rustup`, and the CLI is installed separately as shown above. You do not need a local node to use Futurenet.
 
 See [runtime selection](/cli/local-node/#runtime-selection) for version and binary overrides.
 

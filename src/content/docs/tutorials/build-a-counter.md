@@ -11,7 +11,7 @@ You can also explore the [full counter example on GitHub](https://github.com/thr
 
 ## Create the contract
 
-Complete [CLI installation and Cargo access](/cli/install/). For deployment, use a funded Devnet account from the [CLI quickstart](/get-started/cli/).
+Complete [CLI installation and Cargo access](/cli/install/). For deployment, use a funded Futurenet account from the [CLI quickstart](/get-started/cli/).
 
 ```bash
 thruput new counter --template counter
@@ -77,15 +77,15 @@ The native tests exercise contract logic and underflow handling. The artifact te
 
 ```bash
 thruput build
-thruput deploy --estimate --profile devnet
+thruput deploy --estimate --profile futurenet
 ```
 
 Add **10 native test tokens** to the reported minimum funding in whole-token units as an example allowance for initializer storage and later writes. This is a budget, not an exact estimate of those writes or a universal requirement. Replace `TOTAL_FUNDING` with the decimal sum. The minimum alone covers only the first balance-item deposit and deployment collateral, leaving no free contract balance. See [Estimate deployment funding](/cli/deploy-and-call/#estimate-deployment-funding).
 
 ```bash
-thruput deploy --profile devnet --fund TOTAL_FUNDING \
+thruput deploy --profile futurenet --fund TOTAL_FUNDING \
   --init initialize --init-arg 10
-thruput view counter get --profile devnet
+thruput view counter get --profile futurenet
 ```
 
 Funding, deployment, and initialization happen in one transaction. The sender still needs its own storage and scheduling capacity. Your new counter should read `10`.
@@ -95,8 +95,8 @@ Save the printed deployment address. Part 2 uses this address and the contract s
 ## Check a change
 
 ```bash
-thruput call counter increment 1 --profile devnet
-thruput view counter get --profile devnet
+thruput call counter increment 1 --profile futurenet
+thruput view counter get --profile futurenet
 ```
 
 On your otherwise unchanged counter, the value is now `11`. Keep the same address and project for [part 2](/tutorials/work-with-thruput-from-typescript/).
@@ -111,7 +111,7 @@ https://thruput.network/docs/tutorials/build-a-counter/
 Start with thruput new counter --template counter, without cloning an examples repo.
 Run the native and RV32 checks, build, and read the deployment estimate.
 Add the documented storage allowance to the minimum and deploy with that
-explicit total using my configured Devnet account. Initialize atomically to 10.
+explicit total using my configured Futurenet account. Initialize atomically to 10.
 Report the actual address, transaction hash,
 and read value. Keep the generated dependency configuration and report
 failed checks rather than inventing results.

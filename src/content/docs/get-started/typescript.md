@@ -1,9 +1,9 @@
 ---
 title: TypeScript quickstart
-description: Connect to Devnet and read the native-token contract with a typed TypeScript client.
+description: Connect to Futurenet and read the native-token contract with a typed TypeScript client.
 ---
 
-Read the native token's total supply from Devnet with a typed contract call. This experimental token has no monetary value. This path needs Node.js and package access, but no CLI, signing key, or contract deployment.
+Read the native token's total supply from Futurenet with a typed contract call. This experimental token has no monetary value. This path needs Node.js and package access, but no CLI, signing key, or contract deployment.
 
 ## 1. Create a project
 
@@ -54,7 +54,7 @@ main().catch((error: unknown) => {
 npx tsx src/index.ts
 ```
 
-You should see **Native-token supply** and **Read at block**, each followed by a value. Run the command again to make another read. The values come from Devnet and can change; there is no fixed expected block number.
+You should see **Native-token supply** and **Read at block**, each followed by a value. Run the command again to make another read. The values come from Futurenet and can change; there is no fixed expected block number.
 
 This is a read-only call. It does not request wallet permission or submit a transaction.
 
@@ -67,7 +67,7 @@ Use [Read contract data](/typescript/reads/) for arguments, caller context, and 
 ```text
 Build the Stellar Thruput TypeScript quickstart:
 https://thruput.network/docs/get-started/typescript/
-Use the latest published SDK packages and the hosted Devnet.
+Use the latest published SDK packages and the hosted Futurenet.
 Configure package access through my environment. Create the typed native-token
 total-supply read shown in the guide and run it. Show the actual supply
 and block height, or report the exact error if the request fails.

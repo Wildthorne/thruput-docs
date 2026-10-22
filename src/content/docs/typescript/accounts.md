@@ -1,13 +1,13 @@
 ---
 title: Use a signer in scripts
-description: Bind a Node.js signer to a native account, request Devnet funds, and use local bootstrap accounts.
+description: Bind a Node.js signer to a native account, request Futurenet funds, and use local bootstrap accounts.
 ---
 
 Use a signer when your Node.js script or service manages an account's key. This page sets up a pubkey account. See [Accounts and wallet clients](/typescript/wallet-clients/) for account models and client construction, or [Connect a wallet](/tools/wallet-integration/) for a browser application.
 
 ## Bind a signer
 
-Supply a 32-byte Ed25519 private-key seed through your process environment as `THRUPUT_PRIVATE_KEY`, using `0x`-prefixed hex. For a disposable Devnet test account, generate one once in your terminal:
+Supply a 32-byte Ed25519 private-key seed through your process environment as `THRUPUT_PRIVATE_KEY`, using `0x`-prefixed hex. For a disposable Futurenet test account, generate one once in your terminal:
 
 ```bash
 export THRUPUT_PRIVATE_KEY="$(node -e 'process.stdout.write("0x" + require("node:crypto").randomBytes(32).toString("hex"))')"
@@ -34,7 +34,9 @@ export const wallet = createWalletClient({ client, account });
 
 Keep the key in the process's secret configuration, not browser code or committed files.
 
-## Request Devnet funds
+<span id="request-devnet-funds"></span>
+
+## Request Futurenet funds
 
 Create `src/fund.ts`:
 

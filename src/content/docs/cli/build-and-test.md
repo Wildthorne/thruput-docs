@@ -31,7 +31,7 @@ Use `--show-cargo-commands` to inspect the compiler invocation. Arguments after 
 | `thruput test` | The built RV32 artifact through `tests/test_rv32.rs` |
 | `thruput test --integration` | Artifact build, disposable local node, deployment, and `tests/integration.rs` |
 
-The first two do not require a running RPC node. Integration mode starts and stops its own node; it does not submit transactions to Devnet.
+The first two do not require a running RPC node. Integration mode starts and stops its own node; it does not submit transactions to Futurenet.
 
 ```bash
 cargo test

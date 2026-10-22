@@ -1,14 +1,14 @@
 ---
 title: Build with an Agent
-description: Give your coding agent one prompt to install the Thruput CLI, fund a wallet, and deploy and call a counter contract on Stellar Thruput Devnet.
+description: Give your coding agent one prompt to install the Thruput CLI, fund a wallet, and deploy and call a counter contract on Stellar Thruput Futurenet.
 ---
 
-Paste this prompt into your coding agent. It will install the CLI and skill, read an exported copy of the docs, and build and verify a counter contract on Devnet.
+Paste this prompt into your coding agent. It will install the CLI and skill, read an exported copy of the docs, and build and verify a counter contract on Futurenet.
 
 ## Copy the prompt
 
 ```text
-Help me deploy and use my first Stellar Thruput counter contract on Devnet.
+Help me deploy and use my first Stellar Thruput counter contract on Futurenet.
 
 1. Install the latest Thruput CLI and run thruput init. Use
    thruput --help to see all available commands. Follow the installation
@@ -17,9 +17,12 @@ Help me deploy and use my first Stellar Thruput counter contract on Devnet.
    thruput skill install, then read the installed skill.
 3. Export the documentation into a new folder with thruput docs export.
    Read its index and the relevant setup and contract instructions.
-4. Configure Devnet, create a wallet, and request test funds with
-   thruput airdrop. Verify the balance before deployment.
-5. Run thruput new counter --template counter, then build it and run its tests.
+4. Outside a project, run thruput config use futurenet to select the global
+   default. Create a wallet with thruput wallet create, then request test funds
+   with thruput airdrop. Verify the balance before deployment.
+5. Run thruput new counter --template counter, enter the project directory,
+   and check thruput config get still selects futurenet. New projects inherit
+   the global default. Build the contract and run its tests.
 6. Deploy and initialize the counter to 10. Call increment with 5,
    then verify that its read-only view returns 15.
 

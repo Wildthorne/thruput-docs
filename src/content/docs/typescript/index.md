@@ -32,7 +32,7 @@ Generated bindings are application files, not a replacement for the client packa
 
 ## Start with an existing contract
 
-The [TypeScript quickstart](/get-started/typescript/) reads Devnet's native-token contract using its supplied binding and address. [Read contract data](/typescript/reads/) uses the same checkpoint, so you can learn the application APIs without first writing a contract.
+The [TypeScript quickstart](/get-started/typescript/) reads Futurenet's native-token contract using its supplied binding and address. [Read contract data](/typescript/reads/) uses the same checkpoint, so you can learn the application APIs without first writing a contract.
 
 For a custom contract, obtain its generated bindings, deployment address, and network from its author. [Use contract bindings](/tools/typescript-bindings/) explains how those pieces fit.
 

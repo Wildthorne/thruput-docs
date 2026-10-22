@@ -43,13 +43,16 @@ See [Project structure](/contracts/project-structure/) for the complete layout a
 
 ## Select a network
 
-The scaffold selects the local profile by default. Inspect the inherited Devnet settings before deploying:
+New projects omit `default_profile` and follow your global selection. After
+`thruput config use futurenet --global`, new projects use Futurenet. Inspect
+the selected profile before deploying:
 
 ```bash
-thruput config get devnet --sources
+thruput config get --sources
 ```
 
-Use `--profile devnet` on deployments and calls to select that network. Builds and native/artifact tests run on your machine regardless of the profile. See [Profiles and networks](/cli/configuration/).
+Use `thruput config use futurenet --project` to set a project override, or
+`--profile futurenet` for one command. Builds and native/artifact tests run on your machine regardless of the profile. See [Profiles and networks](/cli/configuration/).
 
 ## Work in a Cargo workspace
 

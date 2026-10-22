@@ -5,7 +5,7 @@ sidebar:
   label: Roadmap
 ---
 
-These are candidate improvements to Stellar Thruput, roughly ordered by what they could unblock. The order is provisional. Scope and priorities can change as people build on Devnet; there are no committed delivery dates.
+These are candidate improvements to Stellar Thruput, roughly ordered by what they could unblock. The order is provisional. Scope and priorities can change as people build on Futurenet; there are no committed delivery dates.
 
 Last reviewed: October 21, 2026.
 
@@ -21,7 +21,7 @@ Failures inside wallet or other nested contract calls can be difficult to locate
 
 ### State preserving upgrades
 
-Supported upgrade paths and migration tooling would reduce the need to recreate applications after network changes. This work is deferred. Devnet can still reset, as described in [Get Started](/get-started/). Upgrade fixtures, compatibility tests, and operator feedback would help define the supported paths.
+Supported upgrade paths and migration tooling would reduce the need to recreate applications after network changes. This work is deferred. Futurenet can still reset, as described in [Get Started](/get-started/). Upgrade fixtures, compatibility tests, and operator feedback would help define the supported paths.
 
 ### Sharded state storage
 

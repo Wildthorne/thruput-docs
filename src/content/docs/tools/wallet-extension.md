@@ -5,6 +5,9 @@ description: Install the wallet for Stellar Thruput in Chrome, create a test wal
 
 The Stellar Thruput wallet extension supports Devnet and Localnet. It appears as **Thruput Wallet** in Chrome. The prebuilt download needs no Node.js, Rust, or package-registry access. Use a test wallet for development.
 
+The hosted network is now called Futurenet. The wallet extension and the
+screenshots below still use the Devnet label.
+
 ## Download and extract
 
 [Download Thruput Wallet](https://groundhog-public-release-artifacts-017820684264.s3.us-west-2.amazonaws.com/wallet/f877c655c6778b195a651c61cc8e6f2da055d2bba33f621a9841a76f81fe0c80/thruput-wallet.zip) · [SHA-256 checksum](https://groundhog-public-release-artifacts-017820684264.s3.us-west-2.amazonaws.com/wallet/f877c655c6778b195a651c61cc8e6f2da055d2bba33f621a9841a76f81fe0c80/SHA256SUMS)

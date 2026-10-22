@@ -37,7 +37,7 @@ Confirm the package, toolchain, and features. In a workspace, use `-p PACKAGE`. 
 | Unexpected view result | Check address, interface/spec, read height, and simulated caller |
 
 ```bash
-thruput tx show TX_HASH --profile devnet
+thruput tx show TX_HASH --profile futurenet
 ```
 
 See [Transaction Lifecycle](/how-it-works/transaction-lifecycle/#outcomes-to-distinguish) for outcomes and [CLI troubleshooting](/cli/troubleshooting/) for configuration checks.

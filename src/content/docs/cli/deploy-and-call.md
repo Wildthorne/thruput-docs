@@ -3,14 +3,14 @@ title: Deploy and call
 description: Deploy an artifact, fund its storage, call methods, and read committed state.
 ---
 
-Run these commands in a contract project with a built artifact. Deployment and calls need a funded account; estimating needs no signing key. Select the intended [profile](/cli/configuration/) explicitly. The examples use Devnet and the scaffolded counter's methods.
+Run these commands in a contract project with a built artifact. Deployment and calls need a funded account; estimating needs no signing key. Select the intended [profile](/cli/configuration/) explicitly. The examples use Futurenet and the scaffolded counter's methods.
 
 ## Estimate deployment funding
 
 ```bash
 thruput build
-thruput deploy --estimate --profile devnet
-thruput deploy --estimate --profile devnet --json
+thruput deploy --estimate --profile futurenet
+thruput deploy --estimate --profile futurenet --json
 ```
 
 The estimate reads the network's authoritative execution rules and storage prices without signing or submitting. It checks the artifact, code, and memory limits and assumes a fresh, unfunded contract address. Unlike `--dry-run`, it does not prepare a signed transaction.
@@ -27,7 +27,7 @@ Missing authoritative rules or prices produce an error, not a zero-cost estimate
 For deployment without initialization, the CLI can read and transfer the minimum directly:
 
 ```bash
-thruput deploy --profile devnet --fund minimum
+thruput deploy --profile futurenet --fund minimum
 ```
 
 The minimum leaves **zero free contract balance** for further storage. It excludes initializer writes, later storage growth, the sender's replay storage, and the sender's scheduling capacity. `--fund minimum` cannot be combined with `--init`. Use an explicit total amount when initialization or later calls need storage, as in the [counter guide](/tutorials/build-a-counter/#build-deploy-and-initialize).
@@ -36,7 +36,7 @@ The minimum leaves **zero free contract balance** for further storage. It exclud
 
 ```bash
 thruput build
-thruput deploy --profile devnet --fund 10
+thruput deploy --profile futurenet --fund 10
 ```
 
 Confirm the deployment. The CLI waits for its result, prints the deployed address, and saves an alias using the package name. For a project named `my-counter`, later commands can use that alias instead of the address.
@@ -50,7 +50,7 @@ At a workspace root, use `-p PACKAGE`. Use `--artifact PATH` to select an artifa
 For a new deployment that initializes the counter in the same transaction, use this instead:
 
 ```bash
-thruput deploy --profile devnet --fund 10 \
+thruput deploy --profile futurenet --fund 10 \
   --init initialize --init-arg 10
 ```
 
@@ -63,7 +63,7 @@ Initialization is an ordinary contract method. The contract must enforce one-tim
 For a counter that has been deployed and initialized:
 
 ```bash
-thruput call my-counter increment 5 --profile devnet
+thruput call my-counter increment 5 --profile futurenet
 ```
 
 This signs and submits a transaction. Method names and typed arguments use the contract spec. Without metadata, an explicit entrypoint and raw calldata are required; use generated metadata for normal development.
@@ -73,7 +73,7 @@ Use `--gas-limit` when the call needs a different execution budget. The sender m
 ## Read without submitting
 
 ```bash
-thruput view my-counter get --profile devnet
+thruput view my-counter get --profile futurenet
 ```
 
 `view` runs a sandboxed call against committed state. It does not submit a transaction. Use `--from ADDRESS` when a read needs a simulated caller; this does not prove control of that address.
@@ -83,8 +83,8 @@ thruput view my-counter get --profile devnet
 ## Prepare without broadcasting
 
 ```bash
-thruput deploy --profile devnet --fund 10 --dry-run
-thruput call my-counter increment 5 --profile devnet --dry-run
+thruput deploy --profile futurenet --fund 10 --dry-run
+thruput call my-counter increment 5 --profile futurenet --dry-run
 ```
 
 A dry run prepares and signs a transaction but does not submit it. It still needs the selected key and network access. It is not a simulation of the state change and does not prove that execution will succeed.
@@ -94,7 +94,7 @@ A dry run prepares and signs a transaction but does not submit it. It still need
 Keep the transaction hash and original network if submission or receipt observation fails:
 
 ```bash
-thruput tx show TX_HASH --profile devnet
+thruput tx show TX_HASH --profile futurenet
 ```
 
 A timeout or `unknown` status does not prove that the transaction failed. Repeating a deployment creates a new nonce and predicted address. Inspect the original transaction before deciding to submit a new operation. See [Inspect transactions and events](/cli/transactions/).

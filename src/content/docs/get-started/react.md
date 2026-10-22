@@ -1,9 +1,9 @@
 ---
 title: React quickstart
-description: Display live Devnet contract data in React with a typed query and a refresh action.
+description: Display live Futurenet contract data in React with a typed query and a refresh action.
 ---
 
-Build a React page that reads the native token's total supply from Devnet and refreshes it on demand. This experimental token has no monetary value. You do not need a wallet, the CLI, or your own contract.
+Build a React page that reads the native token's total supply from Futurenet and refreshes it on demand. This experimental token has no monetary value. You do not need a wallet, the CLI, or your own contract.
 
 ## 1. Create the application
 
@@ -33,7 +33,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import App from "./App";
 
 const root = createRoot(document.getElementById("root")!);
-root.render(<p>Connecting to Devnet…</p>);
+root.render(<p>Connecting to Futurenet…</p>);
 
 async function start() {
   const client = await createThruputClient({ cluster: devnet() });
@@ -50,7 +50,7 @@ async function start() {
 
 start().catch((error: unknown) => {
   root.render(
-    <p role="alert">{error instanceof Error ? error.message : "Could not connect to Devnet"}</p>,
+    <p role="alert">{error instanceof Error ? error.message : "Could not connect to Futurenet"}</p>,
   );
 });
 ```
@@ -76,7 +76,7 @@ export default function App() {
 
   return (
     <main>
-      <h1>Native token on Devnet</h1>
+      <h1>Native token on Futurenet</h1>
       {supply.isPending && <p>Reading the contract…</p>}
       {supply.error && <p role="alert">{supply.error.message}</p>}
       {supply.data && (
@@ -117,7 +117,7 @@ See [Read contract data](/react/reads/) for arguments and query behavior, or [Co
 Build the Stellar Thruput React quickstart:
 https://thruput.network/docs/get-started/react/
 Use a React TypeScript Vite project, the latest published Stellar Thruput
-packages, and hosted Devnet. Configure package access through my environment.
+packages, and hosted Futurenet. Configure package access through my environment.
 Display the native-token total supply and its read height with useContractView.
 Include loading and error states and a Refresh button. Run the build
 and verify the actual page result. No CLI, contract deployment, or wallet

@@ -1,9 +1,9 @@
 ---
 title: Consume the Firehose
-description: Connect to the hosted devnet firehose from a browser or Node, acknowledge blocks, and resume from durable progress.
+description: Connect to the hosted Futurenet firehose from a browser or Node, acknowledge blocks, and resume from durable progress.
 ---
 
-The hosted devnet firehose is `wss://firehose.thruput.network`. It carries public chain data without authentication. It is experimental and has no SLA.
+The hosted Futurenet firehose is `wss://firehose.thruput.network`. It carries public chain data without authentication. It is experimental and has no SLA.
 
 Use it for whole-block push delivery and bounded replay. Each block contains exact stored `EventIndexerPulledBlock` XDR bytes, transported as hex. Saving these bytes does not verify their commitments. Decode and verify with compatible protocol bindings if your application requires that assurance.
 
@@ -106,7 +106,7 @@ On `below_window`, restore application state from another source or explicitly a
 
 ## Keep up with delivery
 
-On the hosted devnet the live send plus ACK deadline is 60 seconds. A full live queue or expired live deadline demotes the subscriber to archive catch-up. An outstanding operation gets one additional 60-second catch-up deadline before `catchup_timeout`. Growing lag over the 120-second progress window terminates with `catchup_falling_behind`.
+On the hosted Futurenet the live send plus ACK deadline is 60 seconds. A full live queue or expired live deadline demotes the subscriber to archive catch-up. An outstanding operation gets one additional 60-second catch-up deadline before `catchup_timeout`. Growing lag over the 120-second progress window terminates with `catchup_falling_behind`.
 
 Blocks can be up to about 16 MB (about 32 MB of hex). A client must sustain roughly the chain's record rate to keep up during a large-block burst; one that cannot falls behind and is closed with `catchup_falling_behind`, and can resume from its saved cursor.
 

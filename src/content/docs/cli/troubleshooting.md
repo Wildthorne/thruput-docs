@@ -7,8 +7,8 @@ Start with the command's error and the selected environment:
 
 ```bash
 thruput --version
-thruput status --profile devnet
-thruput config get devnet --sources
+thruput status --profile futurenet
+thruput config get futurenet --sources
 ```
 
 For local work, use `--profile local`. `status` can exit nonzero when it finds warnings; inspect the findings rather than assuming the report itself failed.

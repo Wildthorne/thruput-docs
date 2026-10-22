@@ -148,7 +148,7 @@ thruput build -p swap-router
 cargo test -p swap-driver -p swap-router -p swap-factory --features guest_test --locked
 ```
 
-`guest_test` runs the scenarios against the compiled RV32 implementations in the SDK test environment. It does not start a browser application or submit to Devnet.
+`guest_test` runs the scenarios against the compiled RV32 implementations in the SDK test environment. It does not start a browser application or submit to Futurenet.
 
 **Checkpoint:** you have built the AMM and verified pool creation, liquidity, swaps, and failure behavior through native and guest execution. The repository also contains an application under `apps/swap`; this guide focuses on the contract suite.
 

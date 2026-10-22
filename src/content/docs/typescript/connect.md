@@ -1,11 +1,11 @@
 ---
 title: Connect to a network
-description: Create a public client, select Devnet or a local endpoint, and check network identity.
+description: Create a public client, select Futurenet or a local endpoint, and check network identity.
 ---
 
 A public client performs RPC reads without signing. Create one per application network and share it across contract bindings and wallet clients.
 
-## Connect to Devnet
+## Connect to Futurenet
 
 Create `src/client.ts`:
 
@@ -40,7 +40,8 @@ No wallet permission or account funding is required.
 
 ## Select another endpoint
 
-`devnet({ rpcUrl })` overrides the Devnet endpoint. For a local node, replace the cluster with `localnet()`:
+The SDK helper is still named `devnet()` for compatibility.
+`devnet({ rpcUrl })` overrides the Futurenet endpoint. For a local node, replace the cluster with `localnet()`:
 
 ```ts
 import { createThruputClient, localnet } from "@thruputchain/client";
@@ -54,7 +55,7 @@ Use `defineCluster()` for a reusable custom descriptor. `mainnet()` requires an 
 
 ## Pin a network identity
 
-Devnet is unpinned by default. To require a specific deployment, provide the trusted hash from your environment:
+Futurenet is unpinned by default. To require a specific deployment, provide the trusted hash from your environment:
 
 ```ts
 import { createThruputClient, devnet, hashFromHex, networkHash } from "@thruputchain/client";
@@ -66,7 +67,7 @@ const client = await createThruputClient({
 });
 ```
 
-An identity mismatch throws `NetworkMismatchError`. A Devnet reset can change the network hash. Update the trusted configuration deliberately rather than accepting a wallet-supplied hash as your application's network.
+An identity mismatch throws `NetworkMismatchError`. A Futurenet reset can change the network hash. Update the trusted configuration deliberately rather than accepting a wallet-supplied hash as your application's network.
 
 ## Configure transport behavior
 

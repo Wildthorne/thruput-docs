@@ -1,6 +1,6 @@
 ---
 title: Setup
-description: Install the React integration and connect its wallet and query providers to Devnet.
+description: Install the React integration and connect its wallet and query providers to Futurenet.
 ---
 
 Use the current Node.js LTS release. For a new app, create a React TypeScript project:
@@ -31,7 +31,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import App from "./App";
 
 const root = createRoot(document.getElementById("root")!);
-root.render(<p>Connecting to Devnet…</p>);
+root.render(<p>Connecting to Futurenet…</p>);
 
 async function start() {
   const client = await createThruputClient({ cluster: devnet() });
@@ -48,7 +48,7 @@ async function start() {
 
 void start().catch((error: unknown) => {
   root.render(
-    <p role="alert">{error instanceof Error ? error.message : "Could not connect to Devnet"}</p>,
+    <p role="alert">{error instanceof Error ? error.message : "Could not connect to Futurenet"}</p>,
   );
 });
 ```

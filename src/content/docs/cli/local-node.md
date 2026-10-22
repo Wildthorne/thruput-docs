@@ -3,7 +3,7 @@ title: Run a local node
 description: Start an isolated development chain, select its accounts, and preserve or inspect local state.
 ---
 
-Use a local node for disposable development and RPC tests. For a first hosted deployment, follow the [Devnet contract quickstart](/get-started/contract/).
+Use a local node for disposable development and RPC tests. For a first hosted deployment, follow the [Futurenet contract quickstart](/get-started/contract/).
 
 ## Start the node
 
@@ -14,6 +14,10 @@ thruput node
 Keep this terminal running. The CLI starts its managed `hog-devnode` and exposes JSON-RPC at `http://127.0.0.1:9545` by default. If the selected runtime is missing, the CLI can download its verified bundle.
 
 The CLI records the active endpoint and runtime manifest so commands using a local profile can find the node.
+
+The node funds the selected project/global key. If local and Futurenet profiles
+use different keys, run `THRUPUT_PROFILE=local thruput node` so startup uses the
+key selected by local commands. `--key NAME` explicitly selects a stored key.
 
 ## Select a local account
 

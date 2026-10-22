@@ -18,7 +18,7 @@ The library manages one configured application network and one selected wallet c
 
 ## Start with a read
 
-The [React quickstart](/get-started/react/) displays Devnet's native-token supply using the supplied ERC-20 binding and contract address. You do not need Rust, the CLI, or your own deployment.
+The [React quickstart](/get-started/react/) displays Futurenet's native-token supply using the supplied ERC-20 binding and contract address. You do not need Rust, the CLI, or your own deployment.
 
 For an existing app, follow [Setup](/react/setup/) and [Providers and clients](/react/providers/). Then use [Read contract data](/react/reads/) or [Read balances](/react/balances/). [Cache and refresh data](/react/queries/) explains the query behavior shared by those hooks.
 

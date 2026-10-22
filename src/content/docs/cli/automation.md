@@ -16,7 +16,7 @@ thruput init --non-interactive --generate-key
 ## Request structured output
 
 ```bash
-thruput config get devnet --json
+thruput config get futurenet --json
 thruput test --json
 ```
 
@@ -31,7 +31,7 @@ With `test --watch --json`, each completed run is a separate JSON record. A long
 For a deployment you intend to submit:
 
 ```bash
-thruput deploy --profile devnet --fund 10 --non-interactive --force --json
+thruput deploy --profile futurenet --fund 10 --non-interactive --force --json
 ```
 
 For preparation without submission, use `--dry-run` instead. Neither `--quiet` nor `--json` substitutes for confirmation.

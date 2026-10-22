@@ -9,7 +9,7 @@ Build contract logic with the Rust SDK. Use this section for storage choices, au
 
 ## Write your first contract
 
-Follow the [contract quickstart](/get-started/contract/) to deploy a counter on Devnet. Then read [Build a Counter](/tutorials/build-a-counter/) to understand its code and tests, or [Project structure](/contracts/project-structure/) to find the generated files.
+Follow the [contract quickstart](/get-started/contract/) to deploy a counter on Futurenet. Then read [Build a Counter](/tutorials/build-a-counter/) to understand its code and tests, or [Project structure](/contracts/project-structure/) to find the generated files.
 
 Use the [CLI section](/cli/) for build and deployment commands.
 

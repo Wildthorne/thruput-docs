@@ -1,11 +1,11 @@
 ---
 title: Firehose API
-description: Hosted devnet WebSocket subscriptions for committed block records, acknowledgements, and resumable replay.
+description: Hosted Futurenet WebSocket subscriptions for committed block records, acknowledgements, and resumable replay.
 ---
 
 | Surface | Contract |
 | --- | --- |
-| Hosted devnet endpoint | `wss://firehose.thruput.network` |
+| Hosted Futurenet endpoint | `wss://firehose.thruput.network` |
 | Transport | JSON-RPC 2.0 over WebSocket with TLS. Browsers connect directly without a CORS preflight |
 | Access | No authentication. Public chain data. Experimental, no SLA |
 | Usage | [Consume the Firehose](/guides/consume-the-firehose/) |
@@ -113,7 +113,7 @@ description: Hosted devnet WebSocket subscriptions for committed block records, 
 | Largest deliverable block record | 20 MiB |
 | Serve request window | 42,428 blocks |
 
-| Service flag | Release default | Hosted devnet | Effect |
+| Service flag | Release default | Hosted Futurenet | Effect |
 | --- | ---: | ---: | --- |
 | `--max-subscribers` | `64` | `12` | Global subscription cap; also connection cap |
 | `--subscriber-queue` | `8` | `8` | Maximum queued live blocks per subscriber |

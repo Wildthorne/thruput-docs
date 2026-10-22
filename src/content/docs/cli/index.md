@@ -14,7 +14,7 @@ The CLI works with two kinds of configuration:
 - A **project** contains your Rust contract, tests, and build settings.
 - A **profile** selects the network and identity used for an interaction.
 
-This lets you build a contract once and use profiles to target a local node or Devnet. You can also use network commands without creating a contract project.
+This lets you build a contract once and use profiles to target a local node or Futurenet. You can also use network commands without creating a contract project.
 
 ## The development loop
 
@@ -27,7 +27,7 @@ This lets you build a contract once and use profiles to target a local node or D
 | Deploy a contract | `thruput deploy` |
 | Call a deployed contract | `thruput call` |
 
-These are command names, not a setup script. Start with [installation](/cli/install/), then follow the [CLI quickstart](/get-started/cli/) for a first Devnet interaction.
+These are command names, not a setup script. Start with [installation](/cli/install/), then follow the [CLI quickstart](/get-started/cli/) for a first Futurenet interaction.
 
 The [contract quickstart](/get-started/contract/) adds deployment and calls. Use [Run a local node](/cli/local-node/) when you want a disposable node on your machine.
 
