@@ -10,80 +10,88 @@ Submission, commitment, execution, and decoding are separate steps. Keep the tra
 Use the public client from [Connect to a network](/typescript/connect/). Create `src/status.ts`:
 
 ```ts
-import { ExecResult, hashFromHex } from "@thruputchain/client";
+import { hashFromBase58 } from "@thruputchain/client";
 import { client } from "./client.js";
 
 const text = process.env.THRUPUT_TX_HASH;
-if (!text) throw new Error("Set THRUPUT_TX_HASH to the submitted transaction hash");
-const hash = hashFromHex(text);
-const status = await client.getTransactionStatus(hash);
+if (!text) throw new Error("Set THRUPUT_TX_HASH to the base58 transaction hash");
+const transactionHash = hashFromBase58(text);
+const status = await client.getTransactionStatus({ transactionHash });
+if (!("status" in status)) throw new Error("Unsupported status from a newer server");
 
 if (status.status === "committed") {
-  const receipt = await client.getTransactionReceipt(hash);
+  const receipt = await client.getTransactionReceipt({ transactionHash });
   if (!receipt) throw new Error("The committed receipt is not available from this endpoint");
-  console.log("Execution succeeded:", receipt.execResult === ExecResult.ExecResultOK);
-  console.log("Block:", receipt.height.toString());
+  const { execution } = receipt;
+  console.log("Execution succeeded:", "result" in execution && execution.result === "return");
+  console.log("Block:", receipt.blockHeight.toString());
 } else {
   console.log("Status:", status.status);
 }
 ```
 
-This performs one status check. `waitForTransactionReceipt(hash)` polls for a receipt, but does not itself require successful execution. Check `execResult` or use `waitForExecution(client, hash)` to require success.
+This performs one status check. `client.waitForTransactionReceipt(hash)` polls for a receipt, but does not itself require successful execution. Check `receipt.execution.result` or use `waitForExecution(client, hash)` to require success.
 
 ## Interpret status
 
 | Status | Application meaning |
 | --- | --- |
-| `pending` | The gateway knows the transaction; keep waiting |
-| `committed` | Fetch the receipt and check execution; status `height` can be absent until indexing supplies it |
-| `invalid` | Show the reported reason |
+| `pending` | The scheduler has the transaction; keep waiting |
+| `committed` | Fetch the receipt and check execution; `blockHeight` is always present |
 | `recentFailure` | Advisory failure of an attempt; the transaction can still commit |
 | `retry` | Scheduler processing failed; resubmitting the same signed transaction may succeed |
 | `dropped` | Scheduler processing failed permanently; modify the transaction before resubmitting |
 | `unknown` or `other` | No conclusive successful or failed execution result |
 
+`pending`, `retry`, and `dropped` can include an advisory `recentFailure` diagnostic. It can describe an earlier attempt. A value from a newer server arrives as `UnsupportedRpcValue`. See [`getTransactionStatus`](/reference/json-rpc-api/#gettransactionstatus) for the wire fields.
+
 A timeout or canceled observation does not cancel onchain execution. Query the original hash on the original network rather than automatically signing a replacement.
 
 ## Handle scheduler processing errors
 
-`waitForTransactionReceipt()` throws `TransactionProcessingError` on `retry` or `dropped`. It stops polling and never resubmits. Keep the hash, status, and scheduler diagnostics:
+`waitForTransactionReceipt()` keeps polling through `retry`, `dropped`, and `recentFailure` statuses, and it never resubmits. It reports each observed status through `onStatus`. When observation stops, it throws `TransactionReceiptObservationError`, or its subclass `TransactionReceiptTimeoutError`:
 
 ```ts
-import { TransactionProcessingError } from "@thruputchain/client";
+import { TransactionReceiptObservationError } from "@thruputchain/client";
 
 try {
-  const receipt = await client.waitForTransactionReceipt(hash);
-  console.log("Execution succeeded:", receipt.execResult === ExecResult.ExecResultOK);
+  const receipt = await client.waitForTransactionReceipt(transactionHash, {
+    onStatus(status) {
+      if ("error" in status) console.warn(status.status, status.error.source, status.error.code);
+    },
+  });
+  console.log("Committed at block:", receipt.blockHeight.toString());
 } catch (error) {
-  if (error instanceof TransactionProcessingError) {
-    console.error({ txHash: error.txHash, status: error.status, error: error.error });
+  if (error instanceof TransactionReceiptObservationError) {
+    console.error({ lastStatus: error.lastStatus, knownCommitment: error.knownCommitment });
   }
   throw error;
 }
 ```
 
-`error.error` is a `SchedulerTransactionError`: `source` is `auth`, `scheduler`, `executor`, or `other`, and `code` is a signed 32-bit number. Interpret the code using that source's protocol error enum. The client maps unrecognized sources to `other` and preserves the code.
+`error` on a `retry` or `dropped` status is a `SchedulerTransactionError`: `source` is `auth`, `scheduler`, `executor`, or `other`, and `code` is a signed 32-bit number. Interpret the code using that source's protocol error enum. To stop waiting early, pass a `signal` and abort it. Neither a timeout nor cancellation proves the transaction did not execute.
 
 ## Handle execution-helper errors
 
 | Error | What happened | What to retain |
 | --- | --- | --- |
 | `TransactionExecutionError` | Committed execution failed | `receipt` |
-| `TransactionObservationError` | Observation failed after submission was attempted | `txHash`, `cause`, and any `submissionCause` |
+| `TransactionObservationError` | Submission or observation stopped; `phase` is `beforeSubmission`, `submission`, or `observation` | `transactionHash`, `submission` (signed bytes and network), `cause`, and any `submissionCause` or `knownCommitment` |
 | `ExecutionDecodeError` | Execution succeeded, but child return decoding failed | Successful `receipt` and decoding cause |
 | `ExecutionReturnUnavailableError` | Execution succeeded, but the wallet did not provide child returns | Successful `receipt` |
 
 For example, classify errors from a wallet execution helper:
 
 ```ts
-import { TransactionExecutionError, TransactionObservationError, toHex0x } from "@thruputchain/client";
+import { TransactionExecutionError, TransactionObservationError, toBase58 } from "@thruputchain/client";
 
 export function describeExecutionError(error: unknown): string {
   if (error instanceof TransactionObservationError) {
-    return `Check transaction ${toHex0x(error.txHash)} on its original network`;
+    return `Check transaction ${toBase58(error.transactionHash)} on its original network`;
   }
   if (error instanceof TransactionExecutionError) {
-    return `Committed execution failed: ${error.receipt.execResult}`;
+    const { execution } = error.receipt;
+    return `Committed execution failed: ${"result" in execution ? execution.result : "unsupported result"}`;
   }
   return error instanceof Error ? error.message : "Transaction operation failed";
 }
@@ -99,6 +107,6 @@ Do not decode a root abort with a child method's exception schema merely because
 
 ## Restore application state
 
-After a reload, use the saved hash and network to resume public observation. This does not require the wallet to remain connected. A provider's `onSigned` callback provides the pre-submission record; see [Send transactions](/typescript/transactions/#send-through-a-browser-wallet).
+After a reload, use the saved hash and network to resume public observation. Decode a saved base58 hash with `hashFromBase58`. This does not require the wallet to remain connected. A provider's `onSigned` callback provides the pre-submission record; see [Send transactions](/typescript/transactions/#send-through-a-browser-wallet).
 
 For protocol-level outcomes, see [Transaction Lifecycle](/how-it-works/transaction-lifecycle/).

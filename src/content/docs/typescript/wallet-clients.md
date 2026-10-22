@@ -68,7 +68,7 @@ The wallet is a separate object. It retains public-client operations and adds si
 
 For a source-address account, `createWalletClient` provides transaction preparation and signing, but does not infer how its account contract wraps application calls. Supply an `invocationAdapter` that matches that contract to obtain the execution helpers. Do not select an adapter from the authorization model alone. Custom implementations use `defineWalletInvocationAdapter`; see [Client API reference](/tools/typescript-sdk/#choose-an-account-model).
 
-A cluster-aware client supplies its validated signing network hash. A transport-only client requires an explicit `networkHash` when creating the wallet client.
+A cluster-aware client supplies its validated signing network hash. A transport-only client requires an explicit `networkHash` when creating the wallet client, and it must match the endpoint's network.
 
 ## Bind a browser wallet provider
 
@@ -87,4 +87,4 @@ const wallet = createProviderWalletClient({
 
 `selectedAccount` is the provider's wire `WalletAccount`, containing its address, public key, and derivation nonce. It is not the signer-backed account object returned by the constructors above. The provider integration supports pubkey accounts and DefaultWallet behavior; it does not expose a raw signer.
 
-`expectedNetworkHash` is the application's trusted network identity in provider format, without `0x`. The factory does not request connection permission. Follow [Connect a wallet](/tools/wallet-integration/) for discovery, account selection, and session cleanup.
+`expectedNetworkHash` is the application's trusted network identity in provider format: unprefixed base58. It must match the client's network. The factory does not request connection permission. Follow [Connect a wallet](/tools/wallet-integration/) for discovery, account selection, and session cleanup.

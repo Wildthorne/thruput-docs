@@ -70,7 +70,7 @@ import { useContractView } from "@thruputchain/react";
 export default function App() {
   const supply = useContractView({
     method: ERC20.v0_1.totalSupply,
-    contract: HOG_ADDRESS,
+    address: HOG_ADDRESS,
     args: undefined,
   });
 
@@ -82,7 +82,7 @@ export default function App() {
       {supply.data && (
         <>
           <p>Supply: {formatUnits(supply.data.value, 7)} native tokens</p>
-          <p>Read at block: {supply.data.height.toString()}</p>
+          <p>Read at block: {supply.data.stateBlockHeight.toString()}</p>
         </>
       )}
       <button disabled={supply.isFetching} onClick={() => void supply.refetch()}>

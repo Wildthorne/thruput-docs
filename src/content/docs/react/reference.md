@@ -42,8 +42,8 @@ description: Provider props, wallet hooks, query hooks, transaction hooks, and r
 | --- | --- |
 | `providers` / `provider` | Discovered providers and selected provider |
 | `session` | Validated network and authorized accounts, or `null` |
-| `account` / `address` | Selected wire account and canonical hex address, or `null` |
-| `networkHash` | Expected application network, without `0x` |
+| `account` / `address` | Selected wire account and canonical base58 address, or `null` |
+| `networkHash` | Expected application network in unprefixed base58 |
 | `status` | `disconnected`, `connecting`, `connected`, `disconnecting`, `wrongNetwork` |
 | `error` | Latest connection/selection error, or `null` |
 | `connect()` / `disconnect()` | `Promise<void>`; request failures appear in `error` |
@@ -55,11 +55,11 @@ description: Provider props, wallet hooks, query hooks, transaction hooks, and r
 
 | API | Inputs / result |
 | --- | --- |
-| `useContractView(input)` | Generated `method`, `contract`, typed `args`, optional `caller`, `enabled`, `staleTime` |
+| `useContractView(input)` | Generated `method`, contract `address`, typed `args`, optional `caller`, `enabled`, `staleTime` |
 | `contractViewQueryOptions(input)` | Same inputs plus explicit initialized `client`; reusable TanStack options |
-| Result | Query state and `queryKey`; data is `ContractView<R>` with `value`, `height`, and `events` |
+| Result | Query state and `queryKey`; data is `ContractView<R>` with `value`, `stateBlockHeight`, `gasUsed`, and `events` |
 | Defaults | `enabled: true`, `staleTime: 0`; other query behavior follows the QueryClient |
-| Key | Client/network, decoder identity, contract, entrypoint, encoded arguments, caller |
+| Key | Client/network, decoder identity, contract address, entrypoint, encoded arguments, caller |
 | Cancellation | Abort the view request and discard late results |
 | Validation | Arguments are encoded while constructing the query, even when disabled |
 | Usage | [Read contract data](/react/reads/) |
@@ -70,8 +70,8 @@ description: Provider props, wallet hooks, query hooks, transaction hooks, and r
 | --- | --- |
 | `useBalance({ address?, query? }?)` | Native-token balance |
 | `useTokenBalance({ token?, address?, query? })` | Standard ERC-20 balance |
-| `BalanceAddress` | Hex string or SDK-branded address bytes |
-| `BalanceData` | `{ rawBalance: bigint; height: bigint }` |
+| `BalanceAddress` | Base58 string or SDK-branded address bytes |
+| `BalanceData` | `{ rawBalance: bigint; stateBlockHeight: bigint }` |
 | Hook result | TanStack Query state plus `queryKey`; `query.select` can change observer data type |
 | Omitted `address` | Connected account on the application's network |
 | Explicit address | Read without wallet permission |
@@ -101,7 +101,7 @@ description: Provider props, wallet hooks, query hooks, transaction hooks, and r
 | `ExecuteVariables.options` | Required `onSigned`; optional `wait` observation controls |
 | `mutate(variables)` | Start from an event handler; expose mutation state |
 | `mutateAsync(variables)` | Await execution; rejects on failure |
-| Successful data | `{ txHash, receipt }` after successful committed execution |
+| Successful data | `{ transactionHash, receipt }` after successful committed execution |
 | Retry | Always disabled by the hook |
 | Invalidation | Application-owned; no automatic balance refresh |
 | Typed child results | Use the signing client's `executeCallsAndWait` |
@@ -112,7 +112,7 @@ description: Provider props, wallet hooks, query hooks, transaction hooks, and r
 | API / option | Behavior |
 | --- | --- |
 | `useWaitForTransactionReceipt({ hash?, wait? }?)` | Public observation; wallet connection not required |
-| `hash` | Hex string; `null` or `undefined` skips fetching |
+| `hash` | Base58 string; `null` or `undefined` skips fetching |
 | `wait.timeoutMs` / `pollingIntervalMs` | SDK observation settings; configure consistently for the same hash |
 | Data | `TransactionReceipt`, including failed committed execution |
 | Query error | Observation failure, not proof of failed execution |

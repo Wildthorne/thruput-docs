@@ -61,7 +61,7 @@ export default defineConfig({
 
 ```tsx title="src/main.tsx"
 import { createRoot } from "react-dom/client";
-import { createThruputClient, defineCluster, hashFromHex, networkHash } from "@thruputchain/client";
+import { createThruputClient, defineCluster, hashFromBase58, networkHash } from "@thruputchain/client";
 import { WalletProvider } from "@thruputchain/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { App } from "./App";
@@ -78,7 +78,7 @@ async function start() {
   const client = await createThruputClient({
     cluster: defineCluster({
       rpcUrl: new URL("/thruput-rpc", location.origin).href,
-      networkHash: networkHash(hashFromHex(config.networkId)),
+      networkHash: networkHash(hashFromBase58(config.networkId)),
       capabilities: [],
     }),
   });
@@ -113,7 +113,10 @@ Create a small shared update module. It retains the hash before submitting and c
 
 ```ts title="src/updates.ts"
 import { useRef, useState } from "react";
-import { deserializeSignedTransaction, fromHex0x, hashSignedTransaction, toHex0x, type ConnectedThruputClient } from "@thruputchain/client";
+import {
+  deserializeSignedTransaction, fromHex0x, hashSignedTransaction, serializeSignedTransaction, toBase58,
+  type ConnectedThruputClient,
+} from "@thruputchain/client";
 import { parseSignTransactionResult } from "@thruputchain/client/provider";
 import { useClient, useWaitForTransactionReceipt } from "@thruputchain/react";
 
@@ -123,15 +126,15 @@ export type Pending = { hash: string; signedTransaction: string; account: string
 export type Prepared = { record: Pending; submit(): Promise<unknown> };
 
 export async function archiveExpiredUpdate(client: ConnectedThruputClient, record: Pending, key: string, storage: Pick<Storage, "setItem" | "removeItem">) {
-  if (toHex0x(client.network.networkHash) !== record.networkId) throw new Error("Select the original network before recovery");
+  if (toBase58(client.network.networkHash) !== record.networkId) throw new Error("Select the original network before recovery");
   const signed = deserializeSignedTransaction(fromHex0x(record.signedTransaction));
   const hash = hashSignedTransaction(signed);
-  if (toHex0x(hash) !== record.hash) throw new Error("Saved transaction hash does not match its bytes");
+  if (toBase58(hash) !== record.hash) throw new Error("Saved transaction hash does not match its bytes");
   const tip = await client.getChainTip();
-  if (tip.height < signed.tx.uniquifier.block_expiry_height) throw new Error("The transaction has not expired; keep observing it");
-  if (await client.getTransactionReceipt(hash)) throw new Error("A receipt is available; check the transaction and finish it");
+  if (tip.blockHeight < signed.tx.uniquifier.block_expiry_height) throw new Error("The transaction has not expired; keep observing it");
+  if (await client.getTransactionReceipt({ transactionHash: hash })) throw new Error("A receipt is available; check the transaction and finish it");
   // Expiry prevents future inclusion, but a missing receipt does not prove it never committed.
-  storage.setItem(`${key}:archived:${record.hash}`, JSON.stringify({ ...record, outcome: "unresolved", archivedAtHeight: tip.height.toString() }));
+  storage.setItem(`${key}:archived:${record.hash}`, JSON.stringify({ ...record, outcome: "unresolved", archivedAtHeight: tip.blockHeight.toString() }));
   storage.removeItem(key);
 }
 
@@ -145,8 +148,8 @@ export async function prepareDevelopment(client: ConnectedThruputClient, config:
   if (!response.ok) throw new Error(body.error ?? "Preparation failed");
   const signed = deserializeSignedTransaction(fromHex0x(body.transaction));
   return {
-    record: { hash: toHex0x(hashSignedTransaction(signed)), signedTransaction: body.transaction, account: config.signerAddress, networkId: config.networkId },
-    submit: () => client.sendTransaction(signed),
+    record: { hash: toBase58(hashSignedTransaction(signed)), signedTransaction: body.transaction, account: config.signerAddress, networkId: config.networkId },
+    submit: () => client.sendTransaction({ signedTransaction: serializeSignedTransaction(signed) }),
   };
 }
 
@@ -203,12 +206,12 @@ export function useUpdate(config: Config) {
 }
 ```
 
-The preparer returns a signed record and a submission function. This keeps the UI independent of how the signature was obtained. A failed storage write stops before submission. A later submission error retains the hash for observation.
+The preparer returns a signed record and a submission function. This keeps the UI independent of how the signature was obtained. The record stores the hash, account, and network as base58, the same format the wallet provider and `useWaitForTransactionReceipt` use. Only the signed transaction stays `0x` hex. A failed storage write stops before submission. A later submission error retains the hash for observation.
 
 ## Build the small components
 
 ```tsx title="src/Counter.tsx"
-import { addressFromHex, ExecResult } from "@thruputchain/client";
+import { addressFromBase58 } from "@thruputchain/client";
 import { contractViewQueryOptions, useClient } from "@thruputchain/react";
 import { useQuery } from "@tanstack/react-query";
 import { Counter } from "./contracts/counter";
@@ -219,7 +222,7 @@ export function CounterPanel({ address, disabled, send }: {
 }) {
   const client = useClient();
   const counter = useQuery({
-    ...contractViewQueryOptions({ client, method: Counter.v0_1.get, contract: addressFromHex(address) }),
+    ...contractViewQueryOptions({ client, method: Counter.v0_1.get, address: addressFromBase58(address) }),
     refetchInterval: 2_000,
   });
   return <section>
@@ -232,6 +235,8 @@ export function CounterPanel({ address, disabled, send }: {
 }
 
 export function UpdateStatus({ update }: { update: ReturnType<typeof useUpdate> }) {
+  const execution = update.receipt.data?.execution;
+  const succeeded = execution !== undefined && "result" in execution && execution.result === "return";
   return <section aria-label="Transaction">
     {update.busy ? <p>Preparing or submitting…</p> : null}
     {update.error ? <p role="alert">{update.error}</p> : null}
@@ -240,7 +245,7 @@ export function UpdateStatus({ update }: { update: ReturnType<typeof useUpdate> 
       <p>Original signer: {update.pending.account}</p>
       <p>Transaction: {update.pending.hash}</p>
       {update.receipt.data ? <>
-        <p role="status">{update.receipt.data.execResult === ExecResult.ExecResultOK ? "Update committed" : "Execution failed"}</p>
+        <p role="status">{succeeded ? "Update committed" : "Execution failed"}</p>
         <button type="button" onClick={update.finish}>Finish</button>
       </> : <>
         <p>Waiting for a result. A timeout does not cancel the transaction.</p>

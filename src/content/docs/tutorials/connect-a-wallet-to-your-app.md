@@ -50,14 +50,14 @@ export function WalletControls({ busy, walletMode, disconnect }: {
 ## Add the wallet preparer
 
 ```ts title="src/wallet-update.ts"
-import { addressFromHex, gasAmount } from "@thruputchain/client";
+import { addressFromBase58, gasAmount } from "@thruputchain/client";
 import type { ProviderWalletClient } from "@thruputchain/client/wallet";
 import { Counter } from "./contracts/counter";
 import type { Config, Direction, Prepared } from "./updates";
 
 export async function prepareWallet(wallet: ProviderWalletClient, account: string, config: Config, direction: Direction): Promise<Prepared> {
   const transaction = await wallet.prepareExecution({
-    invocation: Counter.v0_1[direction].invocation(addressFromHex(config.counterAddress), gasAmount(500_000n), { amount: 1n }),
+    invocation: Counter.v0_1[direction].invocation(addressFromBase58(config.counterAddress), gasAmount(500_000n), { amount: 1n }),
     gasLimit: gasAmount(1_000_000n),
   });
   const signed = await wallet.signTransaction(transaction);
@@ -68,7 +68,7 @@ export async function prepareWallet(wallet: ProviderWalletClient, account: strin
 }
 ```
 
-The same `useUpdate` hook saves the signed record before invoking `submit`. A wallet rejection prevents submission. The application never receives the wallet's private key.
+The same `useUpdate` hook saves the signed record before invoking `submit`. The wallet returns the transaction hash in base58, the same format as the development record. A wallet rejection prevents submission. The application never receives the wallet's private key.
 
 ## Switch signing paths
 

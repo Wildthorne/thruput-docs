@@ -10,7 +10,7 @@ description: Use an explicit mutation to request approval, save signed transacti
 This component sends a small native-token transfer to an already funded recipient. The application supplies `savePending`, which must durably save the approved transaction before resolving:
 
 ```tsx
-import { gasAmount, parseUnits, toHex0x, TransactionObservationError, type ContractAddress } from "@thruputchain/client";
+import { gasAmount, parseUnits, toBase58, TransactionObservationError, type ContractAddress } from "@thruputchain/client";
 import { ERC20 } from "@thruputchain/client/contracts";
 import { HOG_ADDRESS } from "@thruputchain/protocol";
 import { useExecute, useWallet, type ExecuteVariables } from "@thruputchain/react";
@@ -45,7 +45,7 @@ export function SendHog({ receiver, savePending }: {
       </button>
       {execution.error ? <p role="alert">{execution.error.message}</p> : null}
       {unresolved ? <p>Check the saved transaction before starting another transfer.</p> : null}
-      {execution.data ? <p>Committed: {toHex0x(execution.data.txHash)}</p> : null}
+      {execution.data ? <p>Committed: {toBase58(execution.data.transactionHash)}</p> : null}
     </section>
   );
 }
@@ -57,7 +57,7 @@ The example budgets apply to this transfer, not every contract. See [gas and fun
 
 ## Save before submission
 
-`onSigned` receives signed bytes, the canonical hash, account, and original network. Await the application's durable write. A rejected callback prevents broadcast.
+`onSigned` receives the `0x` hex signed transaction, its base58 `hash`, the account, and the original base58 network hash. Await the application's durable write. A rejected callback prevents broadcast.
 
 The query cache is not the pending-transaction store. Keep the saved record available after a reload, account change, or disconnect. Use it to [observe the original transaction](/react/transaction-status/) rather than automatically signing a replacement.
 
@@ -66,7 +66,7 @@ The query cache is not the pending-transaction store. Keep the saved record avai
 | State | Meaning |
 | --- | --- |
 | `isPending` | Preparation, approval, persistence, submission, or receipt observation is in progress |
-| `data` | Successful committed execution with `txHash` and `receipt` |
+| `data` | Successful committed execution with `transactionHash` and `receipt` |
 | `error` | Inspect the error boundary; an observation failure is not proof of failed execution |
 
 Mutation retries are disabled, including when the QueryClient's defaults enable retries. A wallet change invalidates the captured signing binding; observation after broadcast can continue on the original network.

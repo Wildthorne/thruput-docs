@@ -20,7 +20,7 @@ import { client } from "./client.js";
 const hog = getContract({ binding: ERC20.v0_1, address: HOG_ADDRESS, client });
 const result = await hog.totalSupply.view({ args: undefined });
 console.log("Native-token supply:", formatUnits(result.value, 7));
-console.log("Read at block:", result.height.toString());
+console.log("Read at block:", result.stateBlockHeight.toString());
 ```
 
 ```bash
@@ -31,60 +31,60 @@ The client supplies the standard ERC-20 binding, and the protocol package suppli
 
 ## Pass arguments and caller context
 
-For an address held by your application:
+For a base58 address held by your application:
 
 ```ts
-import { addressFromHex } from "@thruputchain/client";
+import { addressFromBase58 } from "@thruputchain/client";
 
 export async function readBalance(ownerText: string, signal?: AbortSignal) {
-  const owner = addressFromHex(ownerText);
+  const owner = addressFromBase58(ownerText);
   return hog.getBalanceOf.view({ args: { addr: owner }, signal });
 }
 ```
 
-A view result includes the typed `value`, snapshot `height`, `gasUsed`, and simulated `events`. Independent reads can use different snapshots or lag a recent transaction receipt.
+A view result includes the typed `value`, snapshot `stateBlockHeight`, `gasUsed`, and simulated `events`. Independent reads can use different snapshots or lag a recent transaction receipt.
 
-Pass `caller` when the method needs a simulated caller. This changes call context; it does not prove control of that address or authorize a transaction.
+Pass `caller` when the method needs a simulated caller. Pass `assumedAuth`, such as `account.authClaim`, when the method checks authorization. Both change simulation context only. Simulation does not verify signatures, prove control of an address, or authorize a transaction.
 
 ## Read after confirmation
 
-Pass a successful receipt's `height` as `minHeight` when the read must include that committed transaction:
+Pass a successful receipt's `blockHeight` as `minStateBlockHeight` when the read must include that committed transaction:
 
 ```ts
-export async function readBalanceAtLeast(ownerText: string, minHeight: bigint, signal?: AbortSignal) {
+export async function readBalanceAtLeast(ownerText: string, minStateBlockHeight: bigint, signal?: AbortSignal) {
   return hog.getBalanceOf.view({
-    args: { addr: addressFromHex(ownerText) },
-    minHeight,
+    args: { addr: addressFromBase58(ownerText) },
+    minStateBlockHeight,
     signal,
   });
 }
 ```
 
-`minHeight` is an optional nonnegative `bigint` freshness floor, not an exact historical height. The same option works with generated `.view()`, `.viewOutcome()`, bound views, and raw `client.view()`. Omit it for an unconstrained read.
+`minStateBlockHeight` is an optional nonnegative `bigint` freshness floor, not an exact historical height. The same option works with generated `.view()`, `.viewOutcome()`, bound views, and raw `client.simulateInvocation()`. Omit it for an unconstrained read.
 
-A backend whose selected snapshot is behind returns `ViewHeightUnavailable` (`-32011`) with requested and observed heights. The request does not wait for a block or force a refresh, and the client does not poll or retry it. Keep the confirmed receipt and decide when to retry the read; this error is not a reason to repeat the write.
+A backend whose selected snapshot is behind returns error `-32012` (`NativeRpcErrorCode.StateHeightUnavailable`). Its `data.kind` is `stateHeightUnavailable`, with `requestedStateBlockHeight` and `observedStateBlockHeight`. The request does not wait for a block or force a refresh, and the client does not poll or retry it. Keep the confirmed receipt and decide when to retry the read; this error is not a reason to repeat the write.
 
 ## Read related values from one snapshot
 
 Prepare calls with `viewRequest()` and send them together through `readViews()`:
 
 ```ts
-export async function readTokenSnapshot(ownerText: string, minHeight?: bigint, signal?: AbortSignal) {
-  const owner = addressFromHex(ownerText);
+export async function readTokenSnapshot(ownerText: string, minStateBlockHeight?: bigint, signal?: AbortSignal) {
+  const owner = addressFromBase58(ownerText);
   const snapshot = await client.readViews({
     calls: [
-      ERC20.v0_1.totalSupply.viewRequest({ contract: HOG_ADDRESS }),
+      ERC20.v0_1.totalSupply.viewRequest({ address: HOG_ADDRESS }),
       ERC20.v0_1.getBalanceOf.viewRequest({
-        contract: HOG_ADDRESS,
+        address: HOG_ADDRESS,
         args: { addr: owner },
       }),
     ],
-    minHeight,
+    minStateBlockHeight,
   }, { signal });
 
   const [supply, balance] = snapshot.results;
   if (supply.kind === "return" && balance.kind === "return") {
-    console.log("Shared snapshot:", snapshot.height.toString());
+    console.log("Shared snapshot:", snapshot.stateBlockHeight.toString());
     console.log("Supply and balance:", supply.value, balance.value);
   } else {
     console.error("Read outcomes:", supply.kind, balance.kind);
@@ -95,9 +95,9 @@ export async function readTokenSnapshot(ownerText: string, minHeight?: bigint, s
 
 `viewRequest()` performs no I/O. `readViews()` returns results in input order, retaining each call's inferred return and exception types, events, and gas use. Each result is `return`, `abort`, or `fault`. Transport, freshness, and decoding failures reject the group.
 
-All calls use one committed snapshot, and simulated writes stay within their own call. Put `minHeight` on the group, not on individual prepared calls. Two separate reads with the same minimum height can still use different snapshots.
+All calls use one committed snapshot, and simulated writes stay within their own call. Put `minStateBlockHeight` on the group, not on individual prepared calls. Two separate reads with the same minimum height can still use different snapshots.
 
-Shared reads require a batch-capable RPC endpoint and runtime. Inspect `(await client.getServerLimits()).viewBatch` for advertised call, gas, calldata, response-size, and timeout limits. The client never splits a group or falls back to separate views. [HTTP batching](/typescript/transport/#http-batching) alone does not provide this guarantee. Raw requests use `client.viewBatch({ calls, minHeight }, { signal })`.
+Shared reads require an endpoint that advertises batch simulation limits. Inspect `(await client.getServerLimits()).simulationBatch` for its invocation, gas, calldata, response-size, and timeout limits. The client never splits a group or falls back to separate views. [HTTP batching](/typescript/transport/#http-batching) alone does not provide this guarantee. Raw requests use [`simulateInvocations`](/reference/json-rpc-api/#simulateinvocations) through `client.simulateInvocations({ invocations, minStateBlockHeight }, { signal })`.
 
 ## Handle contract outcomes
 

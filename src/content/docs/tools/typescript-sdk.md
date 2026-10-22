@@ -22,12 +22,15 @@ description: TypeScript client entry points, common operations, and links to foc
 
 | API | Behavior |
 | --- | --- |
-| `createThruputClient({ cluster, transport? })` | Async client creation with network identity validation |
+| `createThruputClient({ cluster, transport? })` | Async client creation; checks wire format 14, advertised methods, and network identity |
 | `devnet(options?)` | Hosted development network; unpinned unless given `networkHash`; declares airdrop support |
 | `localnet(options?)` | Local endpoint and default local identity; override with the matching runtime identity |
 | `mainnet(options)` | Requires an explicit endpoint |
 | `defineCluster(descriptor)` | Custom name, endpoint, hash pin, and expected capabilities |
-| `getChainTip()` / `getVersion()` | Current tip and release/wire identity |
+| `getChainTip()` / `getVersionInfo()` | Tip `blockHeight` and `blockHash`; `wireFormat`, `implementation`, and optional release identity |
+| `client.network` | Validated network identity of a cluster client |
+| `client.discovery` | Connection-time snapshot of version, network, and optional server limits |
+| `RpcCompatibilityError` | Unsupported wire format, network mismatch, or unadvertised method |
 | `getChainConfig()` | Stated limits plus optional `execution` with `observedTip`, `configHash`, runtime-resolved limits, and exact `bigint` storage prices; absent execution context is not zero cost |
 | Usage | [Connect to a network](/typescript/connect/) |
 
@@ -37,8 +40,11 @@ description: TypeScript client entry points, common operations, and links to foc
 | --- | --- |
 | `parseUnits(text, decimals)` | Exact signed `bigint`; rejects malformed input and excess precision |
 | `formatUnits(value, decimals)` | Decimal string |
+| `addressFromBase58(text)` / `hashFromBase58(text)` | Typed address or hash from base58 |
+| `toBase58(bytes)` | Base58 encoding for addresses and hashes that users see, store, or compare with RPC values |
+| `parseAddress(text)` | Typed address from base58 or a `C` StrKey |
+| `fromHex0x(text)` / `toHex0x(bytes)` | `0x` hex for signed transaction bytes and calldata |
 | `addressFromHex(text)` / `hashFromHex(text)` | Typed address or hash from `0x` hex |
-| `toHex0x(bytes)` | `0x`-prefixed display encoding |
 | `gasAmount(bigint)` | Typed computation budget |
 | `ParseUnitsError` | `code: "malformed" \| "precision"`; invalid decimals throw `RangeError` |
 | Usage | [Addresses and amounts](/typescript/values/) |
@@ -52,7 +58,7 @@ description: TypeScript client entry points, common operations, and links to foc
 | `createPubkeyAccount({ signer, nonce? })` | Ed25519 or ML-DSA-65 signer; address nonce defaults to `0n` |
 | `createSourceAddressAccount({ address, signers, allowedKeys, requiredWeight })` | Existing stored-auth account; does not write auth data |
 | `createWalletClient({ client, account, invocationAdapter? })` | Separate signer-bound client; pubkey accounts default to DefaultWallet |
-| `networkHash` wallet option | Required for a client without validated network identity |
+| `networkHash` wallet option | Required for a client without validated network identity; must match the endpoint's network |
 | `createProviderWalletClient(...)` | External wallet adapter; see [provider API](/tools/wallet-provider/#sdk-adapter-behavior) |
 | Usage | [Accounts and wallet clients](/typescript/wallet-clients/), [script setup](/typescript/accounts/), [browser wallets](/tools/wallet-integration/) |
 
@@ -60,11 +66,11 @@ description: TypeScript client entry points, common operations, and links to foc
 
 | API | Result / behavior |
 | --- | --- |
-| `requestAirdrop(options?)` | Poll one funding attempt; account-defaulted on an airdrop-capable signer wallet |
-| `requestAirdropAttempt(request)` | Single application-controlled funding attempt |
+| `requestAirdrop(options?)` | One faucet call, then read-only observation; returns `AirdropSucceeded` with `transactionHash`, `blockHeight`, and `execution`; throws unless execution succeeds; account-defaulted on a signer wallet |
+| `requestAirdropAttempt({ recipient, clientNonce })` | One faucet call; returns a `pending` or `succeeded` attempt without observation |
 | `prepareExecution(request)` | Unsigned wallet-root transaction |
 | `execute(request)` | Submitted hash; signer-based wallet |
-| `executeAndWait(request, options?)` | Successful committed receipt and hash |
+| `executeAndWait(request, options?)` | Successful committed `receipt` and `transactionHash` |
 | `executeCallsAndWait({ calls, gasLimit }, options?)` | Successful receipt plus ordered typed child values |
 | `walletGasLimit(invocations, overhead)` | Sum invocation budgets, checking u64 bounds; pass `call.invocation` for typed calls; does not estimate usage |
 | Usage | [Send transactions](/typescript/transactions/) |
@@ -73,14 +79,16 @@ description: TypeScript client entry points, common operations, and links to foc
 
 | API / error | Meaning |
 | --- | --- |
-| `getTransactionStatus(hash)` | One status lookup; committed `height` is optional |
-| `getTransactionReceipt(hash)` | One committed-receipt lookup; `null` when unavailable |
-| `waitForTransactionReceipt(hash, options?)` | Wait for a receipt, including failed execution; throws on `retry` or `dropped`, never resubmits |
+| `getTransactionStatus({ transactionHash })` | One status lookup; `committed` always includes `blockHeight` |
+| `getTransactionReceipt({ transactionHash })` | One committed-receipt lookup with `blockHeight`, `execution`, `events`, and `gasUsed`; `null` when unavailable |
+| `waitForTransactionReceipt(hash, options?)` | Poll until a receipt, including failed execution; reports each status through `onStatus`; never resubmits |
+| `waitForCommitment(hash, options?)` | Poll until commitment is known, without requiring a receipt |
 | `waitForExecution(client, hash, options?)` | Wait and require successful execution |
-| `TransactionProcessingError` | Scheduler `retry` or `dropped` outcome; retains `txHash`, `status`, and `error` |
-| `SchedulerTransactionError` | `source`: `auth`, `scheduler`, `executor`, or `other`; `code`: signed 32-bit number; unknown sources map to `other` |
+| `TransactionReceiptObservationError` / `TransactionReceiptTimeoutError` | Observation stopped; retains `transactionHash`, `knownCommitment`, and `lastStatus` |
+| `SchedulerTransactionError` | `source`: `auth`, `scheduler`, `executor`, or `other`; `code`: signed 32-bit number |
+| `UnsupportedRpcValue` | A status, result, or source from a newer server; retains `raw` |
 | `TransactionExecutionError` | Failed committed `receipt` |
-| `TransactionObservationError` | Known `txHash` plus observation and optional submission causes |
+| `TransactionObservationError` | Known `transactionHash`, signed `submission`, `phase`, and causes |
 | `ExecutionDecodeError` | Successful receipt whose child return data failed decoding |
 | `ExecutionReturnUnavailableError` | Successful receipt without child returns |
 | Usage | [Track transaction results](/typescript/transaction-status/) |
@@ -115,14 +123,15 @@ description: TypeScript client entry points, common operations, and links to foc
 | API | Result / behavior |
 | --- | --- |
 | `getContract({ binding, address, client })` | Bound method collection |
-| `method.view(options)` | Typed value, height, gas use, and events; supports `minHeight` and `signal` |
-| `method.viewOutcome(options)` | `return`, `abort`, or `fault`; also supports `minHeight` |
-| `method.viewRequest({ contract, args?, caller? })` | Prepare a typed read without I/O; arguments follow the method's generated types |
-| `client.readViews({ calls, minHeight? }, options?)` | Tuple-typed outcomes in input order at one shared `height`; no splitting or separate-read fallback |
-| `client.view(request, options?)` / `client.viewBatch({ calls, minHeight? }, options?)` | Raw single/grouped simulations; `minHeight` goes on the single request or whole group |
-| `minHeight` | Optional nonnegative `bigint` freshness floor; no waiting, forced refresh, or automatic client retry |
-| `(await client.getServerLimits()).viewBatch` | Optional advertised batch limits |
-| `ViewHeightUnavailable` (`-32011`) | RPC freshness error with requested and observed heights; not a contract outcome |
+| `method.view({ client, address, args?, caller?, assumedAuth?, minStateBlockHeight?, signal? })` | Typed `value`, `stateBlockHeight`, `gasUsed`, and `events` |
+| `method.viewOutcome(options)` | `return`, `abort`, or `fault`; same options as `view` |
+| `method.viewRequest({ address, args?, caller?, assumedAuth? })` | Prepare a typed read without I/O; arguments follow the method's generated types |
+| `client.readViews({ calls, minStateBlockHeight? }, options?)` | Tuple-typed outcomes in input order at one shared `stateBlockHeight`; no splitting or separate-read fallback |
+| `client.simulateInvocation(request, options?)` / `client.simulateInvocations({ invocations, minStateBlockHeight? }, options?)` | Raw single/grouped simulations; `minStateBlockHeight` goes on the single request or whole group |
+| `minStateBlockHeight` | Optional nonnegative `bigint` freshness floor; no waiting, forced refresh, or automatic client retry |
+| `assumedAuth` | Protocol `AuthClaim`, such as `account.authClaim`; simulation does not verify signatures |
+| `(await client.getServerLimits()).simulationBatch` | Optional advertised batch limits; required for grouped reads |
+| `NativeRpcErrorCode.StateHeightUnavailable` (`-32012`) | RPC freshness error with `requestedStateBlockHeight` and `observedStateBlockHeight`; not a contract outcome |
 | `ContractViewError` | Contract abort or fault |
 | `ContractDecodeError` | Malformed contract data |
 | Usage | [Read contract data](/typescript/reads/), [bindings](/tools/typescript-bindings/) |
@@ -150,10 +159,14 @@ description: TypeScript client entry points, common operations, and links to foc
 
 | API | Result / behavior |
 | --- | --- |
-| `getContractEvents({ event, contractAddresses, topics?, ...query }, options?)` | One typed page with event identity and indexer bounds |
-| `iterateEventPages(query, options?)` | Raw pages on demand; empty cursor ends the walk |
-| `Event.filter(input)` / `Event.decode(raw)` | Generated topic filter and payload decoder |
-| `Event.allFromReceipt(...)` / `singleFromReceipt(...)` | Matching receipt events, filtered by emitter |
+| `getContractEvents({ event, addresses, topics?, start \| cursor, limit? }, options?)` | One typed page with event identity, `nextCursor`, and indexer bounds |
+| `start` | `{ order, anchor }`; anchor kind `atBeginning`, `atEnd`, or `atHeight` with `blockHeight` |
+| `nextCursor` | Opaque string for the next page; `null` ends the walk |
+| `iterateEventPages({ filters, start, limit? }, options?)` | Raw pages on demand from an explicit `start`; returns `HistoryCompletion` after the last page |
+| `iterateTransactionsByRootAddress({ address, start, limit? }, options?)` | Transactions sent by a root address, as a checked walk |
+| `HistoryWalkError` | Regressed coverage, lost retention, duplicate or out-of-order rows, or a repeated cursor |
+| `Event.filter({ addresses, topics? })` / `Event.decode(raw)` | Generated topic filter and payload decoder |
+| `Event.allFromReceipt(receipt, { address })` / `singleFromReceipt(...)` | Matching receipt events, filtered by emitter |
 | Usage | [Read events](/typescript/events/) |
 
 ## Receipt Decoding
@@ -170,7 +183,8 @@ description: TypeScript client entry points, common operations, and links to foc
 | --- | --- |
 | `prepareTransaction` | Build a root transaction and its authorization claim |
 | `signTransaction(transaction, signers, networkHash)` | Sign the network-bound preimage |
-| `sendTransaction(signed)` | Submit signed bytes |
+| `client.sendTransaction({ signedTransaction: serializeSignedTransaction(signed) })` | Submit signed bytes once; returns `transactionHash` and `admission` |
+| `sendTransaction(client, signed)` from `@thruputchain/client/actions` | Serialize, submit once, and require `accepted` admission; returns the hash |
 | Transaction hash | SHA-256 of unsigned transaction XDR, separate from the signing preimage |
 | Usage | Prefer [wallet execution](/typescript/transactions/) for application calls |
 

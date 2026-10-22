@@ -37,7 +37,7 @@ async function main() {
   const supply = await hog.totalSupply.view({ args: undefined });
 
   console.log("Native-token supply:", formatUnits(supply.value, 7));
-  console.log("Read at block:", supply.height.toString());
+  console.log("Read at block:", supply.stateBlockHeight.toString());
 }
 
 main().catch((error: unknown) => {

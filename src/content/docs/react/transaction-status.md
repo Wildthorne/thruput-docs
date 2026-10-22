@@ -8,7 +8,6 @@ description: Observe a saved transaction hash without wallet permission and dist
 ## Display a receipt
 
 ```tsx
-import { ExecResult } from "@thruputchain/client";
 import { useWaitForTransactionReceipt } from "@thruputchain/react";
 
 export function TransactionStatus({ hash }: { hash: string | null }) {
@@ -30,11 +29,12 @@ export function TransactionStatus({ hash }: { hash: string | null }) {
   }
   if (!receipt.data) return <p>Waiting for a committed receipt…</p>;
 
-  const succeeded = receipt.data.execResult === ExecResult.ExecResultOK;
+  const { execution } = receipt.data;
+  const succeeded = "result" in execution && execution.result === "return";
   return (
     <p>
       {succeeded ? "Execution succeeded" : "Execution failed"}
-      {" at block "}{receipt.data.height.toString()}
+      {" at block "}{receipt.data.blockHeight.toString()}
     </p>
   );
 }
@@ -44,7 +44,7 @@ A failed committed execution is **receipt data**, not a query error. A query tim
 
 ## Resume observation
 
-Restore the saved hash and its network from the application's pending record. Missing hashes disable the query. Refetch explicitly to resume after a timeout; do not submit a new operation merely to obtain a result.
+Restore the saved base58 hash and its network from the application's pending record. Missing hashes disable the query. Refetch explicitly to resume after a timeout; do not submit a new operation merely to obtain a result.
 
 The SDK owns polling. The receipt query disables retries and automatic focus/reconnect refetching. Committed receipts have infinite stale time. Observers of the same hash share the query, so configure their timeout and polling settings consistently.
 

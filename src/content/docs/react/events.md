@@ -10,7 +10,7 @@ Compose the TypeScript client's event actions with TanStack Query. Generated bin
 ## Display recent native-token transfers
 
 ```tsx
-import { toHex0x } from "@thruputchain/client";
+import { toBase58 } from "@thruputchain/client";
 import { groundhog_erc20_if } from "@thruputchain/client/contracts";
 import { HOG_ADDRESS } from "@thruputchain/protocol";
 import { getClientQueryKey, useClient } from "@thruputchain/react";
@@ -24,8 +24,8 @@ export function RecentTransfers() {
     queryKey: [...getClientQueryKey(client), "app", "recent-hog-transfers"],
     queryFn: ({ signal }) => client.getContractEvents({
       event: TransferEvent,
-      contractAddresses: [HOG_ADDRESS],
-      order: "descending",
+      addresses: [HOG_ADDRESS],
+      start: { order: "descending", anchor: { kind: "atEnd" } },
       limit: 20,
     }, { signal }),
     staleTime: 10_000,
@@ -38,7 +38,7 @@ export function RecentTransfers() {
       {transfers.data?.events.length === 0 ? <p>No transfers in this page.</p> : null}
       <ul>
         {transfers.data?.events.map(event => (
-          <li key={`${toHex0x(event.txHash)}:${event.sequenceNumber}`}>
+          <li key={`${toBase58(event.transactionHash)}:${event.sequenceNumber}`}>
             {event.fields.amount.toString()} base units at block {event.blockHeight.toString()}
           </li>
         ))}
@@ -51,11 +51,11 @@ export function RecentTransfers() {
 }
 ```
 
-The query has fixed contract, event, ordering, and page-size inputs. If you make them configurable, include each input in the key. Include a cursor when caching separate historical pages.
+The query has fixed contract, event, start, and page-size inputs. If you make them configurable, include each input in the key. Include the cursor string when caching separate historical pages.
 
 ## Choose a history workflow
 
-Refreshing the example starts at the head again. A saved cursor continues an older historical walk; it is not a subscription. Use the TypeScript [event pagination guidance](/typescript/events/) for iteration and durable checkpoints.
+Refreshing the example starts at the head again. A saved `nextCursor` continues an older historical walk; it is not a subscription. Use the TypeScript [event pagination guidance](/typescript/events/) for iteration and durable checkpoints.
 
 For live refresh, choose an explicit polling policy. Query caching does not create a background indexer or save progress across reloads.
 

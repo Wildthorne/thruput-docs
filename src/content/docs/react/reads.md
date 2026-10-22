@@ -20,7 +20,7 @@ import { useContractView } from "@thruputchain/react";
 export default function App() {
   const supply = useContractView({
     method: ERC20.v0_1.totalSupply,
-    contract: HOG_ADDRESS,
+    address: HOG_ADDRESS,
     args: undefined,
   });
 
@@ -32,7 +32,7 @@ export default function App() {
       {supply.data ? (
         <>
           <p>{formatUnits(supply.data.value, 7)} native tokens</p>
-          <p>Read at block {supply.data.height.toString()}</p>
+          <p>Read at block {supply.data.stateBlockHeight.toString()}</p>
         </>
       ) : null}
       <button disabled={supply.isFetching} onClick={() => void supply.refetch()}>
@@ -43,7 +43,7 @@ export default function App() {
 }
 ```
 
-No wallet, signer, or new deployment is needed. The result retains `value`, `height`, and simulated `events`.
+No wallet, signer, or new deployment is needed. The result retains `value`, `stateBlockHeight`, `gasUsed`, and simulated `events`.
 
 ## Pass method arguments
 
@@ -58,7 +58,7 @@ import { useContractView } from "@thruputchain/react";
 export function RawBalance({ owner }: { owner: ContractAddress }) {
   const balance = useContractView({
     method: ERC20.v0_1.getBalanceOf,
-    contract: HOG_ADDRESS,
+    address: HOG_ADDRESS,
     args: { addr: owner },
   });
   if (balance.error) return <p role="alert">{balance.error.message}</p>;
@@ -73,10 +73,10 @@ Pass `caller` when a view needs simulated caller context. It does not authorize 
 
 `enabled: false` disables automatic reads and retains cached data. `staleTime` controls freshness. Arguments must still be valid: the hook encodes them while constructing the query, even when disabled. Mount a read component only after required inputs are ready.
 
-Keep generated descriptors stable. Cache identity includes the client, method decoder, contract, encoded arguments, and caller. Equivalent argument values share a query; changing an input selects a different query.
+Keep generated descriptors stable. Cache identity includes the client, method decoder, contract address, encoded arguments, and caller. Equivalent argument values share a query; changing an input selects a different query.
 
 ## Handle refresh and cancellation
 
 Use `isLoading` for the first active fetch and `isFetching` for any active fetch, including refresh. A disabled query can be pending without loading. Display read errors separately from cached data when a refresh fails.
 
-Query cancellation aborts contract-view requests and ignores late results from custom transports. Independent views can use different snapshots. After a write, check that a view has reached the receipt's height before treating its data as post-transaction state.
+Query cancellation aborts contract-view requests and ignores late results from custom transports. Independent views can use different snapshots. After a write, check that a view's `stateBlockHeight` has reached the receipt's `blockHeight` before treating its data as post-transaction state.

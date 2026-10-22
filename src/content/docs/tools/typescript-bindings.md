@@ -53,10 +53,10 @@ const supply = await hog.totalSupply.view({ args: undefined });
 | API | Purpose |
 | --- | --- |
 | `method.invocation(contract, gasLimit, args)` | Build calldata and the target invocation |
-| `method.call({ contract, gasLimit, args })` | Retain result and exception decoders with the invocation |
-| `method.view({ client, contract, args, minHeight?, signal? })` | Read a typed value with height, gas use, and events; optional freshness floor |
+| `method.call({ address, gasLimit, args })` | Retain result and exception decoders with the invocation |
+| `method.view({ client, address, args, caller?, assumedAuth?, minStateBlockHeight?, signal? })` | Read a typed value with `stateBlockHeight`, gas use, and events; optional freshness floor |
 | `method.viewOutcome(...)` | Return a typed return/abort/fault outcome |
-| `method.viewRequest({ contract, args, caller? })` | Prepare an independent read with its decoder for `client.readViews`; no I/O, and freshness belongs to the group |
+| `method.viewRequest({ address, args, caller?, assumedAuth? })` | Prepare an independent read with its decoder for `client.readViews`; no I/O, and freshness belongs to the group |
 | `method.decodeArgs(bytes)` | Decode complete calldata |
 | `method.decodeReturn(bytes)` / `decodeException(bytes)` | Decode known method output |
 | `method.decodeReceipt(receipt)` / `decodeReceiptOutcome(receipt)` | Decode a receipt for that root method |

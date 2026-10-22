@@ -10,27 +10,27 @@ A binding builds an application call. A wallet wraps that call into an authorize
 Set up and fund the account from [Use a signer in scripts](/typescript/accounts/). For this small-transfer example, choose a recipient that already has native tokens. Create `src/send.ts`:
 
 ```ts
-import { addressFromHex, gasAmount, parseUnits, toHex0x } from "@thruputchain/client";
+import { addressFromBase58, gasAmount, parseUnits, toBase58 } from "@thruputchain/client";
 import { ERC20 } from "@thruputchain/client/contracts";
 import { HOG_ADDRESS } from "@thruputchain/protocol";
 import { wallet } from "./wallet.js";
 
 const recipient = process.env.THRUPUT_RECIPIENT;
-if (!recipient) throw new Error("Set THRUPUT_RECIPIENT to a funded address");
+if (!recipient) throw new Error("Set THRUPUT_RECIPIENT to a funded base58 address");
 
 const transfer = ERC20.v0_1.transfer.call({
-  contract: HOG_ADDRESS,
+  address: HOG_ADDRESS,
   gasLimit: gasAmount(500_000n),
   args: {
-    receiver: addressFromHex(recipient),
+    receiver: addressFromBase58(recipient),
     amount: parseUnits("0.0001", 7),
   },
 });
-const { txHash, receipt, values } = await wallet.executeCallsAndWait({
+const { transactionHash, receipt, values } = await wallet.executeCallsAndWait({
   calls: [transfer],
   gasLimit: gasAmount(1_000_000n),
 });
-console.log("Committed:", toHex0x(txHash), receipt.height.toString());
+console.log("Committed:", toBase58(transactionHash), receipt.blockHeight.toString());
 console.log("Return value:", values[0]); // transfer returns void
 ```
 
@@ -57,7 +57,7 @@ export function sendHog(
   onSigned: ProviderExecutionOptions["onSigned"],
 ) {
   const transfer = ERC20.v0_1.transfer.call({
-    contract: HOG_ADDRESS,
+    address: HOG_ADDRESS,
     gasLimit: gasAmount(500_000n),
     args: { receiver, amount: parseUnits("0.0001", 7) },
   });

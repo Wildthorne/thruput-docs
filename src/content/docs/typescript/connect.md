@@ -15,20 +15,20 @@ import { createThruputClient, devnet } from "@thruputchain/client";
 export const client = await createThruputClient({ cluster: devnet() });
 ```
 
-Client creation is asynchronous. It fetches the network identity before returning. Other examples import this client from `./client.js`.
+Client creation is asynchronous. It checks that the endpoint uses RPC wire format 14 and reads its network identity before returning. Other examples import this client from `./client.js`.
 
 To check the connection, create `src/network.ts`:
 
 ```ts
-import { toHex0x } from "@thruputchain/client";
+import { toBase58 } from "@thruputchain/client";
 import { client } from "./client.js";
 
 const [tip, version] = await Promise.all([
   client.getChainTip(),
-  client.getVersion(),
+  client.getVersionInfo(),
 ]);
-console.log("Network:", toHex0x(client.network.networkHash));
-console.log("Block:", tip.height.toString());
+console.log("Network:", toBase58(client.network.networkHash));
+console.log("Block:", tip.blockHeight.toString());
 console.log("Wire format:", version.wireFormat);
 ```
 
@@ -51,24 +51,24 @@ const client = await createThruputClient({ cluster: localnet() });
 
 Start the node with [the CLI](/cli/local-node/) first. Local account manifests and RPC endpoints must refer to the same node.
 
-Use `defineCluster()` for a reusable custom descriptor. `mainnet()` requires an explicit endpoint. Cluster capabilities, such as `airdrop`, declare expected services; they are not server capability discovery.
+Use `defineCluster()` for a reusable custom descriptor. `mainnet()` requires an explicit endpoint. Cluster capabilities, such as `airdrop`, declare expected services. Client creation throws `RpcCompatibilityError` when the endpoint does not advertise the matching method.
 
 ## Pin a network identity
 
 Futurenet is unpinned by default. To require a specific deployment, provide the trusted hash from your environment:
 
 ```ts
-import { createThruputClient, devnet, hashFromHex, networkHash } from "@thruputchain/client";
+import { createThruputClient, devnet, hashFromBase58, networkHash } from "@thruputchain/client";
 
 const expected = process.env.THRUPUT_NETWORK_HASH;
-if (!expected) throw new Error("Set THRUPUT_NETWORK_HASH to the expected 0x-prefixed hash");
+if (!expected) throw new Error("Set THRUPUT_NETWORK_HASH to the expected base58 network hash");
 const client = await createThruputClient({
-  cluster: devnet({ networkHash: networkHash(hashFromHex(expected)) }),
+  cluster: devnet({ networkHash: networkHash(hashFromBase58(expected)) }),
 });
 ```
 
-An identity mismatch throws `NetworkMismatchError`. A Futurenet reset can change the network hash. Update the trusted configuration deliberately rather than accepting a wallet-supplied hash as your application's network.
+An identity mismatch throws `RpcCompatibilityError`. Use the base58 `networkHash` from [`getNetworkInfo`](/reference/json-rpc-api/#getnetworkinfo). A Futurenet reset can change the network hash. Update the trusted configuration deliberately rather than accepting a wallet-supplied hash as your application's network.
 
 ## Configure transport behavior
 
-Use [HTTP transport](/typescript/transport/) for timeouts, batching, and custom transports. A transport-only client skips cluster identity validation; a wallet bound to it requires an explicit signing network hash.
+Use [HTTP transport](/typescript/transport/) for timeouts, batching, and custom transports. A transport-only client reads the endpoint's network but does not pin it. A wallet bound to it requires an explicit signing network hash that matches that network.

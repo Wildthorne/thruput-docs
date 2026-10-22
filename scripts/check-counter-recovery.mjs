@@ -14,7 +14,7 @@ const { ERC20 } = await tsImport('@thruputchain/client/contracts', parent);
 const { MockTransport } = await tsImport('@thruputchain/client/transport', parent);
 const { archiveExpiredUpdate } = await tsImport(pathToFileURL(resolve(app, 'src/updates.ts')).href, parent);
 const client = await sdk.createThruputClient({
-  cluster: sdk.defineCluster({ networkHash: sdk.networkHash(sdk.hashFromHex(`0x${'00'.repeat(32)}`)), capabilities: [] }),
+  cluster: sdk.defineCluster({ networkHash: sdk.networkHash(sdk.hashFromBase58('1'.repeat(32))), capabilities: [] }),
   transport: new MockTransport(),
 });
 const signer = new sdk.PrivateKeySigner(new Uint8Array(32).fill(1));
@@ -25,16 +25,16 @@ const tx = await wallet.prepareExecution({
   gasLimit: sdk.gasAmount(1_000_000n),
 });
 const signed = await sdk.signTransaction(tx, [{ signer, publicKeyId: 0n }], client.network.networkHash);
-const record = { hash: sdk.toHex0x(sdk.hashSignedTransaction(signed)),
+const record = { hash: sdk.toBase58(sdk.hashSignedTransaction(signed)),
   signedTransaction: sdk.toHex0x(sdk.serializeSignedTransaction(signed)),
-  account: sdk.toHex0x(account.address), networkId: sdk.toHex0x(client.network.networkHash) };
+  account: sdk.toBase58(account.address), networkId: sdk.toBase58(client.network.networkHash) };
 const expiry = tx.uniquifier.block_expiry_height;
 const key = 'counter:test';
 const saved = new Map([[key, JSON.stringify(record)]]);
 const storage = { setItem: (key, value) => saved.set(key, value), removeItem: key => saved.delete(key) };
-const expired = { ...client, getChainTip: async () => ({ height: expiry }), getTransactionReceipt: async () => null };
+const expired = { ...client, getChainTip: async () => ({ blockHeight: expiry }), getTransactionReceipt: async () => null };
 
-await assert.rejects(archiveExpiredUpdate({ ...expired, getChainTip: async () => ({ height: expiry - 1n }) }, record, key, storage), /not expired/);
+await assert.rejects(archiveExpiredUpdate({ ...expired, getChainTip: async () => ({ blockHeight: expiry - 1n }) }, record, key, storage), /not expired/);
 await assert.rejects(archiveExpiredUpdate(expired, { ...record, networkId: 'wrong' }, key, storage), /original network/);
 await assert.rejects(archiveExpiredUpdate(expired, { ...record, hash: 'wrong' }, key, storage), /does not match/);
 await assert.rejects(archiveExpiredUpdate({ ...expired, getTransactionReceipt: async () => ({}) }, record, key, storage), /receipt is available/);

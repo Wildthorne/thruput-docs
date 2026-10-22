@@ -3,7 +3,7 @@ title: Read balances
 description: Read native-token and contract-token balances for a connected account or an explicit address.
 ---
 
-Use `useBalance` for the native token and `useTokenBalance` for a standard ERC-20 contract. Both return query state, a `queryKey`, and data containing `rawBalance` and `height`.
+Use `useBalance` for the native token and `useTokenBalance` for a standard ERC-20 contract. Both return query state, a `queryKey`, and data containing `rawBalance` and `stateBlockHeight`.
 
 ## Follow the connected account
 
@@ -39,12 +39,12 @@ export function TokenBalance({ token, owner, decimals }: {
   if (balance.error) return <p role="alert">{balance.error.message}</p>;
   if (!balance.data) return <p>Loading token balance…</p>;
   return (
-    <p>{formatUnits(balance.data.rawBalance, decimals)} at block {balance.data.height.toString()}</p>
+    <p>{formatUnits(balance.data.rawBalance, decimals)} at block {balance.data.stateBlockHeight.toString()}</p>
   );
 }
 ```
 
-Addresses accept hex strings or SDK-branded bytes. Equivalent inputs share a key. The hook does not fetch token metadata or choose decimals; supply those from the application or a metadata read. The native token has seven decimals.
+Addresses accept base58 strings or SDK-branded bytes. Equivalent inputs share a key. The hook does not fetch token metadata or choose decimals; supply those from the application or a metadata read. The native token has seven decimals.
 
 ## Handle missing inputs
 

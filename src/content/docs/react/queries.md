@@ -46,14 +46,14 @@ Balance factories do not resolve the connected wallet. Missing inputs produce a 
 Use one balance component per token, or compose factory options with `useQueries`:
 
 ```tsx
-import { toHex0x } from "@thruputchain/client";
+import { toBase58 } from "@thruputchain/client";
 import { useQueries } from "@tanstack/react-query";
 import { tokenBalanceQueryOptions, useClient, useWallet, type BalanceAddress } from "@thruputchain/react";
 
 export function TokenBalances({ tokens }: { tokens: BalanceAddress[] }) {
   const client = useClient();
   const wallet = useWallet();
-  const tokenKeys = tokens.map(token => typeof token === "string" ? token.toLowerCase() : toHex0x(token));
+  const tokenKeys = tokens.map(token => typeof token === "string" ? token : toBase58(token));
   const balances = useQueries({
     queries: tokenKeys.map(token => tokenBalanceQueryOptions({
       client,
@@ -75,7 +75,7 @@ export function TokenBalances({ tokens }: { tokens: BalanceAddress[] }) {
 }
 ```
 
-Pass a list of unique tokens. These are independent queries, not one atomic read or a concurrency-limited batch. Use a grouped application query and check heights when several values must describe the same snapshot.
+Pass a list of unique tokens. Base58 is case-sensitive, so do not change the case of address strings. These are independent queries, not one atomic read or a concurrency-limited batch. Use a grouped application query and check heights when several values must describe the same snapshot.
 
 ## Refresh after a write
 
@@ -92,7 +92,7 @@ export function refreshBalance(queries: QueryClient, originalKey: BalanceQueryKe
 
 Capture the original key when starting the operation. An account change while waiting should not redirect the refresh to the newly selected account. Invalidating a query requests another read; check its height when the application needs post-transaction state.
 
-For custom queries, append an application namespace and every read input to `getClientQueryKey(client)`. Canonicalize byte arrays and bigints into stable strings. [Read events](/react/events/) shows a custom query with fixed inputs.
+For custom queries, append an application namespace and every read input to `getClientQueryKey(client)`. Canonicalize addresses and hashes with `toBase58`, other byte arrays with `toHex0x`, and bigints as decimal strings. [Read events](/react/events/) shows a custom query with fixed inputs.
 
 ## Keep persistence separate
 

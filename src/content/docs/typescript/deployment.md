@@ -11,7 +11,7 @@ For the generated counter, place its artifact and binding in your project. This 
 
 ```ts
 import { readFile } from "node:fs/promises";
-import { gasAmount, parseUnits, prepareContractDeployment, toHex0x } from "@thruputchain/client";
+import { gasAmount, parseUnits, prepareContractDeployment, toBase58 } from "@thruputchain/client";
 import { Counter } from "./contracts/my-counter.js";
 import { account, wallet } from "./wallet.js";
 
@@ -20,7 +20,7 @@ const deployment = prepareContractDeployment({
   deployer: account.address,
   contract: artifact,
 });
-console.log("Predicted address:", toHex0x(deployment.address));
+console.log("Predicted address:", toBase58(deployment.address));
 ```
 
 Preparation hashes the artifact and predicts its address without signing or submitting. Retain the deployment nonce if you need to reproduce that identity. It differs from the transaction nonce used for replay protection.
@@ -37,7 +37,7 @@ const result = await wallet.deployContractAndWait(deployment, {
     { initialValue: 10n },
   ),
 });
-console.log("Deployed:", toHex0x(result.address));
+console.log("Deployed:", toBase58(result.address));
 ```
 
 `amount` is explicit native-token funding in base units for the target contract. The example allocation and gas budgets are not universal costs. `0n` skips the funding transfer. The sender still needs scheduling capacity for the root transaction.
@@ -46,6 +46,6 @@ Funding, deployment, and the optional initializer form one atomic operation. The
 
 ## Deploy through a provider wallet
 
-The provider adapter supports the same deployment plan and options, with an additional `{ onSigned }` lifecycle argument. Use the authorized provider account's address as `deployer`. See [Send transactions](/typescript/transactions/#send-through-a-browser-wallet) for persistence before submission.
+The provider adapter supports the same deployment plan and options, with an additional `{ onSigned }` lifecycle argument. Decode the authorized provider account's base58 address with `addressFromBase58` and use it as `deployer`. See [Send transactions](/typescript/transactions/#send-through-a-browser-wallet) for persistence before submission.
 
 Inspect the original transaction hash if observation fails rather than generating a new deployment attempt. See [Track transaction results](/typescript/transaction-status/).

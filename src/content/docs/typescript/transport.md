@@ -33,7 +33,7 @@ const batched = await createThruputClient({
 });
 const [tip, version] = await Promise.all([
   batched.getChainTip(),
-  batched.getVersion(),
+  batched.getVersionInfo(),
 ]);
 ```
 
@@ -52,10 +52,13 @@ Server [array and byte limits](/reference/json-rpc-api/#json-rpc-arrays) still a
 | --- | --- |
 | `HttpRequestError` | Network request failed |
 | `HttpResponseError` | Non-success HTTP status |
-| `JsonRpcError` | RPC error response; includes `code`, `data`, and method context |
+| `NativeRpcError` | RPC error response; a `JsonRpcError` with `code`, `data`, method context, and a typed `decoded` cause |
+| `RpcCompatibilityError` | Unsupported wire format, network mismatch, or unadvertised method |
+| `RpcRequestValidationError` | Invalid local request, rejected before dispatch |
+| `RpcDecodingError` | Malformed result; retains the raw value |
 | `ContractViewError` / `ContractDecodeError` | Contract outcome or decoding, not transport |
 
-Use `classifyReadError(error, { signal })` when implementing a bounded read-retry policy. See [read cancellation](/typescript/reads/#cancel-stale-reads). Do not apply automatic read retries to transaction submission.
+`NativeRpcError.decoded` is `known` with a `data.kind` from the [error codes](/reference/json-rpc-api/#error-codes), or `unclassified`. Neither grants retry permission. Use `classifyReadError(error, { signal })` when implementing a bounded read-retry policy. See [read cancellation](/typescript/reads/#cancel-stale-reads). Do not apply automatic read retries to transaction submission.
 
 ## Use a custom transport
 

@@ -139,7 +139,7 @@ The server exposes public configuration, proxies the app's RPC requests, and pre
 
 ```ts title="server.ts"
 import { createServer, type ServerResponse } from "node:http";
-import { gasAmount, serializeSignedTransaction, toHex0x } from "@thruputchain/client";
+import { gasAmount, serializeSignedTransaction, toBase58, toHex0x } from "@thruputchain/client";
 import { client, contract, Counter, developmentWallet, rpcUrl } from "./chain.js";
 
 const wallet = process.env.COUNTER_SIGNING_PRIVATE_KEY ? developmentWallet() : null;
@@ -157,8 +157,8 @@ createServer(async (request, response) => {
   try {
     if (request.method === "GET" && request.url === "/api/config") {
       return json(response, 200, {
-        counterAddress: toHex0x(contract), networkId: toHex0x(client.network.networkHash),
-        signerAddress: wallet ? toHex0x(wallet.account.address) : null,
+        counterAddress: toBase58(contract), networkId: toBase58(client.network.networkHash),
+        signerAddress: wallet ? toBase58(wallet.account.address) : null,
       });
     }
     if (request.method !== "POST") return json(response, 404, { error: "Not found" });
@@ -203,7 +203,7 @@ Run it in the terminal holding the development key:
 node --env-file=.env --import tsx server.ts
 ```
 
-**Checkpoint:** the typed read works, the development account is funded, and the API is running. The server keeps its private key; `/api/config` exposes only public identity. Part 3 turns these pieces into a usable React counter.
+**Checkpoint:** the typed read works, the development account is funded, and the API is running. The server keeps its private key; `/api/config` exposes only public identity as base58. The signed transaction from `/api/prepare` stays `0x` hex. Part 3 turns these pieces into a usable React counter.
 
 This server is for local development.
 

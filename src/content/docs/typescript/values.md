@@ -21,6 +21,20 @@ The native token has seven decimal places. Other tokens choose their own decimal
 
 ## Convert addresses and hashes
 
+Addresses and transaction and network hashes are unprefixed, case-sensitive base58 in RPC responses, the CLI, and wallet providers. Use base58 for any identifier that users see or paste, that you store, or that you compare with those values:
+
+```ts
+import { addressFromBase58, hashFromBase58, toBase58 } from "@thruputchain/client";
+
+export function parseIdentifiers(addressText: string, transactionText: string) {
+  const address = addressFromBase58(addressText);
+  const transactionHash = hashFromBase58(transactionText);
+  return { address, transactionHash, displayAddress: toBase58(address) };
+}
+```
+
+`parseAddress(text)` also accepts a `C` StrKey address. Signed transaction bytes and calldata stay `0x`-prefixed hex; use `toHex0x` and `fromHex0x` for them. For identifiers that existing application data stores as hex:
+
 ```ts
 import { addressFromHex, hashFromHex, toHex0x } from "@thruputchain/client";
 
@@ -37,4 +51,4 @@ Use `gasAmount(500_000n)` for a typed gas budget. A gas amount is a computation 
 
 ## Store values in application data
 
-JavaScript's default JSON serializer does not accept `bigint`. For application-owned storage, use decimal strings for integers and a defined byte encoding for addresses, hashes, and cursors. The client handles RPC serialization itself.
+JavaScript's default JSON serializer does not accept `bigint`. For application-owned storage, use decimal strings for integers and base58 for addresses and hashes. Store event and history cursors as the opaque strings the client returns. The client handles RPC serialization itself.

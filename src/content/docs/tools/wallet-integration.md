@@ -93,7 +93,7 @@ For explicit control, the sequence is:
 2. `wallet.signTransaction(transaction)` requests approval and verifies the returned bytes, signature, and hash. It does not broadcast.
 3. Your application saves the signed result, account, and original network.
 4. `wallet.submitTransaction(signed)` broadcasts the latest verified approval once.
-5. The public client observes the hash and checks execution.
+5. The public client observes the hash and checks execution. Decode the result's base58 `hash` with `hashFromBase58` and pass it to `client.waitForTransactionReceipt`.
 
 The adapter allows one in-flight operation. A session change invalidates pending work; do not automatically re-sign it. Signature verification requires Web Crypto, available in browsers on HTTPS or localhost.
 
