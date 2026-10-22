@@ -31,7 +31,7 @@ export function parseInputs(addressText: string, transactionText: string) {
 }
 ```
 
-These inputs use `0x`-prefixed hex. Provider session network hashes use a different wire format: 64 lowercase hex characters without `0x`. Convert explicitly when crossing the [wallet provider](/tools/wallet-provider/#canonical-data-and-limits) boundary.
+These inputs use `0x`-prefixed hex. Provider session identifiers use a different wire format: 32 bytes in unprefixed base58. Convert explicitly when crossing the [wallet provider](/tools/wallet-provider/#canonical-data-and-limits) boundary.
 
 Use `gasAmount(500_000n)` for a typed gas budget. A gas amount is a computation limit, not a native-token amount.
 

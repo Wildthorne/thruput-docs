@@ -6,7 +6,7 @@ description: Wallet provider wire methods, data formats, validation rules, and S
 | Audience | Entry point |
 | --- | --- |
 | Application developers | [Connect a wallet](/tools/wallet-integration/), [Send transactions](/typescript/transactions/) |
-| Wallet and bridge implementers | Provider contract `1.0.0`; requirements below apply at the wallet boundary |
+| Wallet and bridge implementers | Provider contract `2.0.0`; requirements below apply at the wallet boundary |
 | Complete signatures | [Generated client API](https://client-ts.thruput.network/) |
 | Imports | Wire types and validators: `/provider`; application adapter: `/wallet` |
 
@@ -16,7 +16,7 @@ description: Wallet provider wire methods, data formats, validation rules, and S
 | --- | --- |
 | `WalletAccount` | `{ address: string; publicKey: string; nonce: string }` |
 | `WalletSession` | `{ networkHash: string; accounts: readonly WalletAccount[] }` |
-| `WalletProvider.info` | `{ id: string; name: string; version: "1.0.0" }` |
+| `WalletProvider.info` | `{ id: string; name: string; version: "2.0.0" }` |
 | `WalletProvider.supportedMethods?` | Optional readonly method-name list |
 | `request(request)` | `Promise<unknown>`; validate each result |
 | `on("change", listener)` | Subscribe to a full session snapshot; returns an idempotent unsubscribe function |
@@ -40,28 +40,28 @@ description: Wallet provider wire methods, data formats, validation rules, and S
 
 | Value | Required format / bound |
 | --- | --- |
-| Address, public key, hash | 32-byte lowercase `0x`-prefixed hex |
-| Network hash | 64 lowercase hex characters without `0x` |
+| Address, public key, network hash, transaction hash | 32 bytes as unprefixed, case-sensitive base58 |
 | Account nonce | Canonical decimal u64, at most `18446744073709551615`; address derivation, not transaction replay nonce |
 | Session accounts | At most 32 unique addresses |
 | Provider ID | 1–64 ASCII letters, digits, dots, underscores, or hyphens |
 | Provider name | 1–80 characters; no controls or surrounding whitespace; render as text |
-| Provider version | Exactly `"1.0.0"` |
+| Provider version | Exactly `"2.0.0"`; version 1 providers are rejected |
 | Provider `supportedMethods` | Optional array of at most 32 strings; unknown names are opaque, including names with punctuation or namespaces |
 | Error message | At most 1,024 characters |
-| Unsigned transaction | Canonical classic XDR, at most 1,048,500 decoded bytes |
+| Unsigned transaction | Canonical classic XDR, at most 1,048,460 decoded bytes |
 | Signed transaction | Canonical classic XDR, at most 1,048,576 decoded bytes |
-| Transaction hex | Lowercase, even-length, `0x`-prefixed; at most 2,097,002 unsigned or 2,097,154 signed characters |
+| Transaction hex | Lowercase, even-length, `0x`-prefixed; at most 2,096,922 unsigned or 2,097,154 signed characters |
 | Account derivation | Protocol pubkey account matching its public key and nonce; Ed25519 key must be non-small-order and prime-order |
 
 | Validation boundary | Requirement |
 | --- | --- |
 | Canonical values | Reject malformed values rather than normalizing |
 | XDR | Consume all input; re-encoding must reproduce the supplied bytes |
-| Before approval | Enforce unsigned size limit; 76 bytes are reserved for one decorated signature |
+| Before approval | Enforce unsigned size limit; 116 bytes are reserved for the Ed25519 envelope: a 76-byte decorated signature and a 40-byte `pubkey_claim_key` |
 | Bridges | Bound raw messages before parsing and bound pending requests; allow for JSON envelope size |
 | Data parsers | Return snapshots |
 | Provider parser | Preserves the live object's identity and method receivers; does not establish trust |
+| Version 1 state | Reset stored sessions; do not convert hex values to base58 |
 
 ## Permissions and Session Events
 
@@ -99,13 +99,14 @@ description: Wallet provider wire methods, data formats, validation rules, and S
 
 | Item | Requirement |
 | --- | --- |
-| Root identity | Transaction root address and complete pubkey claim match the selected account |
+| Root identity | Transaction root address and pubkey claim (public-key hash and derivation nonce) match the selected account |
+| Claim key | `pubkey_claim_key` is present and equals the account's Ed25519 public key |
 | Signed bytes | Preserve unsigned transaction byte-for-byte |
-| Signature | Exactly one Ed25519 signature with public-key ID zero |
+| Signature | Exactly one Ed25519 signature with public-key ID zero; provider accounts are Ed25519 only, so ML-DSA-65 pubkey accounts cannot connect through a provider |
 | Preimage | `cxs(DomainSeparator("Transaction")) \|\| networkHash \|\| txs(transaction)` |
 | Verification | Strict Ed25519 with ZIP-215 disabled; public key and signature point R are non-small-order and prime-order |
 | Signing | Sign the preimage directly, without an extra pre-hash |
-| Result hash | `0x` plus lowercase SHA-256 of unsigned transaction XDR; excludes signatures and network |
+| Result hash | Base58 SHA-256 of unsigned transaction XDR; excludes signatures and network |
 | Web Crypto | Required by SDK signature verification; HTTPS or localhost in browsers |
 
 ## Approval and Submission
@@ -146,8 +147,8 @@ description: Wallet provider wire methods, data formats, validation rules, and S
 | --- | --- |
 | `registerWalletProvider(provider, target = window)` | Validate, announce immediately, and respond to provider requests |
 | `discoverWalletProviders(listener, target = window)` | Subscribe before requesting announcements; validate and deduplicate IDs |
-| Request event | `groundhog:requestProvider` |
-| Announcement event | `groundhog:announceProvider`; `detail` is the provider itself |
+| Request event | `groundhog:requestProvider` (`REQUEST_PROVIDER_EVENT`) |
+| Announcement event | `groundhog:announceProvider` (`ANNOUNCE_PROVIDER_EVENT`); `detail` is the provider itself |
 | Discovery limits | At most 32 IDs; first valid announcement for an ID wins |
 | Cleanup | Idempotent; removes listeners, but does not disconnect sessions |
 | Registration removal | Does not retract an already discovered provider |
@@ -160,19 +161,19 @@ description: Wallet provider wire methods, data formats, validation rules, and S
 | --- | --- |
 | `parseWalletAccount`, `parseWalletSession`, `parseWalletProviderInfo` | Canonical data and frozen snapshots; separately require nonempty accounts after connect |
 | `parseWalletProvider` | Metadata and callable methods on the live object |
-| `parseWalletHex32`, `parseWalletNetworkHash` | Distinct hex encodings |
+| `parseWalletIdentifier`, `parseWalletNetworkHash` | 32-byte base58 address, public key, or hash; network hash uses the same format |
 | `parseWalletCapabilities` | Exact scoped response shape and DefaultWallet call-count bounds; authorization and expected-scope comparison are separate |
 | `parseProviderRequest` | Exact request union and bounded XDR |
 | `parseTransactionHex`, `parseSignedTransactionHex` | Canonical decoded objects, without signature verification |
 | `parseSignTransactionResult`, `parseSubmitTransactionResult` | Result shape; not signature, approval, or broadcast verification |
-| `assertWalletTransaction(tx, account)` | Root address and complete pubkey claim; mismatch is `4100` |
-| `verifySignTransactionResult(value, transaction, account, networkHash)` | Exact bytes, account claim, strict signature, and hash; invalid result is `-32603` |
+| `assertWalletTransaction(tx, account)` | Root address and pubkey claim (public-key hash and nonce); mismatch is `4100` |
+| `verifySignTransactionResult(value, transaction, account, networkHash)` | Exact bytes, account claim, `pubkey_claim_key`, strict signature, and hash; invalid result is `-32603` |
 | `parseWalletProviderError` | Recognized code and bounded message |
 
 | Constant | Value |
 | --- | --- |
 | `MAX_TRANSACTION_BYTES` | `1_048_576` |
-| `MAX_UNSIGNED_TRANSACTION_BYTES` | `1_048_500` |
+| `MAX_UNSIGNED_TRANSACTION_BYTES` | `1_048_460` |
 | `MAX_WALLET_ACCOUNTS` | `32` |
 | `MAX_DISCOVERED_PROVIDERS` | `32` |
 | `MAX_DEFAULT_WALLET_CALLS` | `16` |

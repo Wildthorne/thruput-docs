@@ -53,7 +53,7 @@ export async function connectWallet(
 }
 ```
 
-For a [cluster-aware client](/typescript/connect/), convert its validated network identity with `toHex0x(client.network.networkHash).slice(2)`. Provider network hashes are 64 lowercase hex characters without `0x`. Do not adopt the wallet's network as the application's expected network.
+For a [cluster-aware client](/typescript/connect/), convert its validated network identity with `toBase58(client.network.networkHash)`. Provider network hashes are 32 bytes in unprefixed base58. Do not adopt the wallet's network as the application's expected network.
 
 `connect` prompts for access; `getSession` reads existing access without prompting. A disconnected session has no accounts but still reports the wallet's current network. The adapter does not switch networks.
 
