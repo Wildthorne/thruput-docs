@@ -30,7 +30,7 @@ self.value.decrease(3);   // Tx B: "subtract 3"
 // If both transactions are admitted, the result is 102.
 ```
 
-Both methods check bounds during execution and record relative changes. The runtime also checks aggregate bounds when it reserves concurrent transactions. Two decreases that each fit the snapshot may still exceed it together; successful execution alone does not guarantee inclusion. See [Merged Deltas](/programming-model/execution/#merged-deltas).
+Both methods check bounds during execution and record relative changes. The runtime also checks aggregate bounds when it reserves concurrent transactions. Two decreases that each fit the snapshot may still exceed it together, and credits from other transactions in the same block do not count toward a decrease. Successful execution alone does not guarantee inclusion. See [Merged Deltas](/programming-model/execution/#merged-deltas).
 
 ### Checked and lazy updates
 
@@ -55,7 +55,7 @@ let sender = get_caller();
 self.balances.at_mut(&sender).decrease(amount);
 
 // Skip the receiver load and defer its bound check.
-self.balances.at_mut(receiver).lazy_increase(amount);
+self.balances.at_mut(&receiver).lazy_increase(amount);
 ```
 
 All four adjustment methods record deltas that can merge with compatible transactions:
@@ -122,6 +122,8 @@ self.balances.at_mut(&alice).lazy_increase(20);  // Tx B, merges to +30
 
 Maps can nest: `Map<K, Map<K2, Balance>>` gives composite keys with independent conflict domains at each level. The ERC-20 allowance pattern uses this for owner and spender pairs.
 
+Maps cannot enumerate keys, so a whole `Map` cannot be deleted. Delete one entry with `delete_at(&key)`, or call `delete()` on a deletable handle. Deleting data returns its [storage deposit](/how-it-works/storage-economics/#storage-refundable-deposits).
+
 ## Bytestring
 
 Raw bytes. Concurrent writes of the same value commute. Concurrent writes of different values conflict.
@@ -138,29 +140,29 @@ pub struct Config {
 
 ```rust
 self.owner.set(&new_owner);    // Tx A
-self.owner.set(&other_owner);  // Tx B -- conflict, one excluded
+self.owner.set(&other_owner);  // Tx B: conflict, one excluded
 ```
 
 Use Bytestring for raw configuration or metadata. Writers of different values to the same location conflict; writers of identical values can coexist.
 
 ## RCQ\<T\> / RetrocausalQueue
 
-Multi-producer queue. Inserts commute; consumption is sequential. Persisted entries are ordered by queue block, then lexicographically within that block. Concurrent observations follow the proposer-recorded order.
+Multi-producer, single-consumer queue. Inserts from different transactions merge. Persisted entries are ordered by queue block, then lexicographically within that block. Concurrent observations follow the proposer-recorded order.
 
 ```rust
 // These two transactions can both land:
 self.requests.insert(&entry_a);  // Tx A
-self.requests.insert(&entry_b);  // Tx B -- no conflict
+self.requests.insert(&entry_b);  // Tx B: no conflict
 
 // Consumes pull from the front of the queue
 let entry = self.requests.try_consume();
 ```
 
-Use `RCQ<T>` when producers are concurrent but consumers process items in order. Lower-level raw functions are available when you need byte-level control.
+Only one transaction per block can consume from a given queue; a second consumer is excluded. A queue accepts at most 250 inserted entries per block, and each entry is at most 256 bytes. Use `RCQ<T>` when producers are concurrent and one consumer processes items in order. Lower-level raw functions are available when you need byte-level control.
 
 ## CapacityConstraint
 
-A commit-time limit shared by changes from multiple transactions. Use it when one transaction cannot determine whether a block-wide linear constraint will still hold, such as an aggregate withdrawal limit.
+A commit-time limit shared by changes from multiple transactions. Use it for a rule that spans transactions, such as a supply cap or an aggregate withdrawal limit. A check against a snapshot read cannot enforce that rule, because [reads are not checked at commit](/programming-model/execution/#snapshot-isolation).
 
 ```rust
 use thruput_sdk::storage::CapacityConstraint;
@@ -179,16 +181,19 @@ self.remaining.set_capacity(period_limit);
 self.remaining.consume_capacity(amount);
 ```
 
-Consumption is staged on the handle and written when the handle is flushed or dropped. The runtime enforces that the committed remaining capacity does not fall below its floor. `set_capacity` must be the first write to that constraint in the transaction, except that repeating the same value is allowed.
+Consumption is staged on the handle and written when the handle is flushed or dropped. Call `try_flush()` to catch a flush error instead of aborting in drop. A negative amount releases capacity. The runtime enforces that the committed remaining capacity does not fall below its floor. As with `Balance`, all consumption in a block must fit the capacity the block started with; releases in other transactions do not count.
+
+`set_capacity` must be the first write to that constraint in the transaction, except that repeating the same value is allowed. A reset uses `NNInt::set` rules: it conflicts with consumers in the same block unless it sets the current capacity value.
 
 ## Vector\<S\>
 
 Ordered collection. Each element is an independent storage slot. Internally backed by a `Map<u32, S>` for elements and a length counter.
 
 ```rust
-use thruput_sdk::{storage::{Vector, Node, Value}, Storage};
+use thruput_sdk::storage::{Vector, Node, Value};
 
-#[derive(Storage)]
+#[derive(Debug)]
+#[thruput_sdk::storage]
 pub struct Item {
     value: Value<u64>,
 }
@@ -218,7 +223,7 @@ for item in &self.items {
 }
 ```
 
-Different indices are independent and never conflict (same as Map). Same-index writes follow the element type's rules. Pushes conflict with other pushes (the length counter is not an NNInt, so concurrent length changes are mutually exclusive).
+Different indices are independent and never conflict (same as Map). Same-index writes follow the element type's rules. Pushes and pops write the length with an exclusive lock, so only one transaction per block can change a vector's length. That transaction can push or pop several times.
 
 Use Vector for ordered collections where elements are accessed by index. Wrap compound structs in `Node<T>` so storage derivation works through the nesting. For hot concurrent writes, Map with application-managed keys is more parallelism-friendly than Vector with pushes.
 
@@ -252,27 +257,28 @@ Use `Value<T>` for typed single-slot storage. Use `Bytestring` when you need raw
 |-----------------------------|-----|-----|
 | Nonnegative count, balance, allowance, or supply | Balance | Nonnegative amounts, zero default, and checked or lazy deltas. |
 | Signed delta or explicit integer base | NNInt | Signed deltas merge and `set` controls the base. |
-| Block-wide linear limit | CapacityConstraint | Concurrent transactions consume shared commit-time capacity. |
+| Cap or limit that spans transactions | CapacityConstraint | The runtime enforces the limit across the block; a snapshot read cannot. |
 | `INSERT INTO ... (key, value)` with unique keys | Map | Different keys are independent. |
-| Ordered list, accessed by index | Vector | Per-element independence. Pushes are exclusive. |
+| Ordered list, accessed by index | Vector | Per-element independence. One transaction per vector per block can push or pop. |
 | Store a typed value | Value\<T\> | Typed Bytestring. Same conflict rules. |
 | `col = absolute_value` (raw bytes) | Bytestring | Accept that concurrent writes conflict. |
-| Append to a log or work queue | RCQ\<T\> | Inserts merge, consumers are sequential. |
+| Append to a log or work queue | RCQ\<T\> | Inserts merge. One consumer per queue per block. |
 
 ## Exclusive Writes
 
 Use exclusive writes when an operation needs sole write access to a storage location for the duration of a block. Compatible deltas normally merge; an exclusive write prevents concurrent modifications to that key.
 
-- `Value<T>::set_exclusive(&v)`: typed slot, exclusive write.
-- `Map::at_mut_exclusive(&key)`: exclusive mutator on a Map entry.
-- `NNInt` and `Bytestring` honour the **exclusive keypath flag** set on the field at storage-derivation time, or via the lower-level free functions `non_negative_int_set_exclusive` / `bytestring_set_exclusive`.
+- `Value<T>::set_exclusive(&v)`: one exclusive write to a typed slot.
+- `Map::at_mut_exclusive(&key)`: every write through the returned handle (`Value`, `Balance`, `NNInt`, `Bytestring`, or nested fields) requests the lock.
+- `Deletable::delete_exclusive()`: delete, then request the lock.
+- Raw keys: `non_negative_int_set_exclusive`, `bytestring_set_exclusive`, `delete_exclusive`, or `set_storage_flags`.
 
 ```rust
 self.config.set_exclusive(&new_value);          // Value<Config>
 self.integer_state.at_mut_exclusive(&owner).set(v);  // Map<_, NNInt>
 ```
 
-If two concurrent transactions write exclusively to the same key, one is excluded. Mixing exclusive and non-exclusive writes to the same key in the same block excludes the non-exclusive writers. Prefer `Balance` or `NNInt` deltas when the operation can tolerate concurrent updates.
+If two transactions write exclusively to the same key, one is excluded. An exclusive write is also excluded if another transaction in the block has already written that key. Once an exclusive write is admitted, every later write to the key in that block is excluded. Whichever transaction reserves first wins. Prefer `Balance` or `NNInt` deltas when the operation can tolerate concurrent updates.
 
 ### Lock Requests
 
@@ -283,8 +289,6 @@ self.integer_state.at_mut_exclusive(&owner).set(0);
 self.integer_state.at_mut(&owner).inc(1);  // The lock request remains.
 ```
 
-Leaf handles (`Value`, `NNInt`, `Balance`, and `Bytestring`) implement `Flaggable`. Import it with `use thruput_sdk::storage::Flaggable;`. `flags()` reads the flags, `set_flags(flags)` adds flags, and `clear_flags()` removes them. Setting flags requires a pending write to that key in the current call frame.
-
-The raw-key functions `storage_flags`, `set_storage_flags`, and `clear_storage_flags` provide the same operations for a `StorageKey`. A reverted frame or failed `try_invoke` discards its flag changes along with its writes. See [Storage Flags](/reference/syscalls/#storage-flags) for the host API.
+A reverted frame or failed `try_invoke` discards its flag changes along with its writes. Leaf handles implement `Flaggable` to read, add, or clear flags; see [Flaggable Trait](/reference/storage-types/#flaggable-trait) and [Storage Flags](/reference/syscalls/#storage-flags).
 
 If `Balance` covers your state model, you do not need its lower-level representation. Read [NNInt and concurrent updates](/programming-model/nnint/) when you need signed changes, an explicit base, or the exact `set_add` commutativity rules. For runtime reservation details, continue to [Parallel Execution](/how-it-works/execution-model/).

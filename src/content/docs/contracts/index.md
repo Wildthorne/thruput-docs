@@ -27,7 +27,7 @@ Use the [CLI section](/cli/) for build and deployment commands.
 
 ## Understand the programming model
 
-Start with [Balance](/programming-model/storage-types/#balance) for nonnegative counts and amounts, then read [execution](/programming-model/execution/) for snapshots and merged changes. Continue with [NNInt and concurrent updates](/programming-model/nnint/) to understand the underlying signed deltas, explicit bases, and merge rules. [Exclusive writes](/programming-model/storage-types/#exclusive-writes) and [invocation frames](/how-it-works/invocation-frames/) cover other storage and call constraints.
+Read [Contract Execution](/programming-model/execution/) first for snapshots, merged changes, and the rules that cause bugs. Then read [Storage Types](/programming-model/storage-types/), starting with [Balance](/programming-model/storage-types/#balance) for nonnegative counts and amounts. Continue with [NNInt and concurrent updates](/programming-model/nnint/) to understand the underlying signed deltas, explicit bases, and merge rules. [Exclusive writes](/programming-model/storage-types/#exclusive-writes) and [invocation frames](/how-it-works/invocation-frames/) cover other storage and call constraints.
 
 Read [Contract artifacts and addresses](/how-it-works/contracts/) to understand code hashes, deployment addresses, and immutability.
 

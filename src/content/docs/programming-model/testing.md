@@ -5,31 +5,25 @@ description: "How to test Stellar Thruput contracts: native logic tests, RV32 in
 
 ## Test Modes
 
-Choose a test path based on the boundary you need to exercise:
-
-| Command | What it covers | Use for |
-|---------|----------------|---------|
-| `cargo test` | Native SDK execution in process | Fast logic tests, error-path assertions, debugging |
-| `thruput test` | Executor-backed RV32 artifact test | Contract artifact behavior without an RPC node |
-| `thruput test --integration` | Ephemeral `hog-devnode`, deployed RV32 artifact, RPC client path | End-to-end deploy/call tests |
-
-Start with `cargo test`, then run `thruput test` against the RV32 artifact. Add `thruput test --integration` when you need to test the same path a partner or app will use: build artifact, local node, deployment, signing profile, RPC URL, and generated client behavior.
-
-`thruput test --integration` builds and deploys RV32, the normal user-contract runtime.
+Start with `cargo test` for native logic tests in process, then run `thruput test` against the RV32 artifact. Add `thruput test --integration` when you need to test the same path a partner or app will use: build artifact, local node, deployment, signing profile, RPC URL, and generated client behavior. [Build and test](/cli/build-and-test/#choose-a-test-boundary) compares the three modes and their command options.
 
 Fresh projects include the integration target and host-only dependencies. The CLI can acquire a compatible catalog-pinned `hog-devnode`; use `thruput toolchain list` to inspect it. `THRUPUT_DEVNODE_BINARY` selects an explicit matching source build.
 
 ## What the Scaffold Gives You
 
-The `counter` and `stub` templates include:
+Every new project (the default minimal contract, `--template counter`, and `--template counter-app`) includes:
 
 ```text
 build.rs
 tests/
+  test.rs
+  test_rv32.rs
   integration.rs
 ```
 
-`tests/integration.rs` starts with one ignored RPC smoke test. It checks that the CLI provided a deployed contract, connects to the ephemeral node with `thruput-json-rpc-client`, and calls `getChainTip`. Replace or extend the final placeholder with assertions for your contract.
+`tests/test.rs` holds native tests, and `tests/test_rv32.rs` runs under `thruput test`.
+
+`tests/integration.rs` starts with one ignored RPC smoke test. It checks that the CLI provided a base58 contract address, connects to the ephemeral node with `thruput-json-rpc-client`, and calls `getChainTip`. Replace or extend the final placeholder with assertions for your contract.
 
 The starter remains ignored under ordinary `cargo test`, even if you explicitly enable its feature. `thruput test --integration` enables the feature and sets `THRUPUT_INTEGRATION_TEST=1`, which lets the scaffold's `build.rs` activate the live test. You can rename the module and test functions without changing how activation works.
 
@@ -139,8 +133,7 @@ Use `thruput test --integration` when the thing under test is not just contract 
 Use `try_*` methods to verify that operations fail as expected:
 
 ```rust
-use my_counter::{CounterClient, register_mock_contract};
-
+// Inside tx.call(&caller).run(...), after client.initialize(5):
 assert_eq!(
     client.try_decrement(10).unwrap_err().try_as(),
     Some(LibraryExn::NonNegativeIntUnderflow),
@@ -148,6 +141,25 @@ assert_eq!(
 ```
 
 The `try_decrement` method (generated alongside `decrement` by the `#[contract]` macro) returns a `Result` instead of aborting. The error type is the SDK's `CallError`, which is the same for every client: a caught exception stays undecoded inside it, and `try_as` decodes it as whichever exception type you name. When more than one type is of interest, `match_exn!` matches several in one place. See [Handle errors](/contracts/errors/) for the full error model.
+
+## Blocks and Conflicts
+
+Each `env.transact` call runs in the current block. Transactions in the same block read the previous block's committed state and do not see each other's writes. Call `env.advance_block()` to commit the block and make its effects visible. Use `env.advance_block_at(timepoint)` to pin the next block's time for deadline and expiry tests.
+
+Use same-block transactions to test merges and exclusion:
+
+```rust
+fn transfer(env: &TestEnvironmentHandle, from: ContractAddress, to: ContractAddress, amount: i128) -> TransactResult {
+    env.transact(|tx| tx.call(&from).run(move || ERC20Client::new(&token()).transfer(&to, amount)))
+}
+
+// Alice holds 100. Both transfers run in the same block.
+transfer(&env, alice(), bob(), 60).assert_success();
+transfer(&env, alice(), carol(), 60).assert_commit_failed_nondeterministically();
+env.advance_block();
+```
+
+`assert_commit_failed_nondeterministically()` means the root call succeeded but its deltas could not be reserved with the block's other changes. On a network, that transaction is excluded and reported as `retry`. `TransactResult` also provides `assert_return_as::<T>()`, `assert_abort_as::<E>()`, `events()`, and `filter_events::<E>()`. See [`contracts/erc20/tests/same_block.rs`](https://github.com/thruputchain/thruput-examples/blob/main/contracts/erc20/tests/same_block.rs) for more same-block cases.
 
 ## Integration Test Environment
 
@@ -159,18 +171,19 @@ The `try_decrement` method (generated alongside `decrement` by the `#[contract]`
 | `THRUPUT_RPC_URL` | RPC URL for the ephemeral node |
 | `THRUPUT_CONTRACT_ADDRESS` | Deployed contract address |
 | `THRUPUT_PROFILE` | `integration` |
-| `THRUPUT_DEFAULT_KEY` | Lowest-index `local_user`, normally `dev-1` |
+| `THRUPUT_DEFAULT_KEY` | `integration`, a temporary key the CLI creates and funds for this run |
 | `THRUPUT_RUNTIME_MANIFEST` | Runtime manifest path, when available |
+| `XDG_CONFIG_HOME` | Temporary config directory that holds the `integration` key and profile |
 
 The full run is:
 
 1. Build the RV32 artifact.
 2. Start an isolated local node.
-3. Deploy it with the runtime's lowest-index `local_user`, normally `dev-1`. `dev-0` remains reserved for the local faucet.
+3. Deploy it with a temporary `integration` key that the CLI generates and funds at node genesis.
 4. Enable `thruput-integration-test` and run only the `integration` Cargo test target with the environment above.
 5. Shut down the node after the test run, including after test failures.
 
-Normal test-harness controls such as `--match-test`, `--skip`, `--show-output`, `--no-capture`, and `--test-threads` apply to integration tests. `--watch` and `--rerun` cannot be combined with `--integration` yet.
+Normal test-harness controls such as `--match-test`, `--skip`, `--fail-fast`, `--show-output`, `--no-capture`, and `--test-threads` apply to integration tests. `--watch`, `--rerun`, and `--workspace` cannot be combined with `--integration` yet.
 
 Integration tests use the same RV32 artifact path as normal builds and deployments.
 

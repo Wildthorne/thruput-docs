@@ -40,7 +40,7 @@ description: API reference for Stellar Thruput storage types.
 | --- | --- |
 | Data model | Signed changes, explicit `set`, and a commit-time floor |
 | Decrement | Negative `inc` or `strict_inc` argument |
-| Exclusive writes | Keypath flag, or `non_negative_int_set_exclusive` in `thruput_sdk::sys_exn::nnint`; no handle `set_exclusive` method |
+| Exclusive writes | Handle from `Map::at_mut_exclusive`, `delete_exclusive`, or `non_negative_int_set_exclusive` in `thruput_sdk::sys_exn::nnint`; no handle `set_exclusive` method |
 | Traits | `Deletable` |
 | Usage | [Merged deltas](/programming-model/execution/#merged-deltas), [NNInt and concurrent updates](/programming-model/nnint/) |
 
@@ -157,7 +157,7 @@ description: API reference for Stellar Thruput storage types.
 | Property | Value |
 | --- | --- |
 | Data | Raw bytes |
-| Exclusive writes | Keypath flag, or `bytestring_set_exclusive` in `thruput_sdk::sys_exn::bytestring`; no handle `set_exclusive` method |
+| Exclusive writes | Handle from `Map::at_mut_exclusive`, `delete_exclusive`, or `bytestring_set_exclusive` in `thruput_sdk::sys_exn::bytestring`; no handle `set_exclusive` method |
 | Traits | `Deletable` |
 
 | Method | Signature | Description |
@@ -168,14 +168,14 @@ description: API reference for Stellar Thruput storage types.
 | `get` | `fn get(&self) -> Box<[u8]>` | Read stored bytes as a heap-allocated slice. |
 | `try_get` | `fn try_get(&self) -> Result<Box<[u8]>, LibraryExn>` | Read without aborting. Missing storage is an `Err` identifiable with `is_storage_missing()`. |
 | `get_sized` | `fn get_sized<const N: usize>(&self) -> [u8; N]` | Read into a fixed-size array. Aborts if length does not match `N`. |
-| `set` | `fn set(&mut self, buf: &[u8])` | Write bytes. Uses the keypath's locking mode (exclusive if the keypath flag is set). |
+| `set` | `fn set(&mut self, buf: &[u8])` | Write bytes. Exclusive when the handle came from `Map::at_mut_exclusive`. |
 
 ## RCQ\<T\>
 
 | Property | Value |
 | --- | --- |
 | Data | CXS-encoded `T`; multi-producer queue |
-| Concurrency | Inserts commute; consumes are sequential |
+| Concurrency | Inserts merge, up to 250 entries per queue per block; one consuming transaction per queue per block |
 | Traits | `StorageType`, `Deletable` |
 | Modules | Typed wrapper in `thruput_sdk::storage`; raw-key functions in `thruput_sdk::sys_exn::rcq` |
 
@@ -226,15 +226,11 @@ description: API reference for Stellar Thruput storage types.
 
 | Property | Value |
 | --- | --- |
-| Data | Compound storage field group and its root keypath |
+| Data | Compound storage field group; does not keep its own keypath |
 | Bound | `T: From<Keypath>` |
 | Access | `Deref<Target = T>`, `DerefMut` |
 | Collection support | Implements `StorageType` for use in maps and vectors |
 | Deletion | `Deletable` when `T: Deletable`; delegates to inner fields |
-
-| Method | Signature | Description |
-|--------|-----------|-------------|
-| `keypath` | `fn keypath(&self) -> &Keypath` | Reference to the node's root keypath. |
 
 ## Deletable Trait
 
