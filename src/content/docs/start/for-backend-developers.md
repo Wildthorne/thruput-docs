@@ -29,9 +29,9 @@ fn transfer(&mut self, receiver: &ContractAddress, amount: Amount) {
 
 ---
 
-## Conflicts and the Mempool
+## Conflicts and Retries
 
-When deltas conflict, the transaction is excluded and returned to the mempool for possible inclusion in a later block. Contract code does not retry the operation. Clients still need to track confirmation and transaction expiry.
+When deltas conflict, the transaction is excluded and reported as `retry`. Contract code does not retry the operation. The client resubmits the same signed transaction until it commits or expires. It can commit at most once.
 
 The balance constraint works the same way. If two concurrent withdrawals together exceed the available balance, one or more transactions are excluded. This is `CHECK (balance >= 0)` enforced by the storage model rather than application code.
 

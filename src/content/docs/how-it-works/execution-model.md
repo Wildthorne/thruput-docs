@@ -46,7 +46,7 @@ Two compatible increments to the same balance produce the same result regardless
 
 ## What Commutes and What Doesn't
 
-Transactions execute concurrently. Storage merge rules determine whether their changes can land together. A conflicting transaction is excluded from the proposal and returned to the mempool.
+Transactions execute concurrently. Storage merge rules determine whether their changes can land together. A conflicting transaction is excluded from the proposal and reported as `retry`. The client resubmits it.
 
 | Operation | Can both changes land? | Why |
 |-----------|-----------|-----|

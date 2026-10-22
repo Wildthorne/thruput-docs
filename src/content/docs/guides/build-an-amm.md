@@ -111,7 +111,7 @@ Each request is handled with a gas cap and commit locking. A handled failure can
 <span id="minimum-batch-size"></span>
 <span id="a-queue-costs-storage-so-it-needs-a-ceiling"></span>
 
-Queue capacity bounds pending storage. Consumption is checked during reservation across concurrent requests. An excluded submission returns to the mempool; it is not guaranteed a place in the next block.
+Queue capacity bounds pending storage. Consumption is checked during reservation across concurrent requests. An excluded submission is reported as `retry`. Resubmit the same signed transaction; it is not guaranteed a place in the next block.
 
 Processing is permissionless and bounded by gas. The driver requires enough budget for the waiting work up to its configured minimum batch. It does not consume a request and then discard it merely because no processing budget remains.
 

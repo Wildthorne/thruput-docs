@@ -3,7 +3,7 @@ title: Contract Execution
 description: "The rules your contract relies on: snapshots, compatible state changes, exclusion, and gas limits."
 ---
 
-Your contract reads from a frozen snapshot and produces typed storage changes, called deltas. Ordinary storage reads do not see other transactions' writes. The runtime checks whether each transaction's deltas can coexist with the other changes landing in the block. Deltas that can coexist form the next committed state. Transactions with conflicting deltas are excluded and returned to the mempool.
+Your contract reads from a frozen snapshot and produces typed storage changes, called deltas. Ordinary storage reads do not see other transactions' writes. The runtime checks whether each transaction's deltas can coexist with the other changes landing in the block. Deltas that can coexist form the next committed state. Transactions with conflicting deltas are excluded and reported as `retry`.
 
 This page is the contract-author model. Read it before choosing storage types. It explains the behavior your contract relies on without requiring the engine's lock and reservation implementation.
 
@@ -50,13 +50,13 @@ In these docs, **compatible deltas** means the storage type allows both changes 
 
 1. **Read and execute:** your contract reads the block snapshot plus its own changes and successful child calls. It records typed deltas.
 2. **Reserve:** after the root call succeeds, the runtime checks whether the complete delta batch can coexist with the proposal's other changes.
-3. **Commit or exclude:** admissible transactions contribute to the finalized block. Conflicting transactions return to the mempool.
+3. **Commit or exclude:** admissible transactions contribute to the finalized block. Conflicting transactions are excluded and reported as `retry`.
 
 Your contract does not control these phases. [Transaction Lifecycle](/how-it-works/transaction-lifecycle/) covers submission through finalization; [Parallel Execution](/how-it-works/execution-model/) explains the reservation machinery.
 
 ## Exclusion
 
-From your contract's perspective, a conflicting transaction simply doesn't land. Your code runs, produces deltas, and the system determines whether that completed delta batch is compatible with other transactions in the block. Incompatible transactions are excluded and returned to the mempool. See [How Conflicts Are Resolved](/how-it-works/execution-model/#how-conflicts-are-resolved) for the engine-level details.
+From your contract's perspective, a conflicting transaction doesn't land. Your code runs, produces deltas, and the system determines whether that completed delta batch is compatible with other transactions in the block. An excluded transaction is not committed and its replay nonce is not consumed, so the client can resubmit the same signed transaction until it commits or expires. See [How Conflicts Are Resolved](/how-it-works/execution-model/#how-conflicts-are-resolved) for the engine-level details.
 
 Clients keep the submitted hash and observe its outcome. A pending result is not a reason to sign a replacement transaction. See [Track transaction results](/typescript/transaction-status/). Storage choices determine which changes can coexist; see [Storage Types](/programming-model/storage-types/).
 

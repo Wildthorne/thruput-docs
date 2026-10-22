@@ -24,7 +24,7 @@ Key rules:
 - `strict_inc(delta)` and `inc(delta)` are both commutative. `strict_inc` loads the current base for early underflow detection. `inc` skips that read.
 - Gas costs zero tokens. Root transactions use the declared gas limit for scheduling capacity. There is no unused-gas refund path.
 - Say "gas price estimation" when discussing other-chain pain. The problem is price volatility, not usage prediction.
-- Excluded transactions are returned to the mempool, not retried next block.
+- An excluded transaction is not committed and its replay nonce is not consumed. The node reports it as `retry`, and the client resubmits the same signed transaction. Do not say excluded transactions return to the mempool. An excluded transaction is different from a committed abort, revert, or out-of-gas fault, which consumes the nonce.
 
 ## Content Rules
 

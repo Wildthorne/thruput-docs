@@ -12,7 +12,7 @@ Submitting a transaction is the start of the process. A successful submission do
 | **Rejected before execution** | Admission or authorization failed; the transaction did not reach contract execution |
 | **Committed success** | The transaction is in a finalized block and its contract changes were applied |
 | **Committed abort or fault** | The failure is recorded in the block, but the contract changes are discarded |
-| **Excluded from a proposal** | The transaction did not land in that proposal; conflicting transactions return to the mempool for possible later inclusion |
+| **Excluded from a proposal** | The transaction did not land in that proposal and is reported as `retry`; its replay nonce is not consumed, so the client can resubmit it |
 
 A pending or `unknown` status, a timeout, or an advisory `recentFailure` is not proof of a committed failure. Keep the original network and transaction hash, and resume observation instead of automatically signing a replacement. See [Track transaction results](/typescript/transaction-status/) for the application workflow.
 
@@ -65,7 +65,7 @@ When the root frame completes, the runtime checks its status:
 - **Return (success)**: the transaction's deltas are submitted for reservation. They are included only if the transaction remains admissible.
 - **Deterministic Abort or Fault**: the failure can be included in the block with the contract's writes discarded. Protocol bookkeeping, including replay protection, is still recorded. Once committed, this is a final execution result, not a transaction waiting to be retried.
 
-This is distinct from **conflict exclusion** during reservation (Stage 4): the root frame may return successfully, but its completed delta batch can still fail reservation and be returned to the mempool for a future block. Deterministic abort and non-deterministic conflict exclusion are two different failure modes with different on-chain semantics.
+This is distinct from **conflict exclusion** during reservation (Stage 4): the root frame may return successfully, but its completed delta batch can still fail reservation and be excluded. Deterministic abort and non-deterministic conflict exclusion are two different failure modes with different on-chain semantics.
 
 ## Stage 5: Block Assembly
 
@@ -75,7 +75,7 @@ The proposer packages the included transaction results into a consensus proposal
 
 Once consensus confirms the block, each validator commits the verified result to its DB shards. The new ledger state becomes the snapshot for the next block.
 
-Transactions excluded during delta reservation (Stage 4) are returned to the mempool and may be re-evaluated in future blocks, subject to scheduling and expiry. Committed aborts and faults remain in the block with their contract changes discarded.
+Transactions excluded during delta reservation (Stage 4) are reported as `retry`. Do not rely on the network to include them later. Resubmit the same signed transaction until it commits or expires. Committed aborts and faults remain in the block with their contract changes discarded.
 
 ## Related Documentation
 

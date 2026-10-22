@@ -58,7 +58,7 @@ Every contract has a native-token balance that represents its unlocked (free) to
 - **Modifying existing data** adjusts the deposit up or down based on the size difference.
 - **Deleting data** returns the locked native tokens to the contract's free balance.
 
-If an address does not have enough unlocked native tokens to cover a storage change, reservation can fail for insufficient funds. The transaction is excluded from that proposal and returned to the mempool. This differs from a committed contract abort, whose result is recorded with its contract changes discarded. See [Transaction Lifecycle](/how-it-works/transaction-lifecycle/#outcomes-to-distinguish).
+If an address does not have enough unlocked native tokens to cover a storage change, reservation can fail for insufficient funds. The transaction is excluded from that proposal and reported as `retry`. This differs from a committed contract abort, whose result is recorded with its contract changes discarded. See [Transaction Lifecycle](/how-it-works/transaction-lifecycle/#outcomes-to-distinguish).
 
 Your contract does not calculate storage costs or manage deposits manually. The runtime handles it as part of the normal transaction commit process.
 

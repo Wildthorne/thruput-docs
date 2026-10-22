@@ -16,7 +16,7 @@ The similarity to counters and maps in CRDT systems is useful, but the coordinat
 CRDTs can reconcile independently updated replicas. Stellar Thruput instead executes transactions against a common committed snapshot, reserves compatible typed changes, and uses [consensus](/how-it-works/consensus/) to select a finalized block.
 
 - **Merge rules operate within a proposal.** Applications do not maintain vector clocks to reconcile ordinary balance or map updates.
-- **Bounds still apply.** A balance cannot commit below zero. If concurrent debits exceed the available value, an overdrawing transaction is excluded and returned to the mempool.
+- **Bounds still apply.** A balance cannot commit below zero. If concurrent debits exceed the available value, an overdrawing transaction is excluded and reported as `retry` for the client to resubmit.
 - **Consensus selects one result.** Validators verify the proposed state transition. Nodes that have applied the same finalized block agree on that state.
 - **Readers can see different heights.** A node may lag while receiving or replaying blocks. Check the returned read height when freshness matters.
 
