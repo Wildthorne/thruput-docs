@@ -62,7 +62,7 @@ thruput --version
 
 If `command -v thruput` selects an older Cargo installation, put the bundle's `bin` directory before `~/.cargo/bin` in `PATH`. Contract builds still require Rust and Cargo registry access.
 
-CLI-only [component archives](https://github.com/groundhogchain/groundhog-rpc/releases/latest) are also available to users with repository access. They do not include the local runtime. On Linux, both the client tarball and component installations require system jemalloc and Snappy libraries for a local node. If an error names `libjemalloc.so.2` or `libsnappy.so.1`, install your distribution's corresponding packages (`libjemalloc2` and `libsnappy1v5` on Ubuntu).
+CLI-only [component archives](https://github.com/thruputchain/thruput-tools/releases/latest) are also available to users with repository access. They do not include the local runtime. On Linux, both the client tarball and component installations require system jemalloc and Snappy libraries for a local node. If an error names `libjemalloc.so.2` or `libsnappy.so.1`, install your distribution's corresponding packages (`libjemalloc2` and `libsnappy1v5` on Ubuntu).
 
 ## Set up the local runtime
 

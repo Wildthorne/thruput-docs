@@ -143,7 +143,7 @@ The landing page imports the prompt from `/start/build-with-an-agent/`.
 Maintain its text block there. The prompt installs the Thruput CLI and maintained
 skill, exports the docs, and verifies a counter through CLI calls on Devnet.
 `public/agent-guide.md` points readers to this workflow and the maintained skill.
-Skill content is maintained in `groundhogchain/agent-skills` and updates
+Skill content is maintained in `thruputchain/agent-skills` and updates
 independently of CLI releases.
 
 Earlier release guides remain unchanged under `public/agents/<cli-version>/`.

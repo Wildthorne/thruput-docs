@@ -23,9 +23,9 @@ The Rust traits retain the names `ReadXDR` and `WriteXDR` for both encodings. Us
 
 | Definition | Types |
 | --- | --- |
-| [transaction.x](https://github.com/groundhogchain/protocol/blob/dc6e80b6472d0eda0440eab190c24b20233c839c/transaction.x) | `Invocation`, `Transaction`, `SignedTransaction`, invocation outputs |
-| [types.x](https://github.com/groundhogchain/protocol/blob/dc6e80b6472d0eda0440eab190c24b20233c839c/types.x) | Addresses, hashes, signatures, protocol scalar types |
-| [storage_item.x](https://github.com/groundhogchain/protocol/blob/dc6e80b6472d0eda0440eab190c24b20233c839c/storage_item.x) | Storage items and deltas |
-| [header.x](https://github.com/groundhogchain/protocol/blob/dc6e80b6472d0eda0440eab190c24b20233c839c/header.x) | Proposal header |
-| [consensus.x](https://github.com/groundhogchain/protocol/blob/dc6e80b6472d0eda0440eab190c24b20233c839c/consensus.x) | Consensus values |
-| [groundhog_contract_spec.x](https://github.com/groundhogchain/protocol/blob/dc6e80b6472d0eda0440eab190c24b20233c839c/groundhog_contract_spec.x) | Contract types, methods, events, and interface metadata |
+| [transaction.x](https://github.com/thruputchain/thruput-protocol/blob/dc6e80b6472d0eda0440eab190c24b20233c839c/transaction.x) | `Invocation`, `Transaction`, `SignedTransaction`, invocation outputs |
+| [types.x](https://github.com/thruputchain/thruput-protocol/blob/dc6e80b6472d0eda0440eab190c24b20233c839c/types.x) | Addresses, hashes, signatures, protocol scalar types |
+| [storage_item.x](https://github.com/thruputchain/thruput-protocol/blob/dc6e80b6472d0eda0440eab190c24b20233c839c/storage_item.x) | Storage items and deltas |
+| [header.x](https://github.com/thruputchain/thruput-protocol/blob/dc6e80b6472d0eda0440eab190c24b20233c839c/header.x) | Proposal header |
+| [consensus.x](https://github.com/thruputchain/thruput-protocol/blob/dc6e80b6472d0eda0440eab190c24b20233c839c/consensus.x) | Consensus values |
+| [groundhog_contract_spec.x](https://github.com/thruputchain/thruput-protocol/blob/dc6e80b6472d0eda0440eab190c24b20233c839c/groundhog_contract_spec.x) | Contract types, methods, events, and interface metadata |

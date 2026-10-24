@@ -7,7 +7,7 @@ Use `thruput skill` for coding-agent instructions and `thruput docs` for the dev
 
 ## Install the maintained skill
 
-Installation requires Node.js 22.20 or newer, npm, Git, and access to the private [skill repository](https://github.com/groundhogchain/agent-skills). Configure repository authentication through Git, GitHub CLI, or SSH.
+Installation requires Node.js 22.20 or newer, npm, Git, and access to the private [skill repository](https://github.com/thruputchain/agent-skills). Configure repository authentication through Git, GitHub CLI, or SSH.
 
 ```bash
 thruput skill install
@@ -23,7 +23,7 @@ thruput skill install --global --agent claude-code
 Repeat `--agent` to select more than one agent. These commands run `npx skills` against the maintained source. You can also install directly:
 
 ```bash
-npx skills add groundhogchain/agent-skills --skill thruput
+npx skills add thruputchain/agent-skills --skill thruput
 ```
 
 Installing the skill does not configure Cargo or npm access for a contract or application. Follow the relevant [quickstart](/get-started/) for those dependencies.

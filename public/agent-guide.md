@@ -9,5 +9,5 @@ thruput skill show
 
 Follow [Build with an Agent](https://thruput.network/docs/start/build-with-an-agent/)
 for setup and a first contract. The skill source is
-[groundhogchain/agent-skills](https://github.com/groundhogchain/agent-skills).
+[thruputchain/agent-skills](https://github.com/thruputchain/agent-skills).
 Skill updates are independent of CLI releases.
