@@ -30,7 +30,7 @@ description: Thruput CLI commands, common options, and links to task instruction
 | `config set FIELD VALUE --profile NAME` | Set one typed field in an existing profile layer | [Overrides](/cli/configuration/#global-settings-and-project-overrides) |
 | `config unset FIELD --profile NAME` | Remove a field from one layer | [Overrides](/cli/configuration/#global-settings-and-project-overrides) |
 | `config use NAME` | Set the layer's default profile | [Select a profile](/cli/configuration/#choose-a-profile) |
-| `config rm NAME` | Remove a profile from one layer | Requires confirmation; `--force` for an intended automated removal |
+| `config rm NAME` | Remove a profile from one layer | Requires confirmation; `--yes` for an intended automated removal |
 | `--global` / `--project` | Choose the layer for a configuration mutation | Required inside a project; mutually exclusive |
 
 ## Keys and Wallets
@@ -91,7 +91,7 @@ description: Thruput CLI commands, common options, and links to task instruction
 | `view CONTRACT METHOD [ARGS...]` | Run a sandboxed read without submitting | [Views](/cli/deploy-and-call/#read-without-submitting) |
 | `storage CONTRACT KEY` | Read a raw committed storage item | [Views and storage](/cli/deploy-and-call/#read-without-submitting) |
 | `--dry-run` | Prepare deploy/call transactions without broadcast | Still requires signing context and network access |
-| `--force` | Confirm an intended write without a prompt | [Automation](/cli/automation/#confirm-intended-writes) |
+| `--yes` (alias `--force`) | Confirm an intended write without a prompt | [Automation](/cli/automation/#confirm-intended-writes) |
 | `--profile NAME` / `--rpc-url URL` | Select configuration or override the endpoint | [Profiles](/cli/configuration/) |
 
 ## Transactions, Events, and Tokens

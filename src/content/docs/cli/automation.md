@@ -3,7 +3,7 @@ title: Use the CLI in scripts
 description: Use non-interactive commands and structured output without treating output flags as confirmation.
 ---
 
-Use `--non-interactive` to disable questions and terminal UI. It does not authorize state changes. Supply the command's consent option, such as `--force` for deployment or `--yes` for skill setup.
+Use `--non-interactive` to disable questions and terminal UI. It does not authorize state changes. Pass `--yes` to confirm an intended write, such as a deployment, an airdrop, or skill setup. `--force` remains an alias.
 
 ## Set up explicitly
 
@@ -31,7 +31,7 @@ With `test --watch --json`, each completed run is a separate JSON record. A long
 For a deployment you intend to submit:
 
 ```bash
-thruput deploy --profile futurenet --fund 10 --non-interactive --force --json
+thruput deploy --profile futurenet --fund 10 --non-interactive --yes --json
 ```
 
 For preparation without submission, use `--dry-run` instead. Neither `--quiet` nor `--json` substitutes for confirmation.

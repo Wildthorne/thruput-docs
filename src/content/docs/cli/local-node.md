@@ -51,7 +51,7 @@ thruput chain dump --data-dir .thruput/node --output chain-backup.json
 thruput chain restore --data-dir .thruput/node --input chain-backup.json
 ```
 
-Restore asks before replacing populated state. Use `--force` only when that replacement is intended.
+Restore asks before replacing populated state. Use `--yes` only when that replacement is intended.
 
 ## Change the endpoint or logging
 
