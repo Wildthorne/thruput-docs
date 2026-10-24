@@ -72,10 +72,12 @@ The result should be **15**. You have built, tested, deployed, and called a cont
 ```text
 Help me complete the Project Thruput contract quickstart:
 https://thruput.network/docs/get-started/contract/
-Use the latest CLI, install the thruput skill for this project, and read
-thruput skill show contracts. Scaffold with --template counter. Check CLI setup and
-Futurenet funding first. Scaffold my-counter, preserve its generated
-dependency and compiler settings, then build and test it.
+Use the latest CLI. Check CLI setup first: select Futurenet with
+thruput config use futurenet if it is not already selected, and confirm
+the wallet is funded. Scaffold my-counter with --template counter, then
+install the thruput skill in that project and read thruput skill show
+contracts. Preserve the generated dependency and compiler settings, then
+build and test it.
 Read the deployment estimate and add the documented storage allowance to its
 minimum. Deploy with that explicit total and initialize atomically to 10,
 increment by 5, and verify that the view returns 15.
