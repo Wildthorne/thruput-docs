@@ -2,4 +2,4 @@
 import DefaultFooter from '@astrojs/starlight/components/Footer.astro';
 ---
 
-{Astro.url.pathname !== '/' && <DefaultFooter />}
+{Astro.url.pathname !== '/' && Astro.url.pathname !== '/whitepapers/' && <DefaultFooter />}

@@ -5,7 +5,7 @@ import { sectionForPath } from '../navigation';
 const section = sectionForPath(Astro.url.pathname);
 ---
 
-{Astro.url.pathname !== '/' && <div class="page-heading" data-section={section?.label} data-pagefind-meta="section[data-section]">
+{Astro.url.pathname !== '/' && Astro.url.pathname !== '/whitepapers/' && <div class="page-heading" data-section={section?.label} data-pagefind-meta="section[data-section]">
   <DefaultPageTitle />
   {section && <PageActions />}
 </div>}

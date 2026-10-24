@@ -2,11 +2,11 @@
 import { docsPath } from '../../scripts/docs-routing.mjs';
 import DefaultSidebar from '@astrojs/starlight/components/Sidebar.astro';
 import SiteNavigation from './SiteNavigation.astro';
-const isHome = Astro.url.pathname === '/';
+const isProjectPage = Astro.url.pathname === '/' || Astro.url.pathname === '/whitepapers/';
 ---
 
 <SiteNavigation mobile />
-{isHome ? <a class="mobile-build" href={docsPath('/get-started/')}>Start Building</a> : <DefaultSidebar />}
+{isProjectPage ? <a class="mobile-build" href={docsPath('/get-started/')}>Start Building</a> : <DefaultSidebar />}
 
 <script is:inline>
   // Keep Starlight's saved disclosure state, but always reveal a deep link's page.

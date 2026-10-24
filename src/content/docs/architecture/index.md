@@ -9,6 +9,8 @@ Project Thruput is a moonshot project exploring how parallel execution can make 
 
 The project's future is open. No decisions have been made about mainnet or its relationship to Stellar. These docs describe the development network and tools available today.
 
+The [whitepapers](/whitepapers/) introduce the system design and research on bridging between Federated Byzantine Agreement blockchains.
+
 You write contract logic in Rust and connect applications through the TypeScript client or React library. The runtime combines changes using rules defined by the storage type.
 
 ## Record the change

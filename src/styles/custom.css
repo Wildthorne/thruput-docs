@@ -113,12 +113,13 @@ site-search dialog { min-height: 0; box-shadow: none; }
   color: var(--sl-color-text-accent);
 }
 
-/* The homepage shares the shell, but not the article's title, width, or footer spacing. */
-html:has(.home-page) { color-scheme: only dark; --sl-main-pad: 0; --sl-content-inline-start: 0rem; }
-html:has(.home-page) main > .content-panel:first-of-type { display: none; }
-html:has(.home-page) main > .content-panel { padding: 0; border: 0; }
-html:has(.home-page) main > .content-panel > .sl-container { max-width: none; margin: 0; }
-html:has(.home-page) .sl-markdown-content { margin: 0; }
+/* Project pages share the shell without the documentation article layout. */
+html:has(.home-page) { color-scheme: only dark; }
+html:has(.site-page) { --sl-main-pad: 0; --sl-content-inline-start: 0rem; }
+html:has(.site-page) main > .content-panel:first-of-type { display: none; }
+html:has(.site-page) main > .content-panel { padding: 0; border: 0; }
+html:has(.site-page) main > .content-panel > .sl-container { max-width: none; margin: 0; }
+html:has(.site-page) .sl-markdown-content { margin: 0; }
 
 @media (pointer: coarse) { .site-header site-search > button { min-width: 3rem; min-height: 3rem; } }
 @media (max-width: 49.999rem) {
@@ -137,7 +138,7 @@ html:has(.home-page) .sl-markdown-content { margin: 0; }
 @media (max-width: 1099px) { .site-header site-search > button > span { display: none; } }
 @media (min-width: 50rem) {
   :root { --sl-nav-height: 5.5rem; }
-  html:has(.home-page) .sidebar { display: none; }
-  html:has(.home-page) { --sl-content-inline-start: 0rem; --sl-nav-pad-x: 2rem; }
+  html:has(.site-page) .sidebar { display: none; }
+  html:has(.site-page) { --sl-content-inline-start: 0rem; --sl-nav-pad-x: 2rem; }
 }
-@media (min-width: 1101px) { html:has(.home-page) { --sl-nav-pad-x: 3rem; } }
+@media (min-width: 1101px) { html:has(.site-page) { --sl-nav-pad-x: 3rem; } }

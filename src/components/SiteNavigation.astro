@@ -3,8 +3,10 @@ import { docsPath } from '../../scripts/docs-routing.mjs';
 interface Props { mobile?: boolean }
 const { mobile = false } = Astro.props;
 const isHome = Astro.url.pathname === '/';
+const isWhitepapers = Astro.url.pathname === '/whitepapers/';
 const links = [
   { label: 'About', href: '/architecture/' },
+  { label: 'Whitepapers', href: '/whitepapers/' },
   { label: 'Documentation', href: process.env.THRUPUT_DOCS_SNAPSHOT ? '/start/' : '/docs/' },
   { label: 'Community', href: 'https://github.com/thruputchain' },
 ];
@@ -13,7 +15,7 @@ const links = [
 <nav class:list={['site-navigation', { mobile }]} aria-label="Main navigation">
   <ul role="list">
     {links.map(({ label, href }) => (
-      <li><a href={docsPath(href)} aria-current={!isHome && label === 'Documentation' ? 'location' : undefined}>{label}</a></li>
+      <li><a href={docsPath(href)} aria-current={isWhitepapers && label === 'Whitepapers' ? 'page' : !isHome && !isWhitepapers && label === 'Documentation' ? 'location' : undefined}>{label}</a></li>
     ))}
   </ul>
 </nav>

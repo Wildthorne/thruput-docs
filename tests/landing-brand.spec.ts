@@ -50,7 +50,7 @@ test('homepage preserves technical content and prompt in Markdown without UI con
 
 test('hero paths, workflow, and footer links reach confirmed destinations', async ({ page, request }) => {
   await page.goto(origin);
-  await expect(page.locator('.hero-links').getByRole('link')).toHaveCount(2);
+  await expect(page.locator('.hero-links').getByRole('link')).toHaveCount(3);
   await expect(page.getByRole('navigation', { name: 'Footer' }).getByRole('heading')).toHaveText(['Build', 'Learn', 'Connect', 'Project']);
   const links = await page.locator('main a[href^="/"]').evaluateAll(elements => [...new Set(elements.map(element => element.getAttribute('href')!))]);
   for (const link of links) expect((await request.get(origin + link)).ok(), link).toBe(true);

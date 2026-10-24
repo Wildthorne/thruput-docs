@@ -30,7 +30,7 @@ const steps = [
         next: false,
     }}
 >
-    <div class="home-page not-content">
+    <div class="home-page site-page not-content">
         <noscript>
             <nav class="home-fallback" aria-label="Site navigation">
                 <a href={docsPath('/get-started/')}>Documentation</a>
@@ -57,6 +57,10 @@ const steps = [
                     </a>
                     <a href={docsPath('/architecture/')}>
                         Understand Project Thruput{" "}
+                        <span aria-hidden="true">↗</span>
+                    </a>
+                    <a href="/whitepapers/">
+                        Read the whitepapers{" "}
                         <span aria-hidden="true">↗</span>
                     </a>
                 </nav>
