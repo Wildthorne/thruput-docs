@@ -54,8 +54,9 @@ function provenance(snapshot) {
   const source = snapshot.sourceRevision
     ? `Documentation source: \`${snapshot.sourceRevision}\`${snapshot.sourceDirty === true ? ' (uncommitted preview)' : snapshot.sourceDirty === false ? '' : ' (working-tree status unavailable)'}.`
     : 'Documentation source revision unavailable for this build.';
-  return `${source}\n\n` +
-    `Historical guide artifact: CLI ${snapshot.agentGuideCliVersion}. Current guidance uses the maintained Thruput skill. This is not a version guarantee for every example. Hosted docs may be newer than this snapshot.\n\n`;
+  // The agent guide version stays in snapshot.json; printing it here read as the
+  // docs' own CLI version, and the CLI strips that guide from its bundled copy.
+  return `${source} Hosted docs may be newer than this snapshot.\n\n`;
 }
 
 /** Generate portable Markdown from the same rendered pages shipped as HTML. */

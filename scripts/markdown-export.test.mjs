@@ -80,7 +80,8 @@ test('exports pages and bundles with portable links, copied assets, discovery an
   assert.ok(page.includes('![Execution flow](../assets/images/chart.svg)'));
   assert.ok(page.includes('[API](https://external.example/api)'));
   assert.ok(page.includes(snapshot.sourceRevision));
-  assert.ok(page.includes('CLI 1.2.3'));
+  assert.ok(page.includes(`Documentation source: \`${'a'.repeat(40)}\``));
+  assert.ok(!page.includes('CLI 1.2.3'), 'pages must not present the agent guide version as the docs version');
   const index = await readFile(join(directory, 'markdown/index.md'), 'utf8');
   assert.ok(index.includes('sections/overview.md'));
   const full = await readFile(join(directory, 'markdown/full.md'), 'utf8');
