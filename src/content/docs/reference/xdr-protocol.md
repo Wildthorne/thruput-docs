@@ -18,14 +18,14 @@ The Rust traits retain the names `ReadXDR` and `WriteXDR` for both encodings. Us
 
 | Source baseline | Value |
 | --- | --- |
-| Rust protocol package | `groundhog-xdr` `0.43.0` |
-| Embedded protocol revision | `hogp/dc6e80b6472d0ed` |
+| Rust protocol package | `thruput-xdr` `0.61.0` |
+| Embedded protocol revision | `hogp/6705996afff00a0` |
 
 | Definition | Types |
 | --- | --- |
-| [transaction.x](https://github.com/thruputchain/thruput-protocol/blob/dc6e80b6472d0eda0440eab190c24b20233c839c/transaction.x) | `Invocation`, `Transaction`, `SignedTransaction`, invocation outputs |
-| [types.x](https://github.com/thruputchain/thruput-protocol/blob/dc6e80b6472d0eda0440eab190c24b20233c839c/types.x) | Addresses, hashes, signatures, protocol scalar types |
-| [storage_item.x](https://github.com/thruputchain/thruput-protocol/blob/dc6e80b6472d0eda0440eab190c24b20233c839c/storage_item.x) | Storage items and deltas |
-| [header.x](https://github.com/thruputchain/thruput-protocol/blob/dc6e80b6472d0eda0440eab190c24b20233c839c/header.x) | Proposal header |
-| [consensus.x](https://github.com/thruputchain/thruput-protocol/blob/dc6e80b6472d0eda0440eab190c24b20233c839c/consensus.x) | Consensus values |
-| [groundhog_contract_spec.x](https://github.com/thruputchain/thruput-protocol/blob/dc6e80b6472d0eda0440eab190c24b20233c839c/groundhog_contract_spec.x) | Contract types, methods, events, and interface metadata |
+| [transaction.x](https://github.com/thruputchain/thruput-protocol/blob/6705996afff00a07c2eb699233a7a928fd77f715/transaction.x) | `Invocation`, `Transaction`, `SignedTransaction`, invocation outputs |
+| [types.x](https://github.com/thruputchain/thruput-protocol/blob/6705996afff00a07c2eb699233a7a928fd77f715/types.x) | Addresses, hashes, signatures, protocol scalar types |
+| [storage_item.x](https://github.com/thruputchain/thruput-protocol/blob/6705996afff00a07c2eb699233a7a928fd77f715/storage_item.x) | Storage items and deltas |
+| [header.x](https://github.com/thruputchain/thruput-protocol/blob/6705996afff00a07c2eb699233a7a928fd77f715/header.x) | Proposal header |
+| [consensus.x](https://github.com/thruputchain/thruput-protocol/blob/6705996afff00a07c2eb699233a7a928fd77f715/consensus.x) | Consensus values |
+| [contract_spec.x](https://github.com/thruputchain/thruput-protocol/blob/6705996afff00a07c2eb699233a7a928fd77f715/contract_spec.x) | Contract types, methods, events, and interface metadata |

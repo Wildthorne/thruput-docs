@@ -35,8 +35,9 @@ A subscribe response returns the transport subscription ID. Notifications use `f
   "type": "block",
   "subscriberId": 1,
   "block": {
+    "schemaVersion": 2,
     "height": 42,
-    "consensusHash": "0x...",
+    "consensusHash": "<base58>",
     "byteLength": 27600,
     "record": "0x...",
     "ingestedAtUnixMicros": 1789720800000000
@@ -44,7 +45,7 @@ A subscribe response returns the transport subscription ID. Notifications use `f
 }
 ```
 
-`consensusHash` is hex. There is no `schema_version` field in this release. `byteLength` counts raw XDR bytes, not hex characters. `ingestedAtUnixMicros` is absent on archive reads.
+`schemaVersion` is `2`. `consensusHash` is unprefixed base58. `byteLength` counts raw XDR bytes, not hex characters. `ingestedAtUnixMicros` is absent on archive reads.
 
 The server waits for an application ACK before sending the next block. After durable processing, send:
 

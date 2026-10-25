@@ -49,8 +49,8 @@ IDs and generated descriptors; short declaration names are not globally unique.
 | Method `name` | ABI name |
 | Method `args` | Ordered fields with `name` and `type` |
 | Method `return_type` | Contract type of the result |
-| Entrypoint ID | Derived by tooling from interface/version/signature; not an additional JSON field |
-| Effect metadata | The spec does not provide an authoritative read-only/initializer capability flag |
+| Entrypoint ID | Derived from interface name, compatibility major, and method name: `SHA256("<name>::<major>::<method>")[0..8]`. Not a JSON field |
+| Method `effect` | Optional author-declared effect: `pure`, `readOnly`, or `stateChanging`, set with `#[contract(effect = "...")]`. Omitted when the method has no declaration. It is not a runtime guarantee. Do not assume read-only when it is absent |
 
 ## Type Encoding
 

@@ -102,13 +102,11 @@ Returns the length of the calldata supplied to the invocation associated with th
 |-----------|------|------|
 | out | `buffer` | `[u8]` (span) |
 | out | `written_len` | `RuntimeMemoryLength` |
-| out | `auth_token_list` | `[u8]` (span, interpreted as `[u32]`) |
-| out | `auth_token_written_len` | `RuntimeMemoryLength` |
+| out | `auth_token_count` | `u32` |
 
-Errors:
-- `InvalidSyscallInput` if the `auth_token_list` output span byte length is not a multiple of the size of a `u32`.
+Errors: none beyond the universal `Fault` / `NoSyscall`.
 
-Returns the calldata and the auth-token id list supplied to the invocation associated with the current call frame.
+Returns the calldata and the number N of auth tokens supplied to the invocation associated with the current call frame. Auth-token ids are local to each frame; the supplied tokens are ids `0..N-1`.
 
 ## Logging
 
@@ -140,7 +138,7 @@ Logs the input buffer to the console. No-op on release builds and on-chain; call
 | in | `data` | `[u8]` (span) |
 
 Errors:
-- `InvalidSyscallInput` if the event data exceeds the maximum event length, or if topics are not supplied as a continuous prefix (e.g., supplying `topic0` and `topic2` but not `topic1`).
+- `InvalidSyscallInput` if the serialized event (32 bytes per topic plus the data) is longer than the maximum event length (1,024 bytes), the transaction has already emitted 1,000 events, or topics are not supplied as a continuous prefix (for example `topic0` and `topic2` without `topic1`).
 
 Emits an event with up to three 32-byte topics and a data payload. The serialized event is `topic0 || topic1 || topic2 || data`, with a separate `num_topics` field that lets downstream indexers filter on the leading topic chunks. Events are accumulated into a per-block merkle-patricia trie.
 
@@ -157,17 +155,17 @@ Emits an event with up to three 32-byte topics and a data payload. The serialize
 | in | `address` | `ContractAddress` |
 | in | `calldata` | `[u8]` (span) |
 | in | `owned_auth_token_ids_list` | `[u8]` (span, interpreted as `[u32]`) |
-| in | `inputs` | `CopyableInvokeInputs` (`entrypoint_id`, `gas_limit`, `flags`) |
-| out | `outputs` | `CopyableInvokeOutputs` (`return_buffer_len`, `returned_auth_token_len`, `frame_status`) |
+| in | `inputs` | `CopyableInvokeInputs` (`entrypoint_id`, `gas_limit`, `flags`, `reserved`) |
+| out | `outputs` | `CopyableInvokeOutputs` (`return_buffer_len`, `returned_auth_token_count`, `frame_status`) |
 
 Errors:
-- `InvalidSyscallInput` if the call is rejected before a child frame runs: the target is missing, the flags are invalid, or an auth-token id is malformed, duplicated, or not owned by the current frame.
+- `InvalidSyscallInput` if the call is rejected before a child frame runs: the target is missing, the flags are invalid, the calldata is longer than `max_calldata_len`, more auth-token ids are supplied than `max_auth_tokens`, or an auth-token id is malformed, duplicated, or not owned by the current frame.
 - `Reentrance` if the invoked address is already on the call stack.
 - `InvokeDepthExceeded` if the transaction already holds the maximum number of invocation frames open. Like `Reentrance`, the call is rejected before any child frame runs and the syscall is a no-op. This is a resource limit rather than a malformed call: the same invocation succeeds from a shallower frame.
 
 Invokes the specified entrypoint of the contract at `address` with the supplied calldata and auth tokens, creating a new call frame. The new frame is capped at `min(gas_limit, remaining gas in current frame)`; unused child-frame gas returns to the caller's execution budget. This is not a token refund. The SDK defaults `gas_limit` to `u64::MAX` so the child inherits everything the parent has left.
 
-`entrypoint_id` is the little-endian interpretation of an 8-byte `ContractEntrypointID`. `frame_status` is `Return`, `Abort`, or `Fault`; it reports the outcome after a child frame actually runs. A nonzero syscall error means the call was rejected before the child ran and the output struct is untouched.
+`entrypoint_id` is the big-endian interpretation of the 8-byte `ContractEntrypointID` (`ContractEntrypointID::into_u64` in the Rust bindings). `frame_status` is `Return`, `Abort`, or `Fault`; it reports the outcome after a child frame actually runs. A nonzero syscall error means the call was rejected before the child ran and the output struct is untouched.
 
 ### GetMsgSender
 
@@ -212,9 +210,12 @@ Returns the contract address of the current call frame.
 | in | `revert_frame` | `bool` |
 | in | `returned_auth_token_ids` | `[u8]` (span, interpreted as `[u32]`) |
 
-Errors: none beyond the universal `Fault` / `NoSyscall`. Does not return to the caller (terminates execution of the current guest invocation).
+Errors:
+- `Fault` (the current frame faults, like `Exit`) if the buffer is longer than `max_return_buffer_len`, a frame marked for revert returns auth tokens, or the auth-token id list is longer than `max_auth_tokens`, malformed, duplicated, or names tokens the current frame does not own.
 
-Returns data and a set of auth-token ids from the current call frame and optionally marks the frame for revert. The return buffer is made available to the caller via `GetReturnedBuffer`. If the supplied buffer is too large, the entire invocation is reverted with a deterministic error.
+Does not return to the caller (terminates execution of the current guest invocation).
+
+Returns data and a set of auth-token ids from the current call frame and optionally marks the frame for revert. The return buffer is made available to the caller via `GetReturnedBuffer`.
 
 ### GetReturnedBuffer
 
@@ -226,14 +227,13 @@ Returns data and a set of auth-token ids from the current call frame and optiona
 |-----------|------|------|
 | out | `buffer` | `[u8]` (span) |
 | out | `written_len` | `RuntimeMemoryLength` |
-| out | `restored_auth_token_ids` | `[u8]` (span, interpreted as `[u32]`) |
-| out | `restored_auth_token_ids_written_len` | `RuntimeMemoryLength` |
+| out | `returned_auth_token_start` | `u32` |
+| out | `returned_auth_token_count` | `u32` |
 
 Errors:
-- `NoReturnBufferAvailable` if no return buffer is available (either the most recent subcall failed, or no subcall has been made in this frame).
-- `InvalidSyscallInput` if the `restored_auth_token_ids` output span byte length is not a multiple of the size of a `u32`.
+- `NoReturnBufferAvailable` if no return buffer is available: the most recent subcall faulted (for example by trapping or calling `Exit`), or no subcall has been made in this frame.
 
-Returns the return buffer and any restored auth-token ids from the most recent successful subcall invocation.
+Returns the return buffer and the returned auth tokens from the most recent subcall that ended with `Return`. The tokens join the current frame as ids `returned_auth_token_start` to `returned_auth_token_start + returned_auth_token_count - 1`.
 
 ### Exit
 
@@ -700,7 +700,7 @@ The full `SyscallErrorCode` enum, from `protocol/syscall_error.x`:
 | 3 | `IsRootTransaction` | Cannot call `GetMsgSender` from a root invocation. |
 | 4 | `Reentrance` | Reentrance guard violation: the invoked address is already on the call stack. |
 | 5 | `ContractAlreadyDeployed` | Attempt to deploy a contract twice (same nonce, contract hash, and deployer). |
-| 6 | `NoReturnBufferAvailable` | No return buffer from a child call frame. Either the most recent subcall failed or no subcall has been made in this frame. |
+| 6 | `NoReturnBufferAvailable` | No return buffer from a child call frame. Either the most recent subcall faulted or no subcall has been made in this frame. |
 | 7 | `InvalidSyscallInput` | Invalid input to a syscall (type mismatch, value out of range, data too long, unknown storage flag, etc.). |
 | 8 | `StorageKeyNotExist` | The storage key does not exist in the current view. |
 | 9 | `NoRetrocausalQueueEntry` | The retrocausal queue is empty. |

@@ -148,7 +148,7 @@ Later transactions can execute under newer rules. Usage: [Estimate deployment fu
 | `pending` | In the scheduler, not committed. Optional `recentFailure` |
 | `committed` | `blockHeight` of the block that included it, including `"0"` |
 | `retry` | Scheduler processing failed; `error`; optional `recentFailure`. Resubmitting the same signed transaction can succeed |
-| `dropped` | Permanent scheduler failure; `error`; optional `recentFailure`. Change the transaction before you resubmit |
+| `dropped` | Permanent scheduler failure; `error`; optional `recentFailure`. `error` tells you if a change is needed. After a drop for insufficient native tokens (`SchedulerErrorInsufficientNativeTokens`), fund the sender and resubmit the same signed transaction before it expires. For other drops, change the transaction before you resubmit |
 | `recentFailure` | Scheduler miss with a recent indexed failure: `attemptBlockHeight`, `cause` |
 | `unknown` | Both the scheduler and committed history reported a miss |
 | `other` | Status from a newer server version |
@@ -447,7 +447,7 @@ Standard JSON-RPC 2.0 errors also apply, including `-32601` for unregistered met
 
 | Language | Package | Wire selection |
 | --- | --- | --- |
-| TypeScript | `@thruputchain/client` `0.22` | Calls `getVersionInfo` once at connect and requires major `14`. See [TypeScript SDK](/tools/typescript-sdk/) |
+| TypeScript | `@thruputchain/client` `0.24` | Calls `getVersionInfo` once at connect and requires major `14`. See [TypeScript SDK](/tools/typescript-sdk/) |
 | Rust | `thruput-json-rpc-client` (`NativeClient`) | `thruput-client`'s `check_endpoint` requires major `14` and the methods you name |
 
 ## Related Documentation

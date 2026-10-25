@@ -44,8 +44,9 @@ description: Hosted Futurenet WebSocket subscriptions for committed block record
 | --- | --- | --- |
 | `type` | string | `"block"` |
 | `subscriberId` | integer | Numeric application ID for ACKs on this connection |
+| `block.schemaVersion` | integer | Record format version. Currently `2` |
 | `block.height` | integer | Committed height |
-| `block.consensusHash` | hex string | Consensus hash contained in the record, not an independent trust anchor |
+| `block.consensusHash` | base58 string | Consensus hash contained in the record, not an independent trust anchor |
 | `block.byteLength` | integer | Original XDR byte count, before hex or JSON framing |
 | `block.record` | hex string | Exact complete stored XDR record, including consensus value, event logs, and transaction bodies. Canonical `0x`-prefixed hex |
 | `block.ingestedAtUnixMicros` | optional integer | Publication timestamp after durable append. Absent on archive reads; outside the commitment |
