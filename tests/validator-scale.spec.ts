@@ -30,8 +30,23 @@ for (const width of [320, 1280]) {
     await page.screenshot({ path: info.outputPath('validator-scale.png') });
     const chart = page.getByRole('figure', { name: 'More machines. More work.', exact: true });
     await chart.scrollIntoViewIfNeeded();
-    await expect(chart.locator('.bar-value')).toHaveText(['700K', '1.25M', '1.89M', '2.42M', '2.95M']);
-    await expect(chart).toContainText('Multi-machine values are estimates');
+    await expect(chart.locator('.bar-value')).toHaveText(['1.18M', '2.32M', '3.47M', '4.44M', '5.35M', '6.20M', '6.84M', '7.02M']);
+    await expect(chart).toContainText('100 hot accounts');
+    await expect(chart).toContainText('It excludes overhead from consensus, the mempool, and client JSON-RPC submission.');
+    await expect(chart.locator('.chart-highlight')).toContainText('7.02M');
+    await expect(chart.locator('.chart-highlight')).toContainText('8 executor hosts');
+    const bars = await chart.locator('.bar').evaluateAll(elements => elements.map(element => {
+      const rect = element.getBoundingClientRect();
+      return { width: rect.width, height: rect.height };
+    }));
+    for (const bar of bars) {
+      expect(bar.width).toBeGreaterThan(0);
+      expect(bar.height).toBeGreaterThan(0);
+    }
+    const lengths = bars.map(bar => width <= 700 ? bar.width : bar.height);
+    expect(lengths[7] / lengths[0]).toBeCloseTo(7_016_546.2 / 1_178_687.8, 1);
+    await expect(chart.getByRole('link', { name: 'Benchmark results and methodology' }))
+      .toHaveAttribute('href', 'https://github.com/thruputchain/whitney');
     const chartBox = await chart.boundingBox();
     expect(chartBox!.x).toBeGreaterThanOrEqual(0);
     expect(chartBox!.x + chartBox!.width).toBeLessThanOrEqual(width);

@@ -1,44 +1,45 @@
 ---
-// Approximate points read from the supplied historical ERC-20 execution chart.
-// Normalize its scaling curve to the requested 700K single-machine baseline.
-// Replace these estimates with measured data after the benchmark rerun.
-const previousRates = [475_000, 850_000, 1_280_000, 1_640_000, 2_000_000];
-const baseline = 700_000;
-const rates = previousRates.map((rate, index) => ({
-    machines: index + 1,
-    rate: rate * baseline / previousRates[0],
-}));
-const formatRate = (rate: number) => rate < 1_000_000 ? `${Math.round(rate / 1_000)}K` : `${(rate / 1_000_000).toFixed(2)}M`;
-const ceiling = 3_200_000;
+// Whitney fd68e28577aff236bea100346559d7cf34e4602e:
+// results/published/2026-10-23-executor-scaling/
+// 20261023-exec-scaling-l3-ccd62c951-sweep/summary-b5.csv, median_tps.
+// Whole-block medians across three repetitions, batch size 5, 100 accounts.
+const rates = [1_178_687.8, 2_321_152.4, 3_466_747.0, 4_444_128.4,
+    5_349_218.3, 6_196_705.5, 6_843_129.7, 7_016_546.2]
+    .map((rate, index) => ({ machines: index + 1, rate }));
+const formatRate = (rate: number) => `${(rate / 1_000_000).toFixed(2)}M`;
+const last = rates[rates.length - 1];
+const ceiling = 8_000_000;
 ---
 
 <figure class="execution-scaling" aria-labelledby="scaling-title" aria-describedby="scaling-basis">
     <div class="chart-heading">
         <div>
             <h3 id="scaling-title">More machines. More work.</h3>
-            <p class="chart-workload">ERC-20 payments / second</p>
+            <p class="chart-workload">Measured ERC-20 payments / second</p>
         </div>
         <div class="chart-highlight">
-            <strong>~3M</strong>
-            <span>payments / sec · 5 machines</span>
+            <strong>{formatRate(last.rate)}</strong>
+            <span>payments / sec · {last.machines} executor hosts</span>
         </div>
     </div>
     <div class="plot">
         <div class="gridlines" aria-hidden="true">
-            {[3_000_000, 2_000_000, 1_000_000, 0].map(rate => <div class="gridline" style={`bottom: ${rate / ceiling * 100}%`}><span>{rate === 0 ? '0' : `${rate / 1_000_000}M`}</span></div>)}
+            {[8_000_000, 6_000_000, 4_000_000, 2_000_000, 0].map(rate => <div class="gridline" style={`bottom: ${rate / ceiling * 100}%`}><span>{rate === 0 ? '0' : `${rate / 1_000_000}M`}</span></div>)}
         </div>
-        <ol class="bars" role="list" aria-label="Extrapolated payment throughput by machine count">
-            {rates.map(({ machines, rate }) => <li aria-label={`${machines} ${machines === 1 ? 'machine' : 'machines'}: approximately ${Math.round(rate).toLocaleString('en-US')} payments per second`}>
-                <div class="bar" style={`height: ${rate / ceiling * 100}%`}><span class="bar-value">{formatRate(rate)}</span></div>
+        <ol class="bars" role="list" aria-label="Measured payment throughput by executor host count">
+            {rates.map(({ machines, rate }) => <li aria-label={`${machines} ${machines === 1 ? 'executor host' : 'executor hosts'}: ${Math.round(rate).toLocaleString('en-US')} payments per second`}>
+                <div class="bar" style={`--bar-size: ${rate / ceiling * 100}%`}><span class="bar-value">{formatRate(rate)}</span></div>
                 <span class="machine-count">{machines}</span>
             </li>)}
         </ol>
     </div>
-    <p class="axis-label">Machines per validator</p>
+    <p class="axis-label">Executor hosts (64 cores each)</p>
     <figcaption id="scaling-basis">
-        Prior ERC-20 execution scaling, normalized to a 700K payments/sec
-        single-machine baseline (64 cores). Multi-machine values are estimates,
-        pending a benchmark rerun.
+        Real RV32 ERC-20 transfers between 100 hot accounts. This benchmark measures
+        execution, signature checks, and block open-to-commit work in Thruput’s core
+        execution engine. It excludes overhead from consensus, the mempool, and client
+        JSON-RPC submission.
+        <a href="https://github.com/thruputchain/whitney">Benchmark results and methodology</a>.
     </figcaption>
 </figure>
 
@@ -54,9 +55,9 @@ const ceiling = 3_200_000;
     .gridlines { position: absolute; inset: 0; }
     .gridline { position: absolute; width: 100%; border-bottom: 1px solid var(--brand-border); }
     .gridline > span { position: absolute; right: calc(100% + .75rem); transform: translateY(-50%); color: var(--brand-muted); font: 400 .75rem/1 var(--sl-font-mono); }
-    .bars { position: relative; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: clamp(.75rem, 4vw, 4rem); height: 100%; margin: 0; padding: 0 clamp(.25rem, 2vw, 2rem); list-style: none; }
+    .bars { position: relative; display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: clamp(.5rem, 2vw, 2rem); height: 100%; margin: 0; padding: 0 clamp(.25rem, 2vw, 2rem); list-style: none; }
     .bars li { position: relative; display: flex; align-items: end; justify-content: center; min-width: 0; height: 100%; }
-    .bar { position: relative; width: 65%; border-radius: .5rem .5rem 0 0; background: var(--brand-accent); }
+    .bar { position: relative; width: 65%; height: var(--bar-size); border-radius: .5rem .5rem 0 0; background: var(--brand-accent); }
     .bar-value { position: absolute; top: -1.75rem; left: 50%; transform: translateX(-50%); color: var(--brand-accent); font: 400 clamp(.6875rem, 1.5vw, 1rem)/1 var(--sl-font-mono); white-space: nowrap; }
     .machine-count { position: absolute; top: calc(100% + .875rem); left: 50%; transform: translateX(-50%); color: var(--brand-foreground); font: 400 .875rem/1 var(--sl-font-mono); }
     .axis-label { margin: 2.5rem 0 0 2.5rem; color: var(--brand-muted); text-align: center; font: 400 .75rem/1.5 var(--sl-font-mono); }
@@ -64,6 +65,13 @@ const ceiling = 3_200_000;
     @media (max-width: 700px) {
         .chart-heading { align-items: start; }
         .chart-highlight strong { font-size: 2.5rem; }
-        .bars { gap: .75rem; }
+        .plot { height: auto; margin-inline: 1.5rem 3.5rem; }
+        .gridlines { display: none; }
+        .bars { grid-template-columns: 1fr; gap: 1rem; padding: 0; }
+        .bars li { height: 1.25rem; justify-content: start; }
+        .bar { width: var(--bar-size); height: 100%; border-radius: 0 .25rem .25rem 0; }
+        .bar-value { top: 50%; left: calc(100% + .5rem); transform: translateY(-50%); font-size: .8125rem; }
+        .machine-count { top: 50%; left: -1.5rem; transform: translateY(-50%); }
+        .axis-label { margin: 1rem 0 0; }
     }
 </style>
