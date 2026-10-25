@@ -48,6 +48,8 @@ Key rules:
 
 Verify technical claims against source code first, then reconcile published docs with what the source says.
 
+`pnpm test` checks every `thruput ...` command in the docs against `scripts/cli-surface.json`. When the docs move to a new CLI release, regenerate it with `THRUPUT_CLI=/path/to/thruput node scripts/cli-surface.mjs`.
+
 Other repos:
 
 - Rust contract SDK (`thruput-sdk`): `../thruput-sdk-rs/`
