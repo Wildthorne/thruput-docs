@@ -34,7 +34,7 @@ Confirm the package, toolchain, and features. In a workspace, use `-p PACKAGE`. 
 | Committed exception | Decode the typed error; check input and authorization conditions |
 | Committed fault | Reproduce in tests; inspect execution limits and panics |
 | `pending`, `recentFailure`, or `unknown` status | Observe the original transaction on the same network |
-| `retry` or `dropped` status | Read the reported error. A `retry` can succeed if you resubmit the same transaction. For a `dropped` transaction, change it before you resubmit, unless the error is insufficient native tokens: then fund the sender and resubmit the same transaction before it expires |
+| `retry` or `dropped` status | Read the reported error. A `retry` may succeed if you resubmit the same signed transaction while valid. For insufficient native tokens, fund the sender before resubmitting it. For errors that require changing the transaction, resolve the original outcome before signing a replacement. See [Resubmission and replacement](/typescript/transaction-status/#resubmission-and-replacement) |
 | Unexpected view result | Check address, interface/spec, read height, and simulated caller |
 
 ```bash

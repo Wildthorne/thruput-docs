@@ -40,7 +40,7 @@ This performs one status check. `client.waitForTransactionReceipt(hash)` polls f
 | `committed` | Fetch the receipt and check execution; `blockHeight` is always present |
 | `recentFailure` | Advisory failure of an attempt; the transaction can still commit |
 | `retry` | Scheduler processing failed; resubmitting the same signed transaction may succeed |
-| `dropped` | Scheduler processing failed permanently; `error` tells you if a change is needed. After a drop for insufficient native tokens (`SchedulerErrorInsufficientNativeTokens`), fund the sender and resubmit the same signed transaction before it expires. For other drops, change the transaction before you resubmit |
+| `dropped` | Scheduler processing failed; inspect `error`. For insufficient native tokens (`SchedulerErrorInsufficientNativeTokens`), fund the sender before resubmitting the same signed transaction while valid. For errors that require changing the transaction, resolve the original outcome before signing a replacement. See [Resubmission and replacement](#resubmission-and-replacement) |
 | `unknown` or `other` | No conclusive successful or failed execution result |
 
 `pending`, `retry`, and `dropped` can include an advisory `recentFailure` diagnostic. It can describe an earlier attempt. A value from a newer server arrives as `UnsupportedRpcValue`. See [`getTransactionStatus`](/reference/json-rpc-api/#gettransactionstatus) for the wire fields.
@@ -70,6 +70,16 @@ try {
 ```
 
 `error` on a `retry` or `dropped` status is a `SchedulerTransactionError`: `source` is `auth`, `scheduler`, `executor`, or `other`, and `code` is a signed 32-bit number. Interpret the code using that source's protocol error enum. To stop waiting early, pass a `signal` and abort it. Neither a timeout nor cancellation proves the transaction did not execute.
+
+## Resubmission and replacement
+
+Keep the original signed bytes, transaction hash, and signing network so recovery does not create a different transaction. Query the original hash on that network and preserve any known commitment. A missing receipt from one endpoint does not erase a known commitment.
+
+An excluded proposal attempt does not consume the replay nonce. Scheduler requeue depends on the proposal outcome; it is not guaranteed. See [Exclusion, requeue, and resubmission](/how-it-works/transaction-lifecycle/#exclusion-requeue-and-resubmission).
+
+When the reported scheduler error permits another attempt and the transaction remains valid, resubmit the same signed bytes with bounded backoff. Receipt polling alone will not do this. `recentFailure` is advisory and does not authorize resubmission or replacement.
+
+Stop resubmitting once the transaction expires. Expiration prevents future inclusion, but an earlier attempt may already have committed. A timeout, `unknown`, or expiration alone is not proof of nonexecution. Resolve the original outcome before deciding whether to sign a replacement. For a receipt-confirmed abort or fault, fix the cause before signing a new transaction; its replay nonce has already been consumed.
 
 ## Handle execution-helper errors
 

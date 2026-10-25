@@ -31,7 +31,7 @@ fn transfer(&mut self, receiver: &ContractAddress, amount: Amount) {
 
 ## Conflicts and Retries
 
-When deltas conflict, the transaction is excluded and reported as `retry`. Contract code does not retry the operation. The client resubmits the same signed transaction until it commits or expires. It can commit at most once.
+When deltas conflict, that attempt is excluded from the proposal. Contract code does not retry the operation. The scheduler can requeue transactions after a nomination is rolled back or a different proposal commits, but exclusion does not guarantee automatic requeue or a `retry` status. Clients observe the original transaction and, when retrying is appropriate, resubmit the same signed bytes while valid. Replay protection permits at most one commitment. See [Transaction Lifecycle](/how-it-works/transaction-lifecycle/#exclusion-requeue-and-resubmission).
 
 The balance constraint works the same way. If two concurrent withdrawals together exceed the available balance, one or more transactions are excluded. This is `CHECK (balance >= 0)` enforced by the storage model rather than application code.
 

@@ -159,7 +159,9 @@ transfer(&env, alice(), carol(), 60).assert_commit_failed_nondeterministically()
 env.advance_block();
 ```
 
-`assert_commit_failed_nondeterministically()` means the root call succeeded but its deltas could not be reserved with the block's other changes. On a network, that transaction is excluded and reported as `retry`. `TransactResult` also provides `assert_return_as::<T>()`, `assert_abort_as::<E>()`, `events()`, and `filter_events::<E>()`. See [`contracts/erc20/tests/same_block.rs`](https://github.com/thruputchain/thruput-examples/blob/main/contracts/erc20/tests/same_block.rs) for more same-block cases.
+`assert_commit_failed_nondeterministically()` means the root call succeeded but its deltas could not be reserved with the block's other changes. On a network, that attempt is excluded from the proposal. This assertion does not test scheduler requeue, RPC status, or client resubmission. See [Exclusion, requeue, and resubmission](/how-it-works/transaction-lifecycle/#exclusion-requeue-and-resubmission) for those separate behaviors.
+
+`TransactResult` also provides `assert_return_as::<T>()`, `assert_abort_as::<E>()`, `events()`, and `filter_events::<E>()`. See [`contracts/erc20/tests/same_block.rs`](https://github.com/thruputchain/thruput-examples/blob/main/contracts/erc20/tests/same_block.rs) for more same-block cases.
 
 ## Integration Test Environment
 

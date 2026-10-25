@@ -46,7 +46,7 @@ Two compatible increments to the same balance produce the same result regardless
 
 ## What Commutes and What Doesn't
 
-Transactions execute concurrently. Storage merge rules determine whether their changes can land together. A conflicting transaction is excluded from the proposal and reported as `retry`. The client resubmits it.
+Transactions execute concurrently. Storage merge rules determine whether their changes can land together. A conflicting transaction is excluded from that proposal. Exclusion does not guarantee automatic requeue or a `retry` status. See [Exclusion, requeue, and resubmission](/how-it-works/transaction-lifecycle/#exclusion-requeue-and-resubmission) for scheduler behavior and client recovery.
 
 | Operation | Can both changes land? | Why |
 |-----------|-----------|-----|

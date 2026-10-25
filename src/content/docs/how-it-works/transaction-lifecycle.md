@@ -12,7 +12,7 @@ Submitting a transaction is the start of the process. A successful submission do
 | **Rejected before execution** | Admission or authorization failed; the transaction did not reach contract execution |
 | **Committed success** | The transaction is in a finalized block and its contract changes were applied |
 | **Committed abort or fault** | The failure is recorded in the block, but the contract changes are discarded |
-| **Excluded from a proposal** | The transaction did not land in that proposal and is reported as `retry`; its replay nonce is not consumed, so the client can resubmit it |
+| **Excluded from a proposal** | That attempt did not land in the proposal. Exclusion does not consume its replay nonce or establish its outcome in another proposal. Requeue and reported status depend on later processing |
 
 A pending or `unknown` status, a timeout, or an advisory `recentFailure` is not proof of a committed failure. Keep the original network and transaction hash, and resume observation instead of automatically signing a replacement. See [Track transaction results](/typescript/transaction-status/) for the application workflow.
 
@@ -75,7 +75,25 @@ The proposer packages the included transaction results into a consensus proposal
 
 Once consensus confirms the block, each validator commits the verified result to its DB shards. The new ledger state becomes the snapshot for the next block.
 
-Transactions excluded during delta reservation (Stage 4) are reported as `retry`. Do not rely on the network to include them later. Resubmit the same signed transaction until it commits or expires. Committed aborts and faults remain in the block with their contract changes discarded.
+Committed aborts and faults remain in the block with their contract changes discarded. Their replay nonces are consumed.
+
+## Exclusion, requeue, and resubmission
+
+Exclusion applies to one proposal. It does not guarantee that the transaction will return to the mempool or that the client will observe `retry`.
+
+| What happens to the node's proposal | What its scheduler does |
+| --- | --- |
+| Its own proposal commits | Removes the attempted transactions, including excluded ones. Records retryable execution failures as `retry` |
+| A different proposal commits | Can requeue transactions from its nomination that are absent from the committed block |
+| Its nomination is rolled back | Requeues its cached transactions |
+
+Automatic requeue in the last two cases does not guarantee later inclusion. After removal in the first case, that scheduler needs another submission to attempt the transaction again.
+
+`retry` is a retained scheduler outcome. The indexer can separately report an advisory `recentFailure`, either as a status or alongside `pending`, `retry`, or `dropped`. It can describe an earlier attempt. Indexed commitment takes priority over these observations. A timeout, `unknown`, or `recentFailure` alone does not prove that the transaction never executed.
+
+Clients retain the signed bytes, transaction hash, and original network. Receipt polling observes the outcome and does not resubmit. When retrying is appropriate, resubmit the same signed transaction while it remains valid. Expiration prevents future inclusion; it does not prove that an earlier attempt never committed. See [Resubmission and replacement](/typescript/transaction-status/#resubmission-and-replacement) for the application workflow.
+
+Sources: engine `0.1.31-rc.16` [commit handling](https://github.com/thruputchain/hogd/blob/fff489c82d0ff28594e9dc8694aa5571787be7fd/hogd/hog_mempool/rpc_from_coord.cc#L3251-L3335) and [nomination rollback](https://github.com/thruputchain/hogd/blob/fff489c82d0ff28594e9dc8694aa5571787be7fd/hogd/hog_mempool/rpc_from_coord.cc#L1246-L1258), and tools `0.40.0` [status composition](https://github.com/thruputchain/thruput-tools/blob/774ea4be4287b096eb38a57aa4aa952b038f5c7b/crates/x23/hogd-backend/src/native/transaction/status.rs#L4-L54).
 
 ## Related Documentation
 

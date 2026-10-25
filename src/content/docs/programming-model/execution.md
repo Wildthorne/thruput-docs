@@ -3,7 +3,7 @@ title: Contract Execution
 description: "The rules your contract relies on: snapshots, compatible state changes, exclusion, and gas limits."
 ---
 
-Your contract reads from a frozen snapshot and produces typed storage changes, called deltas. Ordinary storage reads do not see other transactions' writes. The runtime checks whether each transaction's deltas can coexist with the other changes landing in the block. Deltas that can coexist form the next committed state. Transactions with conflicting deltas are excluded and reported as `retry`.
+Your contract reads from a frozen snapshot and produces typed storage changes, called deltas. Ordinary storage reads do not see other transactions' writes. The runtime checks whether each transaction's deltas can coexist with the other changes landing in the block. Deltas that can coexist form the next committed state. Transactions with conflicting deltas are excluded from that proposal.
 
 Read this page first, then [Storage Types](/programming-model/storage-types/). It explains the behavior your contract relies on without requiring the engine's lock and reservation implementation.
 
@@ -11,7 +11,7 @@ Read this page first, then [Storage Types](/programming-model/storage-types/). I
 
 - **Reads are not checked at commit.** A decision based on a value that another transaction can change in the same block can be stale. See [Snapshot Isolation](#snapshot-isolation).
 - **Decreases must fit the base.** All decreases admitted to one `Balance` or `NNInt` in a block must fit within the base value. For `Balance` and ordinary `NNInt` updates, the base is the start-of-block snapshot; an explicit `NNInt::set_add` uses the base it sets. Same-block credits do not count. See [Merged Deltas](#merged-deltas) and [NNInt](/programming-model/nnint/).
-- **Excluded is not failed.** An excluded transaction can be resubmitted unchanged. A transaction whose root call aborts, reverts, or runs out of gas is committed and its nonce is consumed. See [Exclusion](#exclusion).
+- **Exclusion applies to one proposal.** It does not consume the replay nonce or guarantee automatic requeue. A committed abort, revert, or out-of-gas fault consumes the nonce. See [Exclusion](#exclusion).
 - **Absolute writes merge only when equal.** Two `Value`, `Bytestring`, or `NNInt::set` writes to one key land together only when they write the same value. See [Storage Types](/programming-model/storage-types/#choosing-a-type).
 - **Some operations allow one writer per block.** One transaction per block can consume from a queue, push or pop a `Vector`, or hold an exclusive write on a key. See [RCQ](/programming-model/storage-types/#rcqt--retrocausalqueue) and [Exclusive Writes](/programming-model/storage-types/#exclusive-writes).
 - **The full gas limit is reserved.** Scheduling uses the declared limit, not the gas used. See [Gas](#gas).
@@ -59,17 +59,21 @@ In these docs, **compatible deltas** means the storage type allows both changes 
 
 1. **Read and execute:** your contract reads the block snapshot plus its own changes and successful child calls. It records typed deltas.
 2. **Reserve:** after the root call succeeds, the runtime checks whether the complete delta batch can coexist with the proposal's other changes.
-3. **Commit or exclude:** admissible transactions contribute to the finalized block. Conflicting transactions are excluded and reported as `retry`.
+3. **Commit or exclude:** admissible transactions contribute to the finalized block. Conflicting transactions are excluded from that proposal.
 
 Your contract does not control these phases. [Transaction Lifecycle](/how-it-works/transaction-lifecycle/) covers submission through finalization; [Parallel Execution](/how-it-works/execution-model/) explains the reservation machinery.
 
 ## Exclusion
 
-From your contract's perspective, a conflicting transaction doesn't land. Your code runs, produces deltas, and the system determines whether that completed delta batch is compatible with other transactions in the block. An excluded transaction is not committed and its replay nonce is not consumed, so the client can resubmit the same signed transaction until it commits or expires. See [How Conflicts Are Resolved](/how-it-works/execution-model/#how-conflicts-are-resolved) for the engine-level details.
+From your contract's perspective, a conflicting attempt doesn't land in that proposal. Your code runs, produces deltas, and the system determines whether that completed delta batch is compatible with the proposal's other changes. Exclusion does not commit the transaction or consume its replay nonce. It does not establish whether the same transaction committed in another proposal. See [How Conflicts Are Resolved](/how-it-works/execution-model/#how-conflicts-are-resolved) for the engine-level details.
 
-Exclusion is not the same as a failed call. If the root call aborts, reverts, or runs out of gas, the transaction is still committed. Its contract changes are discarded, but its replay nonce and RCQ observations are recorded, so the signed transaction is consumed. Fix the cause and sign a new transaction.
+The scheduler can requeue transactions when a nomination is rolled back or a different proposal commits. When its own proposal commits, it removes the attempted transactions, including excluded ones, and records retryable execution failures as `retry`. See [Exclusion, requeue, and resubmission](/how-it-works/transaction-lifecycle/#exclusion-requeue-and-resubmission) for the full lifecycle.
 
-Clients keep the submitted hash and observe its outcome. A pending result is not a reason to sign a replacement transaction. See [Track transaction results](/typescript/transaction-status/). When a recent attempt hit a storage conflict, [`getTransactionStatus`](/reference/json-rpc-api/#gettransactionstatus) can include `recentFailure` with `cause.kind` set to `dbConflict` and a `conflict` object naming the contract address, storage key, and conflict code. Use it to find hot keys.
+A committed abort, revert, or out-of-gas fault discards the contract changes but records the replay nonce and RCQ observations. Once the receipt confirms that committed failure, fix the cause before signing a new transaction.
+
+Clients keep the signed bytes, submitted hash, and original network, then observe the outcome. Receipt polling does not resubmit. When retrying is appropriate, reuse the same signed transaction while it remains valid. A timeout, expiration, or missing result does not prove that an earlier attempt never committed. See [Resubmission and replacement](/typescript/transaction-status/#resubmission-and-replacement).
+
+When a recent attempt hit a storage conflict, [`getTransactionStatus`](/reference/json-rpc-api/#gettransactionstatus) can include `recentFailure` with `cause.kind` set to `dbConflict` and a `conflict` object naming the contract address, storage key, and conflict code. Use it to find hot keys. It is an advisory diagnostic, not permission to resubmit or sign a replacement.
 
 To handle a conflict inside a child call, use [`with_commit_locking()`](/contracts/cross-contract-calls/#gas-limits). The child takes its commit locks before it returns, so a `try_` call sees the conflict as a failure.
 

@@ -147,8 +147,8 @@ Later transactions can execute under newer rules. Usage: [Estimate deployment fu
 | --- | --- |
 | `pending` | In the scheduler, not committed. Optional `recentFailure` |
 | `committed` | `blockHeight` of the block that included it, including `"0"` |
-| `retry` | Scheduler processing failed; `error`; optional `recentFailure`. Resubmitting the same signed transaction can succeed |
-| `dropped` | Permanent scheduler failure; `error`; optional `recentFailure`. `error` tells you if a change is needed. After a drop for insufficient native tokens (`SchedulerErrorInsufficientNativeTokens`), fund the sender and resubmit the same signed transaction before it expires. For other drops, change the transaction before you resubmit |
+| `retry` | Retained scheduler processing failure; `error`; optional `recentFailure`. Another submission of the same signed transaction may succeed while valid. This status does not promise automatic requeue |
+| `dropped` | Retained scheduler failure; `error`; optional `recentFailure`. For insufficient native tokens (`SchedulerErrorInsufficientNativeTokens`), fund the sender before resubmitting the same signed transaction while valid. For errors that require changing the transaction, resolve the original outcome before signing a replacement. See [Resubmission and replacement](/typescript/transaction-status/#resubmission-and-replacement) |
 | `recentFailure` | Scheduler miss with a recent indexed failure: `attemptBlockHeight`, `cause` |
 | `unknown` | Both the scheduler and committed history reported a miss |
 | `other` | Status from a newer server version |
@@ -160,7 +160,7 @@ Later transactions can execute under newer rules. Usage: [Estimate deployment fu
 | `recentFailure` | Advisory `{ attemptBlockHeight, cause }`. It can describe a different attempt. It does not authorize resubmission |
 | `cause.kind` | `dbConflict` with `conflict { address, key, code }`, `contractRejected` with `contractIndex` and `code`, or `other` |
 
-Indexed commitment takes priority. No status proves nonexecution, and a failed backend lookup returns an error, not `unknown`. Usage: [Handle scheduler processing errors](/typescript/transaction-status/#handle-scheduler-processing-errors).
+Indexed commitment takes priority. No negative status proves nonexecution, and a failed backend lookup returns an error, not `unknown`. Exclusion from one proposal does not guarantee a `retry` status. Usage: [Handle scheduler processing errors](/typescript/transaction-status/#handle-scheduler-processing-errors) and [Resubmission and replacement](/typescript/transaction-status/#resubmission-and-replacement).
 
 ### `getTransactionReceipt`
 

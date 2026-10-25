@@ -101,7 +101,7 @@ Each request is handled with a gas cap and commit locking. A handled failure can
 
 ## Bound the queue and processing work
 
-Queue capacity bounds pending storage. Consumption is checked during reservation across concurrent requests. An excluded submission is reported as `retry`. Resubmit the same signed transaction; it is not guaranteed a place in the next block.
+Queue capacity bounds pending storage. Consumption is checked during reservation across concurrent requests. An excluded attempt does not land in that proposal. It does not guarantee automatic requeue or a `retry` status. Keep the signed bytes, hash, and original network. When retrying is appropriate, resubmit the same signed transaction while valid. See [Exclusion, requeue, and resubmission](/how-it-works/transaction-lifecycle/#exclusion-requeue-and-resubmission).
 
 Processing is permissionless and bounded by gas. The driver requires enough budget for the waiting work up to its configured minimum batch. It does not consume a request and then discard it merely because no processing budget remains.
 
