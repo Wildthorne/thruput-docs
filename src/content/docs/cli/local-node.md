@@ -24,11 +24,11 @@ key selected by local commands. `--key NAME` explicitly selects a stored key.
 From another terminal in your project:
 
 ```bash
-thruput config set default-key dev-1 --profile local --project
-thruput balance dev-1 --profile local
+thruput status --profile local
+thruput balance --profile local
 ```
 
-`dev-0` is the local faucet. Normal bootstrap accounts start at `dev-1`; their keys and initial balances come from the runtime manifest. These deterministic accounts are for local development only.
+`status` shows the effective key. On a fresh chain, the node gives that key's account 100 native tokens. Use `thruput node --initial-account-tokens AMOUNT` to change the amount. The faucet key is private to the node, and the node creates no other accounts. An ML-DSA-65 key gets no genesis allocation. To fund it, or any other key, run `thruput airdrop NAME --profile local`.
 
 If the profile already selects a saved wallet, key selection alone does not replace that wallet. Inspect `thruput status --profile local` and [wallet selection](/cli/wallets/#select-an-account) before submitting.
 
@@ -42,7 +42,7 @@ Without a data directory, stopping the node discards its chain state. Stored sig
 thruput node --data-dir .thruput/node
 ```
 
-Restart with the same data directory to reuse the chain. Preserve any explicit genesis settings used to create it.
+Restart with the same data directory to reuse the chain. Repeat the same `--network-config` overrides, and omit `--init-network-hash`. A runtime older than `0.1.31-rc.10` created data directories that the current runtime cannot open. Use a new directory for them.
 
 Stop the node before backing up or restoring that directory:
 

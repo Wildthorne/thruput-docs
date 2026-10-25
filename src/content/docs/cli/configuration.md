@@ -76,7 +76,7 @@ For a one-off endpoint override on an RPC command:
 thruput balance --profile local --rpc-url http://127.0.0.1:9546
 ```
 
-Commands that use local `dev-N` accounts also need that node's runtime manifest. Use `--runtime-manifest PATH` when automatic discovery does not apply.
+Local airdrops also need that node's runtime manifest, which identifies the node's faucet. Use `--runtime-manifest PATH` when automatic discovery does not apply.
 
 ## Global settings and project overrides
 

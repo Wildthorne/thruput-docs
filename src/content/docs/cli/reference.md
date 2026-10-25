@@ -72,7 +72,8 @@ description: Thruput CLI commands, common options, and links to task instruction
 | `node --port PORT` / `--host ADDRESS` | Configure the public listener | [Endpoint and logging](/cli/local-node/#change-the-endpoint-or-logging) |
 | `node --verbose` | Forward node diagnostics | [Troubleshooting](/cli/troubleshooting/) |
 | `node --network-config NAME=VALUE` | Override a supported genesis parameter | Repeatable; preserve settings when reopening a data directory |
-| `node --dev-account-count N` / `--dev-account-hog AMOUNT` | Configure local-user bootstrap accounts | Does not configure the faucet allocation |
+| `node --key NAME` / `--initial-account-tokens AMOUNT` | Fund a stored key on a fresh chain | Default: the selected key and 100 native tokens |
+| `node --bootstrap-accounts FILE` | Fund fixture-owned public keys at genesis | JSON array; cannot be combined with `--key` or `--initial-account-tokens` |
 | `toolchain list` / `install` / `which` | Inspect or acquire managed runtimes | [Local runtime setup](/cli/install/#set-up-the-local-runtime) |
 | `toolchain use VERSION` / `clean VERSION` | Select or remove a managed version | `thruput toolchain --help` |
 | `chain dump --data-dir PATH --output FILE` | Back up a stopped local chain | [Persistent state](/cli/local-node/#preserve-state) |
@@ -91,7 +92,7 @@ description: Thruput CLI commands, common options, and links to task instruction
 | `view CONTRACT METHOD [ARGS...]` | Run a sandboxed read without submitting | [Views](/cli/deploy-and-call/#read-without-submitting) |
 | `storage CONTRACT KEY` | Read a raw committed storage item | [Views and storage](/cli/deploy-and-call/#read-without-submitting) |
 | `--dry-run` | Prepare deploy/call transactions without broadcast | Still requires signing context and network access |
-| `--yes` (alias `--force`) | Confirm an intended write without a prompt | [Automation](/cli/automation/#confirm-intended-writes) |
+| `--yes` (alias `--force`) | Confirm an intended write without a prompt; `skill` commands accept only `--yes` | [Automation](/cli/automation/#confirm-intended-writes) |
 | `--profile NAME` / `--rpc-url URL` | Select configuration or override the endpoint | [Profiles](/cli/configuration/) |
 
 ## Transactions, Events, and Tokens

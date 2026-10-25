@@ -13,7 +13,7 @@ thruput tx show TX_HASH --profile futurenet
 
 Replace `TX_HASH` with the submitted hash. This performs one status lookup and fetches the receipt when committed; it does not wait for a pending transaction.
 
-Check the receipt's execution result. A committed failure is different from a transaction that is still pending or excluded from a proposal. See [Transaction Lifecycle](/how-it-works/transaction-lifecycle/#outcomes-to-distinguish).
+Check the receipt's execution result. A committed failure is different from a transaction that is still `pending` or was reported as `retry` or `dropped`. See [Transaction Lifecycle](/how-it-works/transaction-lifecycle/#outcomes-to-distinguish).
 
 ## List history
 
@@ -41,7 +41,7 @@ Use `--topic0`, `--topic1`, or `--topic2` for raw topic filters. Repeated values
 ## Inspect token transfers
 
 ```bash
-thruput token transfers HOG --profile futurenet
+thruput token transfers NATIVE_TOKEN --profile futurenet
 ```
 
 Use `--account ADDRESS` to restrict the query to an account. Amounts are returned as base-unit values; formatting is separate from the stored amount.

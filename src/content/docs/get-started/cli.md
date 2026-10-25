@@ -39,7 +39,7 @@ thruput balance
 
 Confirm the airdrop and wait for its result. You should have a positive native-token balance. Save the transaction hash printed by the airdrop command.
 
-The faucet selects the test-token amount; you do not need an amount flag. CLI output currently labels the native token `HOG`.
+The faucet selects the test-token amount; you do not need an amount flag.
 
 ## 4. Inspect the transaction
 

@@ -71,7 +71,7 @@ To select documentation for a CLI release:
 1. Land the site changes and use the artifact from the chosen successful CI run
    on that commit. Check its tutorials/version notes against the intended
    release; the included guide version alone does not qualify the whole site.
-2. Download that run's `docs-snapshot-<commit>` artifact. From `groundhog-rpc`, run
+2. Download that run's `docs-snapshot-<commit>` artifact. From `thruput-tools`, run
    `python3 scripts/import-docs-snapshot.py /path/to/downloaded-artifact`.
 3. Review and commit the archive and pin in the CLI change. The importer rejects
    dirty source, checksum/identity mismatches, and unsupported archive content.
@@ -141,7 +141,7 @@ Markdown files live in `src/content/docs/`, organized by section. The sidebar is
 
 The landing page imports the prompt from `/start/build-with-an-agent/`.
 Maintain its text block there. The prompt installs the Thruput CLI and maintained
-skill, exports the docs, and verifies a counter through CLI calls on Devnet.
+skill, exports the docs, and verifies a counter through CLI calls on Futurenet.
 `public/agent-guide.md` points readers to this workflow and the maintained skill.
 Skill content is maintained in `thruputchain/agent-skills` and updates
 independently of CLI releases.

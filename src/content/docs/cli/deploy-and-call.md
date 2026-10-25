@@ -18,7 +18,7 @@ The estimate reads the network's authoritative execution rules and storage price
 | Report field | Meaning |
 | --- | --- |
 | `balanceDepositRaw`, `deploymentCostRaw` | First balance-item deposit and code collateral, in native-token base units |
-| `minimumFundingRaw`, `minimumFundingHog` | Their sum, as an integer base-unit string and a whole-token decimal string respectively; one native token has 10,000,000 base units |
+| `minimumFundingRaw`, `minimumFundingTokens` | Their sum, as an integer base-unit string and a whole-token decimal string respectively; one native token has 10,000,000 base units |
 | `initializerFundingRaw` | `null` when an initializer is requested, because its storage is not estimated; `"0"` when none is requested |
 | `execution` | Observed committed tip, configuration hash, effective limits, and storage prices |
 

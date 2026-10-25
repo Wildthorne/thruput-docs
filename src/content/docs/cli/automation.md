@@ -3,7 +3,7 @@ title: Use the CLI in scripts
 description: Use non-interactive commands and structured output without treating output flags as confirmation.
 ---
 
-Use `--non-interactive` to disable questions and terminal UI. It does not authorize state changes. Pass `--yes` to confirm an intended write, such as a deployment, an airdrop, or skill setup. `--force` remains an alias.
+Use `--non-interactive` to disable questions and terminal UI. It does not authorize state changes. Pass `--yes` to confirm an intended write, such as a deployment, an airdrop, or skill setup. On write commands other than `skill`, `--force` remains an alias.
 
 ## Set up explicitly
 
