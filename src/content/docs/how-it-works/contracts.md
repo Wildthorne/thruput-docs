@@ -30,11 +30,11 @@ Deployment must satisfy the network's limits on attached contract size, RV32 cod
 
 #### Entrypoints
 
-Every callable method is identified by an 8-byte `ContractEntrypointID`. The SDK's `#[contract]` macro emits one dispatch record per method into a link-time `GROUNDHOG_RV32_ENTRYPOINTS` registry.
+Every callable method is identified by an 8-byte `ContractEntrypointID`. The SDK's `#[contract]` macro emits one dispatch record per method into the `thruput_rv32_entrypoints` link section.
 
-When hogd invokes an RV32 contract, it enters the guest at `_start` with the method ID in registers. The RV32 runtime dispatches by scanning the registry, then calls the generated wrapper for the matching method. That wrapper decodes calldata, calls the Rust method, and returns through the Return syscall.
+When hogd invokes an RV32 contract, it enters the guest at `_start` with the method ID in registers. The RV32 runtime dispatches by scanning that section, then calls the generated wrapper for the matching method. That wrapper decodes calldata, calls the Rust method, and returns through the Return syscall.
 
-Entrypoint IDs can be arbitrary 8-byte values at the protocol layer. The SDK provides the normal convention: derive a 6-byte interface prefix from the interface name and version, then use a method-specific 2-byte suffix. See [SDK Macros](/reference/sdk-macros/) and the [contract spec reference](/reference/contract-spec/) for the developer-facing shape.
+Entrypoint IDs can be arbitrary 8-byte values at the protocol layer. The SDK derives them as the first 8 bytes of `SHA256("<interface>::<major>::<method>")`. See [SDK Macros](/reference/sdk-macros/) and the [contract spec reference](/reference/contract-spec/) for the developer-facing shape.
 
 #### Artifact Shape
 
@@ -55,7 +55,7 @@ Users cannot deploy native contracts. Network configuration assigns system contr
 
 ## Contract Deployment
 
-Contracts are deployed by the DeployContract [system call](/reference/syscalls/). In normal CLI usage, `thruput deploy` invokes the active wallet contract, and the wallet contract calls DeployContract with the artifact hash and deployment nonce.
+Contracts are deployed by the DeployContract [system call](/reference/syscalls/). In normal CLI usage, `thruput deploy` calls `deploy` on the signing account. For a pubkey account, that call runs the native DefaultWallet, which calls DeployContract with the artifact hash and deployment nonce.
 
 ### Contract Identification
 
@@ -82,7 +82,7 @@ The system then:
 
 1. Verifies that the contract identified by `contract_hash` is available for deployment.
 2. Computes the deployment address: `ContractAddress = SHA256(XDR(ContractDeploymentHashPreimage))`.
-3. Writes `AddressMetadata` at the computed address.
+3. Writes the contract's `DeployedContractHash` to the computed address's `Metadata` key.
 4. Stores the contract code separately in the deduplicated contract code store.
 
 ### Deterministic Address Derivation
@@ -165,13 +165,9 @@ Example flow:
 
 ## Address Metadata
 
-When a contract is deployed, the system writes `AddressMetadata` to the storage key `(contract_address, StorageKeyType::Metadata)`.
+When a contract is deployed, the system writes its `DeployedContractHash` to the storage key `(contract_address, StorageKeyType::Metadata)`.
 
 ```rust
-pub struct AddressMetadata {
-    pub deployed_contract: DeployedContractHash,
-}
-
 pub struct DeployedContractHash {
     /// SHA256 hash of the contract code.
     pub hash: SHA256Hash,
@@ -179,7 +175,7 @@ pub struct DeployedContractHash {
     /// Size of the contract in bytes.
     pub contract_size: u32,
 
-    /// Type of contract: kRv32 or kNative.
+    /// Type of contract: kNative, kMockTest, or kRv32.
     pub contract_type: ContractType,
 }
 ```
@@ -200,7 +196,7 @@ If a contract requires one-time initialization, implement that guard in contract
 
 ## Redeployment and Immutability
 
-Once a contract is deployed to an address, that address's `AddressMetadata` cannot be changed. Deployed contracts are immutable.
+Once a contract is deployed to an address, that address's `DeployedContractHash` cannot be changed. Deployed contracts are immutable.
 
 ## Related Documentation
 

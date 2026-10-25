@@ -31,7 +31,7 @@ The diagram shows the main service relationships. [Networking](/how-it-works/net
 
 | Component | Responsibility |
 | --- | --- |
-| **JSON-RPC gateway** (`groundhog-rpc`) | Accepts application requests, submits transactions to the scheduler, and routes reads to the relevant service |
+| **JSON-RPC gateway** (`hog-gateway`) | Accepts application requests, submits transactions to the scheduler, and routes reads to the relevant service |
 | **Scheduler / mempool** (`hogd`) | Queues transactions, coordinates authorization, dispatches execution, and orchestrates block production and commits |
 | **Auth server** | Checks transaction authorization claims and signatures before scheduling |
 | **Executors** | Run contract code and submit its state changes for reservation against the proposed block |

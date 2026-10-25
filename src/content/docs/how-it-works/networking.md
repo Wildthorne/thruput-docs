@@ -13,7 +13,7 @@ The **coordinator** (chuckd, written in Go) sits above the execution layer. It d
 
 The **mempool** (scheduler, part of hogd) is the hub of the execution layer. All execution components register with it: executors, DB shards, event server, auth server. The mempool orchestrates block production, transaction execution, and state commits.
 
-Separately, the **RPC gateway** (groundhog-rpc) provides external API access. It connects to the scheduler, indexer, database gateway, and view gateway but does not participate in consensus. It can be scaled independently of the validator.
+Separately, the **RPC gateway** (`hog-gateway`) provides external API access. It connects to the scheduler, indexer, database gateway, and view gateway but does not participate in consensus. It can be scaled independently of the validator.
 
 Within the execution layer, no component discovers peers independently. The mempool is the registry for intra-node communication. When a component registers, it gets back the addresses of everything else it needs to talk to.
 
@@ -31,7 +31,7 @@ Registration interfaces:
 4. **Auth server** registers via `mempoolauth_intro_auth`. Handles transaction signature verification.
 5. **Coordinator** registers via `schedulercoord_intro_coord`. Drives consensus and block production.
 
-The listed execution-layer interfaces use XDR-RPC over TCP. Protocol definitions live in `.x` files (XDR IDL) and are compiled to C++ (hogd), Rust (groundhog-rpc), TypeScript, and Go bindings.
+The listed execution-layer interfaces use XDR-RPC over TCP. Protocol definitions live in `.x` files (XDR IDL) and are compiled to C++ (hogd), Rust (thruput-protocol-rs crates such as `thruput-xdr`), TypeScript, and Go bindings.
 
 ## The Mempool as Orchestrator
 

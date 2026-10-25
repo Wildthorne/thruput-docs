@@ -34,9 +34,9 @@ driveLiveness()  →  Detect stuck consensus
 
 On a single validator (e.g. during development):
 
-1. Baton calls `propose_block` on the mempool. The execution layer runs queued transactions and assembles a proposal.
+1. Baton calls `schedulercoord_propose_block` on the mempool. The execution layer runs queued transactions and assembles a proposal.
 2. SCP externalizes immediately (single-node quorum).
-3. Baton calls `commit` on the mempool. The execution layer commits the finalized proposal to storage.
+3. Baton calls `schedulercoord_commit_block` on the mempool. The execution layer commits the finalized proposal to storage.
 4. Next drive cycle begins.
 
 ### Multi-Node Flow
@@ -55,7 +55,7 @@ The proposer and validators execute transactions differently.
 
 **The proposer runs concurrent execution.** Transactions are fanned across multiple executors and coroutines in parallel. After a root call completes, NNInt capacity locks reserve its delta batch via atomic compare-and-swap (see [Parallel Execution: How Conflicts Are Resolved](/how-it-works/execution-model/#how-conflicts-are-resolved)). Which transaction wins a contested lock depends on thread scheduling. This is non-deterministic: two runs of the same transaction set on the same machine can produce different winners.
 
-**The proposer captures nondeterministic outcomes.** Each transaction produces a `NondeterministicProposalData` payload covering proposal-dependent decisions such as capacity reservation outcomes and retrocausal queue observations. This payload is packaged alongside the transaction hashes in the consensus proposal.
+**The proposer captures nondeterministic outcomes.** Each transaction produces a `NondeterministicProposalData` payload covering proposal-dependent decisions such as capacity reservation outcomes and retrocausal queue observations. This payload is packaged alongside the signed transaction hashes (`SignedTransactionHash`) in the consensus proposal.
 
 **Validators replay deterministically.** Validators receive the proposer's nominated transaction list and the nondeterministic data. They reconstruct each transaction from their local mempool, pair it with the proposer's captured decisions, and replay execution using those decisions as input. Validators do not re-run the concurrent race. They verify that the transactions produce the claimed state transitions, recompute the block hash, and confirm it matches.
 
@@ -64,7 +64,7 @@ The proposer and validators execute transactions differently.
 | Execution | Concurrent across executors | Deterministic replay with proposer's data |
 | Conflict resolution | Non-deterministic thread race | Reproduced from captured decisions |
 | Transaction selection | Discretionary (from local mempool) | Fixed (from nomination) |
-| Output | Nomination: tx hashes + nondeterministic data + block hash | Accept or reject the nomination |
+| Output | Nomination: signed tx hashes + nondeterministic data + block hash | Accept or reject the nomination |
 
 The proposer has discretion over which transactions to include and which conflicting transaction wins. Validators verify the math of the proposed result, not the policy that produced it. Deterministic replay makes the proposed result verifiable. It does not establish proposer fairness; scheduling and transaction selection are separate from validating state transitions.
 

@@ -149,7 +149,7 @@ set_address_required_weight(1)?;
 remove_address_public_key(0)?;
 ```
 
-Registered keys are Ed25519 only. `add_address_public_key` rejects ML-DSA-65 keys, so a source-address account cannot register one yet. Use a pubkey account for ML-DSA-65.
+Registered keys can be Ed25519 or ML-DSA-65. `add_address_public_key` accepts both schemes, and admission verifies each signature with its slot's scheme.
 
 Use these for source-address accounts, wallet contracts, and contracts that are meant to originate later transactions. Replay protection is transaction-level, through the transaction `Uniquifier`. `AddressAuthData` does not contain nonce policy or gas-sponsorship policy fields.
 
@@ -177,7 +177,7 @@ use thruput_sdk::crypto::verify_signature_ed25519;
 let ok = verify_signature_ed25519(&public_key, &signature, message);
 ```
 
-Contract signature checks support Ed25519 only. The SDK has no ML-DSA-65 verify function, and the `VerifySignature` syscall rejects other schemes.
+Contract signature checks support Ed25519 and ML-DSA-65. `verify_signature()` takes a `PublicKey` and a `Signature` and verifies in the key's scheme. ML-DSA-65 is pure ML-DSA with an empty context. `verify_signature_ed25519()` takes Ed25519 types only.
 
 This is runtime logic, separate from transaction admission. A wallet contract can use it to accept an off-chain signature, apply its own policy, and then mint an auth token in the wallet contract's name.
 
@@ -290,7 +290,7 @@ The outer token might be consumed only by the DEX. The nested transfer token mig
 
 ## Limits
 
-The protocol currently caps an auth-token payload at 256 bytes, tree depth at 4, and child nodes per token at 4. `MintAuthToken` rejects malformed token nodes, expired-at-mint tokens, and tokens that would exceed runtime caps. `ConsumeAuthToken` rejects tokens not owned by the current frame, expired tokens, and already-consumed handles.
+The protocol caps an auth-token payload at 256 bytes and child nodes per token at 4. Network parameters cap tree depth (`max_auth_token_depth`, default 4) and token ids per `Invoke` or `Return` list (`max_auth_tokens`, default 64). `MintAuthToken` rejects malformed token nodes, expired-at-mint tokens, and tokens that would exceed runtime caps. `ConsumeAuthToken` rejects tokens not owned by the current frame, expired tokens, and already-consumed handles.
 
 ## Not Landed
 

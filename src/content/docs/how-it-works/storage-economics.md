@@ -30,6 +30,8 @@ The protocol defines gas limits on transactions and cross-contract calls, but ga
 
 For root transactions, scheduling uses the **declared gas limit**, not measured consumption. A transaction with a `100_000` gas limit reserves capacity for that limit whether execution uses `20_000`, `95_000`, or all `100_000`. Exceeding the limit faults the transaction.
 
+A root gas limit above the network's `max_tx_gas` (default 1,000,000,000) fails validation, and the gateway rejects the transaction at submission. Scheduling reserves one native-token base unit (one ten-millionth of a token) per unit of gas limit. If the gas limit is larger than all of the account's unlocked native tokens, the scheduler drops the transaction with status `dropped`.
+
 There is no unused-gas token refund. Metering does not debit or refund the sender's native-token balance, so it does not add a balance update for each transaction. Choose a limit that covers execution without reserving unnecessary scheduling capacity.
 
 ### Balance-Proportional Scheduling
@@ -79,7 +81,7 @@ airdrop. Amounts depend on runtime configuration. Funding a target's storage doe
 not fund the sender's scheduling capacity. See the
 [client funding example](/typescript/accounts/#request-devnet-funds).
 
-The native token is implemented by a native precompiled contract exposing the standard asset interface, including transfers, balance queries, and allowances. Applications call it through that interface. The runtime also uses its balances for scheduling and storage accounting. Current tooling calls this token `HOG`; use the existing `HOG_ADDRESS` SDK constant and CLI token alias when writing code or commands.
+The native token is implemented by a native precompiled contract exposing the standard asset interface, including transfers, balance queries, and allowances. Applications call it through that interface. The runtime also uses its balances for scheduling and storage accounting. Use `ADDRESS_NATIVE_TOKEN` in Rust, `NATIVE_TOKEN_ADDRESS` from `@thruputchain/protocol` in TypeScript, and the `NATIVE_TOKEN` contract alias in CLI commands.
 
 ## Toll-Free Calls
 

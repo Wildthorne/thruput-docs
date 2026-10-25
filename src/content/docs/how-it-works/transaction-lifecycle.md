@@ -33,7 +33,7 @@ The client signs the domain-separated preimage containing the network hash and i
 
 ## Stage 2: Authorization
 
-The mempool sends the transaction to the auth server, which verifies the root address, auth claim, and signatures. Pubkey claims use the public key embedded in the claim. Source-address claims use the root address's registered authorization data. This happens before the transaction enters the scheduling queue, not during execution.
+The mempool sends the transaction to the auth server, which verifies the root address, auth claim, and signatures. Pubkey claims use the public key attached to the signed transaction (`SignedTransaction.pubkey_claim_key`). Its hash must equal the claim's `pubkey_hash`. Source-address claims use the root address's registered authorization data. This happens before the transaction enters the scheduling queue, not during execution.
 
 - If verification succeeds: the transaction enters the scheduling queue
 - If verification fails: the transaction is rejected
@@ -69,7 +69,7 @@ This is distinct from **conflict exclusion** during reservation (Stage 4): the r
 
 ## Stage 5: Block Assembly
 
-The proposer packages the included transaction results into a consensus proposal: transaction hashes, nondeterministic execution data, and the computed block hash. The proposal is sent to validators via SCP. See [Consensus](/how-it-works/consensus/) for how the proposer/validator split works.
+The proposer packages the included transaction results into a consensus proposal: signed transaction hashes (`SignedTransactionHash`), nondeterministic execution data, and the computed block hash. The proposal is sent to validators via SCP. See [Consensus](/how-it-works/consensus/) for how the proposer/validator split works.
 
 ## Stage 6: Commit
 

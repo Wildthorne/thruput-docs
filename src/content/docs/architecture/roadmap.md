@@ -13,7 +13,7 @@ Last reviewed: October 21, 2026.
 
 ### Block and transaction history
 
-Public block queries and recoverable transaction feeds would let explorers and independent indexers discover chain activity without private infrastructure access. Block queries remain incomplete; the supported feed and its recovery contract still need qualification. Indexer requirements and tests for resuming after an outage would help.
+Recoverable transaction feeds would let explorers and independent indexers discover chain activity without private infrastructure access. Public block queries are available: `getBlockByHeight` reads committed block metadata, and `getTransactionsByBlock` pages a block's transactions. The supported feed and its recovery contract still need qualification. Indexer requirements and tests for resuming after an outage would help.
 
 ### Contract failure diagnostics
 
