@@ -8,9 +8,9 @@ The client uses HTTP JSON-RPC by default. Supply `HttpTransport` when you need e
 ## Set a request timeout
 
 ```ts
-import { createThruputClient, devnet, HttpTransport } from "@thruputchain/client";
+import { createThruputClient, futurenet, HttpTransport } from "@thruputchain/client";
 
-const cluster = devnet();
+const cluster = futurenet();
 const client = await createThruputClient({
   cluster,
   transport: new HttpTransport(cluster.rpcUrl!, { timeoutMs: 10_000 }),

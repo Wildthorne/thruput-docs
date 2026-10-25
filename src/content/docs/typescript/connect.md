@@ -10,9 +10,9 @@ A public client performs RPC reads without signing. Create one per application n
 Create `src/client.ts`:
 
 ```ts
-import { createThruputClient, devnet } from "@thruputchain/client";
+import { createThruputClient, futurenet } from "@thruputchain/client";
 
-export const client = await createThruputClient({ cluster: devnet() });
+export const client = await createThruputClient({ cluster: futurenet() });
 ```
 
 Client creation is asynchronous. It checks that the endpoint uses RPC wire format 14 and reads its network identity before returning. Other examples import this client from `./client.js`.
@@ -40,8 +40,7 @@ No wallet permission or account funding is required.
 
 ## Select another endpoint
 
-The SDK helper is still named `devnet()` for compatibility.
-`devnet({ rpcUrl })` overrides the Futurenet endpoint. For a local node, replace the cluster with `localnet()`:
+`futurenet({ rpcUrl })` overrides the Futurenet endpoint. The deprecated `devnet()` helper remains available for existing applications and retains its `"devnet"` cluster name. For a local node, replace the cluster with `localnet()`:
 
 ```ts
 import { createThruputClient, localnet } from "@thruputchain/client";
@@ -49,7 +48,7 @@ import { createThruputClient, localnet } from "@thruputchain/client";
 const client = await createThruputClient({ cluster: localnet() });
 ```
 
-Start the node with [the CLI](/cli/local-node/) first.
+Start the node with [the CLI](/cli/local-node/) first. The SDK does not read CLI runtime manifests. `localnet()` expects the all-zero network hash unless you provide a custom `networkHash`.
 
 Use `defineCluster()` for a reusable custom descriptor. `mainnet()` requires an explicit endpoint. Cluster capabilities, such as `airdrop`, declare expected services. Client creation throws `RpcCompatibilityError` when the endpoint does not advertise the matching method.
 
@@ -58,12 +57,12 @@ Use `defineCluster()` for a reusable custom descriptor. `mainnet()` requires an 
 Futurenet is unpinned by default. To require a specific deployment, provide the trusted hash from your environment:
 
 ```ts
-import { createThruputClient, devnet, hashFromBase58, networkHash } from "@thruputchain/client";
+import { createThruputClient, futurenet, hashFromBase58, networkHash } from "@thruputchain/client";
 
 const expected = process.env.THRUPUT_NETWORK_HASH;
 if (!expected) throw new Error("Set THRUPUT_NETWORK_HASH to the expected base58 network hash");
 const client = await createThruputClient({
-  cluster: devnet({ networkHash: networkHash(hashFromBase58(expected)) }),
+  cluster: futurenet({ networkHash: networkHash(hashFromBase58(expected)) }),
 });
 ```
 

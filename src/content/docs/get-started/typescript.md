@@ -27,12 +27,12 @@ npm install --save-dev typescript tsx @types/node
 Create `src/index.ts`:
 
 ```ts
-import { createThruputClient, devnet, formatUnits, getContract } from "@thruputchain/client";
+import { createThruputClient, futurenet, formatUnits, getContract } from "@thruputchain/client";
 import { ERC20 } from "@thruputchain/client/contracts";
 import { NATIVE_TOKEN_ADDRESS } from "@thruputchain/protocol";
 
 async function main() {
-  const client = await createThruputClient({ cluster: devnet() });
+  const client = await createThruputClient({ cluster: futurenet() });
   const nativeToken = getContract({ binding: ERC20.v0_1, address: NATIVE_TOKEN_ADDRESS, client });
   const supply = await nativeToken.totalSupply.view({ args: undefined });
 
@@ -46,7 +46,7 @@ main().catch((error: unknown) => {
 });
 ```
 
-`devnet()` selects the hosted network. The SDK includes the native-token contract's standard binding, and `NATIVE_TOKEN_ADDRESS` is its protocol constant, so you do not need to generate a binding. `supply.value` is a typed integer; formatting it displays whole-token units rather than base units.
+`futurenet()` selects Futurenet. The SDK includes the native-token contract's standard binding, and `NATIVE_TOKEN_ADDRESS` is its protocol constant, so you do not need to generate a binding. `supply.value` is a typed integer; formatting it displays whole-token units rather than base units.
 
 ## 3. Run it
 

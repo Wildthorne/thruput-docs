@@ -70,7 +70,7 @@ These public values identify one deployment. A different network needs its own e
 ```ts title="chain.ts"
 import {
   addressFromBase58, createThruputClient, createPubkeyAccount, createWalletClient,
-  defineCluster, fromHex0x, hashFromBase58, networkHash, PrivateKeySigner,
+  defineCluster, fromHex0x, hashFromBase58, networkHash, Ed25519Signer,
 } from "@thruputchain/client";
 import { Counter } from "./src/contracts/counter.js";
 
@@ -92,7 +92,7 @@ export const client = await createThruputClient({
 export { Counter };
 
 export function developmentWallet() {
-  const signer = new PrivateKeySigner(fromHex0x(required("COUNTER_SIGNING_PRIVATE_KEY")));
+  const signer = Ed25519Signer.fromSeed(fromHex0x(required("COUNTER_SIGNING_PRIVATE_KEY")));
   return createWalletClient({ client, account: createPubkeyAccount({ signer }) });
 }
 ```

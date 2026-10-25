@@ -27,7 +27,7 @@ Replace `src/main.tsx`:
 
 ```tsx
 import { createRoot } from "react-dom/client";
-import { createThruputClient, devnet } from "@thruputchain/client";
+import { createThruputClient, futurenet } from "@thruputchain/client";
 import { WalletProvider } from "@thruputchain/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import App from "./App";
@@ -36,7 +36,7 @@ const root = createRoot(document.getElementById("root")!);
 root.render(<p>Connecting to Futurenet…</p>);
 
 async function start() {
-  const client = await createThruputClient({ cluster: devnet() });
+  const client = await createThruputClient({ cluster: futurenet() });
   const queries = new QueryClient();
 
   root.render(

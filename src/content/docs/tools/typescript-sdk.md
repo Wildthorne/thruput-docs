@@ -23,7 +23,9 @@ description: TypeScript client entry points, common operations, and links to foc
 | API | Behavior |
 | --- | --- |
 | `createThruputClient({ cluster, transport? })` | Async client creation; checks wire format 14, advertised methods, and network identity |
-| `devnet(options?)` | Hosted development network; unpinned unless given `networkHash`; declares airdrop support |
+| `futurenet(options?)` | Futurenet; unpinned unless given `networkHash`; declares airdrop support |
+| `FUTURENET_RPC_URL` | Default Futurenet endpoint: `https://rpc.thruput.network` |
+| `devnet(options?)` / `DEVNET_RPC_URL` | Deprecated compatibility APIs; use `futurenet` / `FUTURENET_RPC_URL`; `devnet()` retains its legacy cluster name |
 | `localnet(options?)` | Local endpoint and default local identity; override with the matching runtime identity |
 | `mainnet(options)` | Requires an explicit endpoint |
 | `defineCluster(descriptor)` | Custom name, endpoint, hash pin, and expected capabilities |
