@@ -14,13 +14,13 @@ Use this as `src/App.tsx`. The binding and deployed address are supplied by the 
 ```tsx
 import { formatUnits } from "@thruputchain/client";
 import { ERC20 } from "@thruputchain/client/contracts";
-import { HOG_ADDRESS } from "@thruputchain/protocol";
+import { NATIVE_TOKEN_ADDRESS } from "@thruputchain/protocol";
 import { useContractView } from "@thruputchain/react";
 
 export default function App() {
   const supply = useContractView({
     method: ERC20.v0_1.totalSupply,
-    address: HOG_ADDRESS,
+    address: NATIVE_TOKEN_ADDRESS,
     args: undefined,
   });
 
@@ -52,13 +52,13 @@ For a method with arguments, pass its generated argument object:
 ```tsx
 import type { ContractAddress } from "@thruputchain/client";
 import { ERC20 } from "@thruputchain/client/contracts";
-import { HOG_ADDRESS } from "@thruputchain/protocol";
+import { NATIVE_TOKEN_ADDRESS } from "@thruputchain/protocol";
 import { useContractView } from "@thruputchain/react";
 
 export function RawBalance({ owner }: { owner: ContractAddress }) {
   const balance = useContractView({
     method: ERC20.v0_1.getBalanceOf,
-    address: HOG_ADDRESS,
+    address: NATIVE_TOKEN_ADDRESS,
     args: { addr: owner },
   });
   if (balance.error) return <p role="alert">{balance.error.message}</p>;

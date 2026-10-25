@@ -12,7 +12,7 @@ This component sends a small native-token transfer to an already funded recipien
 ```tsx
 import { gasAmount, parseUnits, toBase58, TransactionObservationError, type ContractAddress } from "@thruputchain/client";
 import { ERC20 } from "@thruputchain/client/contracts";
-import { HOG_ADDRESS } from "@thruputchain/protocol";
+import { NATIVE_TOKEN_ADDRESS } from "@thruputchain/protocol";
 import { useExecute, useWallet, type ExecuteVariables } from "@thruputchain/react";
 
 type SavePending = ExecuteVariables["options"]["onSigned"];
@@ -28,7 +28,7 @@ export function SendHog({ receiver, savePending }: {
   function send() {
     execution.mutate({
       request: {
-        invocation: ERC20.v0_1.transfer.invocation(HOG_ADDRESS, gasAmount(500_000n), {
+        invocation: ERC20.v0_1.transfer.invocation(NATIVE_TOKEN_ADDRESS, gasAmount(500_000n), {
           receiver,
           amount: parseUnits("0.0001", 7),
         }),

@@ -64,13 +64,13 @@ Replace `src/App.tsx`:
 ```tsx
 import { formatUnits } from "@thruputchain/client";
 import { ERC20 } from "@thruputchain/client/contracts";
-import { HOG_ADDRESS } from "@thruputchain/protocol";
+import { NATIVE_TOKEN_ADDRESS } from "@thruputchain/protocol";
 import { useContractView } from "@thruputchain/react";
 
 export default function App() {
   const supply = useContractView({
     method: ERC20.v0_1.totalSupply,
-    address: HOG_ADDRESS,
+    address: NATIVE_TOKEN_ADDRESS,
     args: undefined,
   });
 

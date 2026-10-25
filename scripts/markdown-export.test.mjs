@@ -58,7 +58,7 @@ test('unlabelled content diagrams and tab panels fail instead of losing meaning'
 });
 
 async function fixture(t, homeBody) {
-  const directory = await mkdtemp(join(tmpdir(), 'groundhog-markdown-'));
+  const directory = await mkdtemp(join(tmpdir(), 'thruput-markdown-'));
   t.after(() => rm(directory, { recursive: true, force: true }));
   for (const [path, content] of [
     ['index.html', html(homeBody)],
