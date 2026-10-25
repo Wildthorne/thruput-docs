@@ -7,7 +7,7 @@ sidebar:
 
 Project Thruput is a moonshot project exploring how parallel execution can make compute abundant. Transactions record compatible changes to shared state, allowing the network to combine them without requiring sequential execution.
 
-The project's future is open. No decisions have been made about mainnet or its relationship to Stellar. These docs describe the development network and tools available today.
+The project's future is open. No decisions have been made about timelines or its relationship to Stellar's existing L1 network. These docs describe the development network and tools available today.
 
 The [whitepapers](/whitepapers/) introduce the system design and research on bridging between Federated Byzantine Agreement blockchains.
 
