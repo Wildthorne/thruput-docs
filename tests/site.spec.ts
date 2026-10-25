@@ -237,40 +237,54 @@ test('theme buttons show one matching icon and stay synchronized across desktop 
   }
 });
 
-test('header is centered on homepage and full-width with 20px gutters on docs', async ({ page }) => {
-  await page.setViewportSize({ width: 1920, height: 1080 });
-  for (const route of ['/', docs]) {
-    await page.goto(origin + route);
-    const geometry = await page.locator('.site-header').evaluate(el => {
-      const rect = el.getBoundingClientRect();
-      const header = el.closest('header')!;
-      const bounds = header.getBoundingClientRect();
-      const style = getComputedStyle(header);
-      return { width: rect.width, center: rect.left + rect.width / 2, paddingLeft: style.paddingLeft, paddingRight: style.paddingRight,
-        contentWidth: bounds.width - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight) };
-    });
-    expect(geometry.center).toBeCloseTo(960, 0);
-    if (route === '/') {
-      expect(geometry.width).toBeCloseTo(1420, 0);
-      expect(geometry.width).toBeLessThan(geometry.contentWidth);
-    } else {
-      expect(geometry.paddingLeft).toBe('20px');
-      expect(geometry.paddingRight).toBe('20px');
-      expect(geometry.width).toBeCloseTo(1880, 0);
-      expect(geometry.width).toBeCloseTo(geometry.contentWidth, 0);
+for (const width of [320, 375, 800, 1024, 1280, 1920]) {
+  test(`header controls stay aligned across pages at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    let baseline: unknown;
+    for (const route of ['/', '/whitepapers/', '/docs/get-started/', docs]) {
+      await page.goto(origin + route);
+      await page.evaluate(() => document.fonts.ready);
+      await checkShell(page);
+      const geometry = await page.locator('.site-header').evaluate(header =>
+        ['.site-brand', '.site-navigation', 'site-search > button', '.build-link'].map(selector => {
+          const rect = header.querySelector(selector)!.getBoundingClientRect();
+          return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+        })
+      );
+      if (baseline) expect(geometry, route).toEqual(baseline);
+      else baseline = geometry;
     }
-    const lastControl = page.locator(route === '/' ? '.header-actions .build-link' : '.desktop-theme button');
-    const bounds = await lastControl.boundingBox();
-    expect(bounds!.x + bounds!.width).toBeCloseTo(route === '/' ? 1670 : 1900, 0);
+  });
+}
+
+for (const theme of ['dark', 'light'] as const) {
+  for (const width of [375, 1280]) {
+    test(`whitepapers opens documentation directly in ${theme} mode at ${width}px`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 900 });
+      await page.addInitScript(value => localStorage.setItem('starlight-theme', value), theme);
+      await page.goto(origin + '/whitepapers/');
+      await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
+      if (width < 800) await page.getByRole('button', { name: 'Menu', exact: true }).click();
+      const navigations: string[] = [];
+      page.on('framenavigated', frame => {
+        if (frame === page.mainFrame()) navigations.push(new URL(frame.url()).pathname);
+      });
+      await page.getByRole('link', { name: 'Documentation', exact: true }).filter({ visible: true }).click();
+      await expect(page.locator('main h1')).toHaveText('Get Started');
+      await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
+      expect(navigations).toEqual(['/docs/get-started/']);
+    });
   }
-});
+}
 
 test('header and page titles use Project Thruput while preserving the exact CLI install prompt', async ({ page }) => {
   for (const route of ['/', docs]) {
     await page.goto(origin + route);
     const brand = page.locator('header').getByRole('link', { name: 'Project Thruput homepage', exact: true });
     await expect(brand).toHaveText('Project Thruput');
-    await expect(brand.locator('img:visible')).toHaveAttribute('alt', 'Stellar');
+    const stellar = page.locator('header').getByRole('link', { name: 'Stellar homepage', exact: true });
+    await expect(stellar.locator('img:visible')).toHaveAttribute('alt', 'Stellar');
+    await expect(stellar).toHaveAttribute('href', 'https://stellar.org');
     await expect(brand).toHaveAttribute('href', '/');
     await expect(page).toHaveTitle(/Project Thruput/);
     await expect(page.locator('header').getByRole('link', { name: 'About', exact: true }))

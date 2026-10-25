@@ -139,6 +139,5 @@ html:has(.site-page) .sl-markdown-content { margin: 0; }
 @media (min-width: 50rem) {
   :root { --sl-nav-height: 5.5rem; }
   html:has(.site-page) .sidebar { display: none; }
-  html:has(.site-page) { --sl-content-inline-start: 0rem; --sl-nav-pad-x: 2rem; }
+  html:has(.site-page) { --sl-content-inline-start: 0rem; }
 }
-@media (min-width: 1101px) { html:has(.site-page) { --sl-nav-pad-x: 3rem; } }
