@@ -33,7 +33,8 @@ Confirm the package, toolchain, and features. In a workspace, use `-p PACKAGE`. 
 | Submission rejected | Inspect the signing account, profile, network identity, and reported admission error |
 | Committed exception | Decode the typed error; check input and authorization conditions |
 | Committed fault | Reproduce in tests; inspect execution limits and panics |
-| Pending or unknown | Observe the original transaction on the same network |
+| `pending`, `recentFailure`, or `unknown` status | Observe the original transaction on the same network |
+| `retry` or `dropped` status | Read the reported error. A `retry` can succeed if you resubmit the same transaction. For a `dropped` transaction, change it before you resubmit, unless the error is insufficient native tokens: then fund the sender and resubmit the same transaction before it expires |
 | Unexpected view result | Check address, interface/spec, read height, and simulated caller |
 
 ```bash

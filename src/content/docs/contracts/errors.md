@@ -50,6 +50,8 @@ pub enum ERC20Error {
     AlreadyInitialized = 1,
     MustBeContractOwner = 2,
     TooLarge = 3,
+    BalanceNotZero = 4,
+    NegativeAmount = 5,
     Internal = 100,
 }
 ```
@@ -84,8 +86,8 @@ Aborts the current frame with the given error. Never returns.
 use thruput_sdk::*;
 
 fn transfer(&mut self, receiver: &ContractAddress, amount: Amount) {
-    if amount == 0 {
-        throw(ERC20Error::TooLarge);
+    if amount < 0 {
+        throw(ERC20Error::NegativeAmount);
     }
     // ...
 }
@@ -99,15 +101,13 @@ Throws `error` if `condition` is false. A convenience wrapper around `throw`.
 use thruput_sdk::*;
 
 fn mint(&mut self, receiver: &ContractAddress, amount: Amount) {
-    let caller = get_caller();
     ensure(
-        caller == self._contract_owner(),
+        get_caller() == self._administrator(),
         ERC20Error::MustBeContractOwner,
     );
 
-    let diff = amount_to_diff(amount);
-    self._adjust_balance(receiver, diff);
-    self._adjust_total_supply(diff);
+    self._increase_total_supply(amount);
+    self._lazy_increase_balance(receiver, amount);
 }
 ```
 
@@ -118,8 +118,11 @@ Extension method on `Result`. Returns the `Ok` value, or throws `exn` on `Err`. 
 ```rust
 use thruput_sdk::*;
 
-pub fn amount_to_diff(n: u128) -> i128 {
-    n.try_into().or_throw(ERC20Error::TooLarge)
+fn _decrease_balance(&mut self, owner: &ContractAddress, amount: Amount) {
+    self.balances
+        .at_mut(owner)
+        .try_decrease(amount)
+        .or_throw(ERC20Error::TooLarge);
 }
 ```
 

@@ -44,30 +44,38 @@ Different map keys are independent. Balance changes use deltas instead of replac
 
 ## Follow a transfer
 
-The implementation takes the payer from the direct caller:
+The implementation takes the payer from the direct caller. The internal `_move` helper does the debit, the credit, and the event:
 
 ```rust
 fn transfer(&mut self, receiver: &ContractAddress, amount: Amount) {
+    check_amount(amount);
     let owner = get_caller();
-    self._decrease_balance(&owner, amount);
+
+    self._move(&owner, receiver, amount);
+}
+
+// Move `amount` from `owner` to `receiver` and emit [`TransferEvent`].
+fn _move(&mut self, owner: &ContractAddress, receiver: &ContractAddress, amount: Amount) {
+    self._decrease_balance(owner, amount);
     self._lazy_increase_balance(receiver, amount);
-    TransferEvent::new(&owner, receiver, amount_to_diff(amount)).log();
+
+    TransferEvent::new(owner, receiver, amount).log();
 }
 ```
 
-The checked debit reports insufficient balance during execution. The credit records a relative increase. The event records the movement for applications; it is not the source of the contract's balance state.
+`check_amount` rejects a negative amount with `NegativeAmount`. The checked debit reports insufficient balance during execution. The credit records a relative increase. The event records the movement for applications; it is not the source of the contract's balance state.
 
 `transfer_from` first spends the caller's allowance, then performs the same debit and credit. An allowance belongs to a specific owner/spender pair, not to every caller.
 
 ## Apply supply and allowance policy
 
-Read the `mint`, `burn`, and `adjust_allowance` implementations:
+Read the `mint`, `burn`, `clawback`, and `adjust_allowance` implementations:
 
-- Minting and burning require the configured administrator.
+- Minting and clawback require the configured administrator. Holders burn their own tokens with `burn`, or tokens they hold an allowance for with `burn_from`.
 - Initialization records that administrator and rejects a later initialization.
 - Allowances change by a signed `difference`. A positive value adds authority; a negative value removes it.
-- An exclusive allowance update requests sole write access to that entry for the block. It does not make a prior offchain read current.
-- `clear_allowance` deletes an allowance; `clear_balance` requires an empty balance before deleting its row.
+- `delete_allowance` deletes an allowance. `delete_balance` requires a zero balance before it deletes its row.
+- Only the two delete paths are exclusive. Each requests sole write access to its entry for the block. Other balance and allowance writes are not exclusive.
 
 The metadata feature adds name, symbol, and decimals. The permit feature adds signed-operation authorization. Keep the basic transfer policy clear before extending either surface.
 
