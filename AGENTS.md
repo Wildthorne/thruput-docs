@@ -37,7 +37,7 @@ Key rules:
 - Reference pages describe API contracts, mainly through tables. Use short explanations and request/response examples where needed. Link to the relevant concept, task guide, or tutorial for usage guidance.
 - Keep concept and section landing pages high level. Put setup steps in quickstarts and task pages, and complete walkthroughs in tutorials or guides. Follow the section ownership in `src/navigation.ts` rather than inferring page purpose from its directory.
 - Prefer editing existing pages over creating parallel pages.
-- Maintain agent task prompts in their source page, not a second copy. Follow the agent-guidance and Markdown-export workflows in `README.md`.
+- Maintain agent task prompts in their source page, not a second copy. Follow the Markdown-export and agent-prompt workflows in `MAINTAINING.md`.
 
 ## Writing Style
 
@@ -56,12 +56,12 @@ Choose checks that cover the change. `pnpm build` does not run the type checker 
 | --- | --- |
 | Documentation content or navigation | `pnpm test`, `pnpm astro check`, `pnpm build` |
 | Components, styles, routing, or browser behavior | The checks above and relevant `pnpm test:browser` coverage |
-| Markdown export or snapshot packaging | Relevant export/packaging tests and smoke checks in `README.md` and `.github/workflows/ci.yml` |
+| Markdown export or snapshot packaging | Relevant export/packaging tests and smoke checks in `MAINTAINING.md` and `.github/workflows/ci.yml` |
 | Repository instructions only | `git diff --check` and verify the referenced paths and commands |
 
 `pnpm test` covers navigation, Markdown export, provenance, historical guides, package-version consistency, and CLI command shapes. The CLI check scans shell fences and inline code in `src/content/docs/` Markdown/MDX against `scripts/cli-surface.json`; it does not execute examples or scan Astro pages or `text` prompts. Validate changed examples outside that coverage separately. When the docs move to a new CLI release, regenerate the surface with `THRUPUT_CLI=/path/to/thruput node scripts/cli-surface.mjs` using the target binary.
 
-Never modify, remove, or rename existing `public/agents/<cli-version>/agent-guide.md` files. They are historical release artifacts. See `README.md` for the current skill handoff and the history check.
+Never modify, remove, or rename existing `public/agents/<cli-version>/agent-guide.md` files. They are historical release artifacts. See `MAINTAINING.md` for the current skill handoff and the history check.
 
 Changes to content components must preserve meaning in rendered HTML and exported Markdown. Add export coverage when meaning depends on special markup. Verify hosted and offline routes when changing routing.
 
