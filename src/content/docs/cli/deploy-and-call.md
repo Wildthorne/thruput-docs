@@ -39,7 +39,7 @@ thruput build
 thruput deploy --profile futurenet --fund 10
 ```
 
-Confirm the deployment. The CLI waits for its result, prints the deployed address, and saves an alias using the package name. For a project named `my-counter`, later commands can use that alias instead of the address.
+Confirm the deployment. Without a terminal, pass `--yes` to confirm. The CLI waits for its result, prints the deployed address, and saves an alias using the package name. For a project named `my-counter`, later commands can use that alias instead of the address.
 
 Numeric `--fund` transfers exactly that many native tokens from the sender to the new contract. Set it to the estimated minimum plus an allowance for contract storage. `10` above illustrates the syntax; choose your total from the current estimate rather than treating it as a fixed fee or minimum.
 

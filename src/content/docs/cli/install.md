@@ -7,7 +7,7 @@ Install the latest `thruput` release. The CLI selects the dependencies and compi
 
 ## Before you start
 
-- Install the current stable Rust toolchain with [rustup](https://rustup.rs/).
+- Install Rust with [rustup](https://rustup.rs/). Each project pins its own toolchain in `rust-toolchain.toml`: a nightly with the RV32 target and `rust-src`. Run `thruput status` in the project; it reports a missing toolchain or component and prints the `rustup` command that installs it.
 - Obtain access to the Project Thruput Cargo registry from your onboarding contact. Repository access alone does not grant package access.
 
 Check that Cargo is available:

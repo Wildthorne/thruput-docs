@@ -28,7 +28,7 @@ thruput status --profile local
 thruput balance --profile local
 ```
 
-`status` shows the effective key. On a fresh chain, the node gives that key's account 100 native tokens. Use `thruput node --initial-account-tokens AMOUNT` to change the amount. The faucet key is private to the node, and the node creates no other accounts. An ML-DSA-65 key gets no genesis allocation. To fund it, or any other key, run `thruput airdrop NAME --profile local`.
+`status` shows the effective key. On a fresh chain, the node gives that key's account 100 native tokens. `thruput balance` then shows slightly less, because the account's first storage deposit comes out of that allocation. Use `thruput node --initial-account-tokens AMOUNT` to change the amount. The faucet key is private to the node, and the node creates no other accounts. An ML-DSA-65 key gets no genesis allocation. To fund it, or any other key, run `thruput airdrop NAME --profile local`.
 
 If the profile already selects a saved wallet, key selection alone does not replace that wallet. Inspect `thruput status --profile local` and [wallet selection](/cli/wallets/#select-an-account) before submitting.
 

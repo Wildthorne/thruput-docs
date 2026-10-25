@@ -14,7 +14,7 @@ thruput init
 thruput config use futurenet
 ```
 
-On a fresh installation, accept signing-key creation and decline starter-project creation. Setup creates the `default` key and the `local` and `futurenet` network profiles. Selecting `futurenet` sets the global default, so later commands and new projects use it without a `--profile` flag.
+On a fresh installation, accept signing-key creation and decline starter-project creation. Without a terminal, such as from a script or coding agent, run `thruput init --non-interactive --generate-key` instead. Setup creates the `default` key and the `local` and `futurenet` network profiles. Selecting `futurenet` sets the global default, so later commands and new projects use it without a `--profile` flag.
 
 ## 2. Create a wallet
 

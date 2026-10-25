@@ -88,7 +88,7 @@ thruput deploy --profile futurenet --fund TOTAL_FUNDING \
 thruput view counter get --profile futurenet
 ```
 
-Funding, deployment, and initialization happen in one transaction. The sender still needs its own storage and scheduling capacity. Your new counter should read `10`.
+Confirm the deployment when prompted, or pass `--yes` when running without a terminal. Funding, deployment, and initialization happen in one transaction. The sender still needs its own storage and scheduling capacity. Your new counter should read `10`.
 
 Save the printed deployment address. Part 2 uses this address and the contract spec produced by the build.
 

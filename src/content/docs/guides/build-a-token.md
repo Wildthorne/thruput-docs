@@ -63,7 +63,7 @@ fn _move(&mut self, owner: &ContractAddress, receiver: &ContractAddress, amount:
 }
 ```
 
-`check_amount` rejects a negative amount with `NegativeAmount`. The checked debit reports insufficient balance during execution. The credit records a relative increase. The event records the movement for applications; it is not the source of the contract's balance state.
+`check_amount` rejects a negative amount with `NegativeAmount`. The checked debit throws `TooLarge` if the balance does not cover the amount. The contract has no separate insufficient-balance error. The credit records a relative increase. The event records the movement for applications; it is not the source of the contract's balance state.
 
 `transfer_from` first spends the caller's allowance, then performs the same debit and credit. An allowance belongs to a specific owner/spender pair, not to every caller.
 
@@ -85,6 +85,8 @@ The metadata feature adds name, symbol, and decimals. The permit feature adds si
 cargo test -p erc20 --locked
 ```
 
+This reports `erc20_test_rv32` as ignored. It needs the built artifact; `thruput test` runs it in the next section.
+
 `tests/test_native.rs` deploys the contract in the SDK environment and runs the shared scenarios under `tests/common`. Inspect those scenarios for administrator checks, minting, transfers, allowance spending, cleanup, and expected exceptions.
 
 `tests/same_block.rs` tests behavior that a serial-only token test would miss:
@@ -96,6 +98,7 @@ cargo test -p erc20 --locked
 | Combined debits exceed the balance | Reservation excludes an overdrawing transaction |
 | Read during the same block | Reads the block snapshot |
 | Approval and a separate spending transaction in one block | The new approval is not already spendable from the snapshot |
+| Allowance spend and the owner's own debit in one block | Both commit while the balance covers them; one more debit is excluded |
 
 Run a specific case while inspecting the corresponding code:
 

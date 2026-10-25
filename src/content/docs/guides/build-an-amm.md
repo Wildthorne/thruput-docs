@@ -33,7 +33,7 @@ Open `contracts/swap-factory/src/factory.rs` and `tests/factory.rs`. Creation de
 
 The factory takes funding from the caller through an allowance. It does not let arbitrary pool creators spend the factory's own native tokens. Pool addresses are deterministic for the token pair and configured code hashes.
 
-**Checkpoint:** a pool is created in the test environment with its contracts connected correctly.
+**Checkpoint:** a pool is created in the test environment with its contracts connected correctly. The test also checks that a second `create_pair` fails, so a passing run prints a `PairExists` exception.
 
 ## Add liquidity
 
@@ -100,7 +100,7 @@ cargo test -p swap-router --test swap swap_limits_respected --locked
 cargo test -p swap-driver --test authorization --locked
 ```
 
-These checks verify that request IDs reach terminal events, slippage failures leave the user's funds unchanged, and unauthorized calls cannot bypass the router/driver/handler chain.
+These checks verify that request IDs reach terminal events, a request that misses its slippage limit fails (the exact-input case also checks that balances and the allowance are unchanged), and unauthorized calls cannot bypass the router/driver/handler chain.
 
 Each request is handled with a gas cap and commit locking. A handled failure can roll back that request without taking down other requests in the processing transaction.
 
@@ -134,6 +134,8 @@ The tests verify redemption and the distinction between the LP-token owner and t
 ```bash
 cargo test -p swap-factory -p swap-router -p swap-driver -p swap-pair --locked
 ```
+
+The suite reports four `sim_*` tests as ignored. They need simulator fixtures and are not part of this guide.
 
 ## Verify compiled contracts
 

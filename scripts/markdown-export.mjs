@@ -1,4 +1,4 @@
-import { logicalDocsPath } from './docs-routing.mjs';
+import { docsPrefix, hostedDocsUrl, logicalDocsPath } from './docs-routing.mjs';
 import { execFileSync } from 'node:child_process';
 import { copyFile, mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { dirname, resolve, relative, posix } from 'node:path';
@@ -60,7 +60,7 @@ function provenance(snapshot) {
 }
 
 /** Generate portable Markdown from the same rendered pages shipped as HTML. */
-export async function exportMarkdown({ directory, site, snapshot, sections = [], sectionForPath = () => undefined }) {
+export async function exportMarkdown({ directory, site, snapshot, sections = [], sectionForPath = () => undefined, routePrefix = docsPrefix }) {
   const files = await filesAt(directory);
   const existing = new Set(files.map(file => relative(directory, file).split('\\').join('/')));
   const pages = new Map();
@@ -126,7 +126,7 @@ export async function exportMarkdown({ directory, site, snapshot, sections = [],
       if (bundle && node.type === 'html') node.value = '';
     });
     return `${bundle ? '' : '<a id="_top"></a>\n\n'}${heading(bundle ? 2 : 1, page.title)}\n` +
-      `Source: <${page.url}>\n\n${bundle ? '' : provenance(snapshot)}${page.description}\n\n` +
+      `Source: <${routePrefix ? page.url : hostedDocsUrl(page.url)}>\n\n${bundle ? '' : provenance(snapshot)}${page.description}\n\n` +
       toMarkdown(tree, options);
   }
   const grouped = [...sections, { id: 'overview', label: 'Overview' }].map(section => {

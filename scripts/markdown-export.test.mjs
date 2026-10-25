@@ -8,6 +8,7 @@ import { gfmToMarkdown } from 'mdast-util-gfm';
 import { visit } from 'unist-util-visit';
 import { readPage } from './markdown-content.mjs';
 import { exportMarkdown } from './markdown-export.mjs';
+import { hostedDocsUrl } from './docs-routing.mjs';
 import { validateMarkdown } from './markdown-validation.mjs';
 
 const site = 'https://docs.example.test/';
@@ -128,4 +129,19 @@ test('indexes and bundles follow navigation order, including grouped entries', a
     assert.ok(positions.every(position => position >= 0));
     assert.deepEqual(positions, [...positions].sort((a, b) => a - b));
   }
+});
+
+test('snapshot pages cite their hosted docs URL', () => {
+  assert.equal(hostedDocsUrl('https://thruput.network/'), 'https://thruput.network/');
+  assert.equal(hostedDocsUrl('https://thruput.network/guides/build-a-token/'), 'https://thruput.network/docs/guides/build-a-token/');
+  assert.equal(hostedDocsUrl('https://thruput.network/docs/cli/install/'), 'https://thruput.network/docs/cli/install/');
+});
+
+test('snapshot exports cite hosted URLs on pages and bundles', async t => {
+  const directory = await fixture(t, '<p>Home</p>');
+  await exportMarkdown({ directory, site, snapshot, routePrefix: '' });
+  const source = path => readFile(join(directory, 'markdown', path), 'utf8');
+  assert.ok((await source('pages/contracts/start.md')).includes(`Source: <${site}docs/contracts/start/>`));
+  assert.ok((await source('full.md')).includes(`Source: <${site}docs/contracts/start/>`));
+  assert.ok((await source('pages/index.md')).includes(`Source: <${site}>`));
 });
