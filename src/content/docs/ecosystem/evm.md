@@ -7,12 +7,6 @@ The contract lifecycle remains write, test, deploy, and call. The main differenc
 
 ## The Contract Lifecycle
 
-<span id="writing"></span>
-<span id="compiling"></span>
-<span id="deploying"></span>
-<span id="calling"></span>
-<span id="reading-state"></span>
-
 | Task | Project Thruput path |
 | --- | --- |
 | Write | Rust with SDK storage handles and contract macros |
@@ -105,8 +99,6 @@ Project Thruput does not invoke `initialize` automatically or make it once-only.
 ### Events
 
 Define events with `#[derive(Event)]`, mark filterable fields with `#[topic]`, and declare emitted types on the contract interface. See [Events](/contracts/events/) for the complete pattern and [Read events](/typescript/events/) for application queries.
-
-<span id="erc-20-side-by-side"></span>
 
 [Build a token](/guides/build-a-token/) walks through the maintained ERC-20 implementation, including allowances, supply policy, events, and tests.
 

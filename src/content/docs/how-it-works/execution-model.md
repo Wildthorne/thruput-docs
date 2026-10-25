@@ -96,8 +96,6 @@ By the time block close runs, all capacity conflicts have been resolved. Block c
 
 RetrocausalQueue is the exception: it has end-of-block invariant checks that the other storage types do not. RCQ entries from excluded transactions are removed during block finalization.
 
-<span id="why-the-simplified-model-still-holds"></span>
-
 The proposer records reservation-dependent outcomes so validators can replay and verify the proposed block. Contract code chooses storage operations; it does not manage the engine's reservation locks.
 
 ## Related reading

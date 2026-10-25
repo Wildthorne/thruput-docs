@@ -45,8 +45,6 @@ For a direct project-scoped update:
 npx skills update thruput --project
 ```
 
-<span id="read-bundled-guidance-offline"></span>
-
 ## Read installed guidance offline
 
 ```bash

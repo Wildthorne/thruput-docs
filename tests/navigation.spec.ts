@@ -229,7 +229,7 @@ test('retired tutorial links reach the matching task and mapped heading', async 
   for (const [oldPath, destination] of [
     ['/docs/tutorials/develop-locally/?via=guide#4-start-the-local-node', '/docs/cli/local-node/?via=guide#start-the-node'],
     ['/docs/tutorials/develop-locally/#6-dry-run-and-deploy', '/docs/cli/deploy-and-call/#deploy-an-artifact'],
-    ['/docs/tutorials/develop-on-devnet/#2-configure-devnet-identity', '/docs/cli/configuration/#devnet'],
+    ['/docs/tutorials/develop-on-devnet/#2-configure-devnet-identity', '/docs/cli/configuration/#futurenet'],
     ['/docs/tutorials/add-events-to-a-contract/#step-1-define-the-event', '/docs/contracts/events/#define-an-event'],
     ['/docs/tutorials/add-events-to-a-contract/#resume-without-missing-events', '/docs/typescript/events/#resume-without-missing-events'],
     ['/docs/tutorials/design-a-swap/#the-problem', '/docs/guides/build-an-amm/#understand-acceptance-and-execution'],

@@ -73,9 +73,6 @@ The corresponding exact-output test checks that the requested output is received
 
 ## Understand acceptance and execution
 
-<span id="the-problem"></span>
-<span id="split-acceptance-from-execution"></span>
-
 Every swap changes reserves. Concurrent transactions using the same snapshot cannot all replace those reserves with different values. The implementation separates accepting requests from executing reserve-dependent work:
 
 ```text
@@ -92,8 +89,6 @@ An accepted request is not a completed swap. Submission returns a request ID and
 
 ## Verify failures and request IDs
 
-<span id="getting-the-answer-back"></span>
-
 ```bash
 cargo test -p swap-router --test request_id --locked
 cargo test -p swap-router --test swap swap_limits_respected --locked
@@ -105,11 +100,6 @@ These checks verify that request IDs reach terminal events, a request that misse
 Each request is handled with a gas cap and commit locking. A handled failure can roll back that request without taking down other requests in the processing transaction.
 
 ## Bound the queue and processing work
-
-<span id="batch-the-serial-work"></span>
-<span id="the-gas-limit-is-the-batch-size"></span>
-<span id="minimum-batch-size"></span>
-<span id="a-queue-costs-storage-so-it-needs-a-ceiling"></span>
 
 Queue capacity bounds pending storage. Consumption is checked during reservation across concurrent requests. An excluded submission is reported as `retry`. Resubmit the same signed transaction; it is not guaranteed a place in the next block.
 

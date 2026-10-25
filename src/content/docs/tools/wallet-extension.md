@@ -34,15 +34,13 @@ Open the wallet from the toolbar. Select **New wallet**, enter and confirm a pas
 
 Follow the prompt to back up your recovery phrase in **Settings**. Keep the phrase private. Use **Restore wallet** if you already have a test recovery phrase you want to use.
 
-<span id="select-devnet-and-get-test-hog"></span>
-
 ## Select Devnet and get native test tokens
 
 Check the network dropdown. New wallets start on **Devnet**; existing wallets keep their saved selection.
 
-Open **Assets** and click **Request test HOG**, the wallet's label for native test tokens. Wait for the balance to update. These tokens have no monetary value. They fund storage deposits and provide scheduling capacity under load; there are no conventional gas fees.
+Open **Assets** and click **Request test tokens**. Wait for the balance to update. These tokens have no monetary value. They fund storage deposits and provide scheduling capacity under load; there are no conventional gas fees.
 
-![Wallet showing the Devnet selector, Assets tab, and Request test HOG button](/images/wallet/wallet-devnet.png)
+![Wallet showing the Devnet selector, Assets tab, and Request test tokens button](/images/wallet/wallet-devnet.png)
 
 | Network | RPC endpoint | Use |
 | --- | --- | --- |

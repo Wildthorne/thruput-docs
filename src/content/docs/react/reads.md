@@ -5,8 +5,6 @@ description: Display a typed contract view with loading, error, data, and refres
 
 `useContractView` reads a generated method descriptor and infers its arguments and result. Mount the [application providers](/react/setup/) first.
 
-<span id="display-hog-supply"></span>
-
 ## Display native-token supply
 
 Use this as `src/App.tsx`. The binding and deployed address are supplied by the SDK packages:

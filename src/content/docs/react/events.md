@@ -5,8 +5,6 @@ description: Use the public client and TanStack Query to display typed contract 
 
 Compose the TypeScript client's event actions with TanStack Query. Generated bindings provide filtering and decoding; React components provide loading, empty, error, and refresh states.
 
-<span id="display-recent-hog-transfers"></span>
-
 ## Display recent native-token transfers
 
 ```tsx
@@ -21,7 +19,7 @@ const { TransferEvent } = thruput_erc20_if.v0_1.events;
 export function RecentTransfers() {
   const client = useClient();
   const transfers = useQuery({
-    queryKey: [...getClientQueryKey(client), "app", "recent-hog-transfers"],
+    queryKey: [...getClientQueryKey(client), "app", "recent-native-token-transfers"],
     queryFn: ({ signal }) => client.getContractEvents({
       event: TransferEvent,
       addresses: [NATIVE_TOKEN_ADDRESS],

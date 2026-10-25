@@ -47,7 +47,7 @@ Profile selection checks, in order:
 If none selects a profile, network commands fail. Offline builds and tests can
 use a scaffold's local overlay without a selected default. The name `default` has no special fallback meaning.
 
-## <span id="devnet">Futurenet</span>
+## Futurenet
 
 `thruput init` creates `local` and `futurenet`, with `local` as the initial default. Futurenet uses `https://rpc.thruput.network` and `https://faucet.thruput.network`. Initialization preserves existing defaults and custom profile fields. For a first funded account, follow the [CLI quickstart](/get-started/cli/).
 

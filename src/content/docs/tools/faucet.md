@@ -19,7 +19,7 @@ The faucet needs only a public address. Amounts, cooldowns, and quotas depend on
 
 ## Request funds in the wallet
 
-In [Thruput Wallet](/tools/wallet-extension/#select-devnet-and-get-test-hog), select **Devnet** (the wallet extension's label for Futurenet), open **Assets**, and click **Request test HOG**. The request funds the selected wallet account.
+In [Thruput Wallet](/tools/wallet-extension/#select-devnet-and-get-native-test-tokens), select **Devnet** (the wallet extension's label for Futurenet), open **Assets**, and click **Request test tokens**. The request funds the selected wallet account.
 
 ## CLI
 

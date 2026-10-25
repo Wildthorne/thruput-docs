@@ -51,8 +51,6 @@ description: TypeScript client entry points, common operations, and links to foc
 
 ## Choose an Account Model
 
-<span id="bind-a-wallet-client"></span>
-
 | API | Inputs / behavior |
 | --- | --- |
 | `createPubkeyAccount({ signer, nonce? })` | Ed25519 or ML-DSA-65 signer; address nonce defaults to `0n` |
@@ -94,8 +92,6 @@ description: TypeScript client entry points, common operations, and links to foc
 | Usage | [Track transaction results](/typescript/transaction-status/) |
 
 ## Use a Local Account
-
-<span id="use-a-local-devwallet"></span>
 
 | API | Result / requirement |
 | --- | --- |

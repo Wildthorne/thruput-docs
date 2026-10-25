@@ -3,10 +3,6 @@ title: Command reference
 description: Thruput CLI commands, common options, and links to task instructions.
 ---
 
-<span id="which-command-should-i-use"></span>
-<span id="common-workflow"></span>
-<span id="foundry-mental-model"></span>
-
 ## First-Run Setup
 
 | Command | Purpose | Usage |
@@ -111,8 +107,6 @@ description: Thruput CLI commands, common options, and links to task instruction
 | --- | --- | --- |
 | `build --bindings ts` | Contract build plus generated bindings | [Generate bindings](/cli/codegen/) |
 | `codegen ts SPEC -o FILE` | Canonical `.spec.xdr` to TypeScript; stdout if output is omitted | [Write into an app](/cli/codegen/#write-bindings-into-an-application) |
-
-<span id="local-documentation"></span>
 
 ## Skills and Local Documentation
 

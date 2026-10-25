@@ -5,8 +5,6 @@ description: Read typed contract values, require a minimum height, and group rel
 
 A view simulates a contract call against committed state without submitting a transaction. It needs a public client and a binding, not a signer.
 
-<span id="read-the-existing-hog-contract"></span>
-
 ## Read the existing native-token contract
 
 Use the `src/client.ts` from [Connect to a network](/typescript/connect/). Create `src/read.ts`:

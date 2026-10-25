@@ -7,8 +7,6 @@ Project Thruput has no conventional gas fees. Its native token backs onchain sto
 
 Removing the sequential execution bottleneck is intended to make compute abundant rather than keep it scarce by design. Parallel execution does not remove hardware limits or contention: the network still meters computation and allocates capacity when demand exceeds it.
 
-<span id="the-two-jobs-of-hog"></span>
-
 ## The Two Jobs of the Native Token
 
 Each unit of the native token in your account is in one of two states:
@@ -19,8 +17,6 @@ Each unit of the native token in your account is in one of two states:
 | **Locked** | Backs a piece of on-chain storage | Returned when you delete the data |
 
 Locking native tokens for storage reduces the free balance available for scheduling.
-
-<span id="execution-free-throughput-allocated"></span>
 
 ## Execution: Metered, Throughput-Allocated
 
@@ -79,7 +75,7 @@ deposit. A small first credit may be excluded with `insufficientFunds`; funding
 the balance item first is one option, not a universal requirement to use an
 airdrop. Amounts depend on runtime configuration. Funding a target's storage does
 not fund the sender's scheduling capacity. See the
-[client funding example](/typescript/accounts/#request-devnet-funds).
+[client funding example](/typescript/accounts/#request-futurenet-funds).
 
 The native token is implemented by a native precompiled contract exposing the standard asset interface, including transfers, balance queries, and allowances. Applications call it through that interface. The runtime also uses its balances for scheduling and storage accounting. Use `ADDRESS_NATIVE_TOKEN` in Rust, `NATIVE_TOKEN_ADDRESS` from `@thruputchain/protocol` in TypeScript, and the `NATIVE_TOKEN` contract alias in CLI commands.
 

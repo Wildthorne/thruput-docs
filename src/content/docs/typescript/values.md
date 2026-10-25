@@ -12,7 +12,7 @@ import { parseUnits, formatUnits } from "@thruputchain/client";
 
 const amount = parseUnits("12.05", 2); // 1205n
 console.log(formatUnits(amount, 2));  // "12.05"
-const oneHog = parseUnits("1", 7);    // 10000000n
+const oneToken = parseUnits("1", 7);  // 10000000n
 ```
 
 Both helpers support 0–255 decimals and signed amounts. Parsing rejects whitespace, exponents, and excess precision rather than rounding. `ParseUnitsError.code` is `malformed` or `precision`; invalid decimal counts throw `RangeError`.

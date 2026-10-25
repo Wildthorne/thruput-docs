@@ -17,7 +17,7 @@ import { useExecute, useWallet, type ExecuteVariables } from "@thruputchain/reac
 
 type SavePending = ExecuteVariables["options"]["onSigned"];
 
-export function SendHog({ receiver, savePending }: {
+export function SendNativeTokens({ receiver, savePending }: {
   receiver: ContractAddress;
   savePending: SavePending;
 }) {

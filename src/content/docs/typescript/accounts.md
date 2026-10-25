@@ -46,8 +46,6 @@ export const account = createPubkeyAccount({
 
 One seed gives a different account under each scheme. ML-DSA-65 keys have no StrKey form, and an ML-DSA-65 signed transaction is about 5 KB larger than an Ed25519 one.
 
-<span id="request-devnet-funds"></span>
-
 ## Request Futurenet funds
 
 Create `src/fund.ts`:

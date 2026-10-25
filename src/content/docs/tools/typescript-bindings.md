@@ -11,8 +11,6 @@ The client supplies standard bindings such as `ERC20` through `@thruputchain/cli
 
 Generate a binding yourself only when you have its build or canonical spec. See [CLI code generation](/cli/codegen/) and [the contract-side handoff](/contracts/client-bindings/).
 
-<span id="generate-bindings"></span>
-
 Regenerate when methods, argument or return types, declared exceptions, or events change. Keep the generated file and deployment from the same interface build. Put application wrappers in separate files.
 
 ## Select an Interface Version
@@ -78,8 +76,6 @@ Each interface exposes declared and unknown exception types. A declared exceptio
 Return and declared-exception decoders reject trailing bytes. Unknown exceptions retain the bytes they cannot interpret. A successful transaction whose result cannot be decoded is still a successful execution.
 
 ## Events
-
-<span id="query-events"></span>
 
 Events use their defining crate, version, module, and type path. A descriptor builds topic filters, decodes event rows, and selects events from receipts. See [Read events](/typescript/events/) for examples and pagination.
 
