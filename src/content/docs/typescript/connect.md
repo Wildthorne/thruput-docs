@@ -49,7 +49,7 @@ import { createThruputClient, localnet } from "@thruputchain/client";
 const client = await createThruputClient({ cluster: localnet() });
 ```
 
-Start the node with [the CLI](/cli/local-node/) first. Local account manifests and RPC endpoints must refer to the same node.
+Start the node with [the CLI](/cli/local-node/) first.
 
 Use `defineCluster()` for a reusable custom descriptor. `mainnet()` requires an explicit endpoint. Cluster capabilities, such as `airdrop`, declare expected services. Client creation throws `RpcCompatibilityError` when the endpoint does not advertise the matching method.
 

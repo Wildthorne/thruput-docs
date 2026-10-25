@@ -12,14 +12,14 @@ Set up and fund the account from [Use a signer in scripts](/typescript/accounts/
 ```ts
 import { addressFromBase58, gasAmount, parseUnits, toBase58 } from "@thruputchain/client";
 import { ERC20 } from "@thruputchain/client/contracts";
-import { HOG_ADDRESS } from "@thruputchain/protocol";
+import { NATIVE_TOKEN_ADDRESS } from "@thruputchain/protocol";
 import { wallet } from "./wallet.js";
 
 const recipient = process.env.THRUPUT_RECIPIENT;
 if (!recipient) throw new Error("Set THRUPUT_RECIPIENT to a funded base58 address");
 
 const transfer = ERC20.v0_1.transfer.call({
-  address: HOG_ADDRESS,
+  address: NATIVE_TOKEN_ADDRESS,
   gasLimit: gasAmount(500_000n),
   args: {
     receiver: addressFromBase58(recipient),
@@ -48,16 +48,16 @@ Use the adapter returned by [Connect a wallet](/tools/wallet-integration/). The 
 import type { ContractAddress } from "@thruputchain/client";
 import { gasAmount, parseUnits } from "@thruputchain/client";
 import { ERC20 } from "@thruputchain/client/contracts";
-import { HOG_ADDRESS } from "@thruputchain/protocol";
+import { NATIVE_TOKEN_ADDRESS } from "@thruputchain/protocol";
 import type { ProviderWalletClient, ProviderExecutionOptions } from "@thruputchain/client/wallet";
 
-export function sendHog(
+export function sendNativeToken(
   wallet: ProviderWalletClient,
   receiver: ContractAddress,
   onSigned: ProviderExecutionOptions["onSigned"],
 ) {
   const transfer = ERC20.v0_1.transfer.call({
-    address: HOG_ADDRESS,
+    address: NATIVE_TOKEN_ADDRESS,
     gasLimit: gasAmount(500_000n),
     args: { receiver, amount: parseUnits("0.0001", 7) },
   });

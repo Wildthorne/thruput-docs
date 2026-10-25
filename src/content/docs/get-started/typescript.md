@@ -15,10 +15,10 @@ npm pkg set type=module
 mkdir -p src
 ```
 
-Configure [npm package access](/typescript/setup/#give-npm-package-access) in this directory, then install the latest SDK and a TypeScript runner:
+Configure [npm package access](/typescript/setup/#give-npm-package-access) in this directory, then install the SDK and a TypeScript runner. Client 0.24.0 requires protocol 0.19.0, so install these exact versions:
 
 ```bash
-npm install @thruputchain/client @thruputchain/protocol
+npm install --save-exact @thruputchain/client@0.24.0 @thruputchain/protocol@0.19.0
 npm install --save-dev typescript tsx @types/node
 ```
 
@@ -29,12 +29,12 @@ Create `src/index.ts`:
 ```ts
 import { createThruputClient, devnet, formatUnits, getContract } from "@thruputchain/client";
 import { ERC20 } from "@thruputchain/client/contracts";
-import { HOG_ADDRESS } from "@thruputchain/protocol";
+import { NATIVE_TOKEN_ADDRESS } from "@thruputchain/protocol";
 
 async function main() {
   const client = await createThruputClient({ cluster: devnet() });
-  const hog = getContract({ binding: ERC20.v0_1, address: HOG_ADDRESS, client });
-  const supply = await hog.totalSupply.view({ args: undefined });
+  const nativeToken = getContract({ binding: ERC20.v0_1, address: NATIVE_TOKEN_ADDRESS, client });
+  const supply = await nativeToken.totalSupply.view({ args: undefined });
 
   console.log("Native-token supply:", formatUnits(supply.value, 7));
   console.log("Read at block:", supply.stateBlockHeight.toString());
@@ -46,7 +46,7 @@ main().catch((error: unknown) => {
 });
 ```
 
-`devnet()` selects the hosted network. The SDK includes the native-token contract's standard binding, and `HOG_ADDRESS` is its protocol constant, so you do not need to generate a binding. `supply.value` is a typed integer; formatting it displays whole-token units rather than base units.
+`devnet()` selects the hosted network. The SDK includes the native-token contract's standard binding, and `NATIVE_TOKEN_ADDRESS` is its protocol constant, so you do not need to generate a binding. `supply.value` is a typed integer; formatting it displays whole-token units rather than base units.
 
 ## 3. Run it
 
@@ -67,7 +67,7 @@ Use [Read contract data](/typescript/reads/) for arguments, caller context, and 
 ```text
 Build the Project Thruput TypeScript quickstart:
 https://thruput.network/docs/get-started/typescript/
-Use the latest published SDK packages and the hosted Futurenet.
+Use @thruputchain/client 0.24.0 with @thruputchain/protocol 0.19.0 and the hosted Futurenet.
 Configure package access through my environment. Create the typed native-token
 total-supply read shown in the guide and run it. Show the actual supply
 and block height, or report the exact error if the request fails.

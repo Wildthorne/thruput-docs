@@ -19,7 +19,7 @@ Create `src/wallet.ts`:
 
 ```ts
 import {
-  PrivateKeySigner, createPubkeyAccount, createWalletClient, fromHex0x,
+  Ed25519Signer, createPubkeyAccount, createWalletClient, fromHex0x,
 } from "@thruputchain/client";
 import { client } from "./client.js";
 
@@ -27,7 +27,7 @@ const secret = process.env.THRUPUT_PRIVATE_KEY;
 if (!secret) throw new Error("Set THRUPUT_PRIVATE_KEY for this script account");
 
 export const account = createPubkeyAccount({
-  signer: new PrivateKeySigner(fromHex0x(secret)),
+  signer: Ed25519Signer.fromSeed(fromHex0x(secret)),
 });
 export const wallet = createWalletClient({ client, account });
 ```
@@ -76,12 +76,12 @@ export THRUPUT_SIGNING_PRIVATE_KEY="$(node -e 'process.stdout.write("0x" + requi
 ```
 
 ```ts
-import { createThruputClient, createPubkeyAccount, createWalletClient, fromHex0x, localnet, PrivateKeySigner } from "@thruputchain/client";
+import { createThruputClient, createPubkeyAccount, createWalletClient, Ed25519Signer, fromHex0x, localnet } from "@thruputchain/client";
 
 const seed = process.env.THRUPUT_SIGNING_PRIVATE_KEY;
 if (!seed) throw new Error("Set THRUPUT_SIGNING_PRIVATE_KEY");
 const client = await createThruputClient({ cluster: localnet() });
-const signer = new PrivateKeySigner(fromHex0x(seed));
+const signer = Ed25519Signer.fromSeed(fromHex0x(seed));
 const account = createPubkeyAccount({ signer });
 const wallet = createWalletClient({ client, account });
 await wallet.requestAirdrop();

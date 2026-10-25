@@ -39,11 +39,11 @@ The value alias does not create a TypeScript type namespace. Keep the full path 
 ```ts
 import { getContract } from "@thruputchain/client";
 import { ERC20 } from "@thruputchain/client/contracts";
-import { HOG_ADDRESS } from "@thruputchain/protocol";
+import { NATIVE_TOKEN_ADDRESS } from "@thruputchain/protocol";
 import { client } from "./client.js";
 
-const hog = getContract({ binding: ERC20.v0_1, address: HOG_ADDRESS, client });
-const supply = await hog.totalSupply.view({ args: undefined });
+const nativeToken = getContract({ binding: ERC20.v0_1, address: NATIVE_TOKEN_ADDRESS, client });
+const supply = await nativeToken.totalSupply.view({ args: undefined });
 ```
 
 `getContract` binds the descriptor to an address and client. It does not deploy or authorize anything. Use [Read contract data](/typescript/reads/) for view behavior and caller context.
@@ -55,7 +55,7 @@ const supply = await hog.totalSupply.view({ args: undefined });
 | `method.invocation(contract, gasLimit, args)` | Build calldata and the target invocation |
 | `method.call({ address, gasLimit, args })` | Retain result and exception decoders with the invocation |
 | `method.view({ client, address, args, caller?, assumedAuth?, minStateBlockHeight?, signal? })` | Read a typed value with `stateBlockHeight`, gas use, and events; optional freshness floor |
-| `method.viewOutcome(...)` | Return a typed return/abort/fault outcome |
+| `method.viewOutcome(...)` | Return a typed return/abort/fault/unsupported outcome |
 | `method.viewRequest({ address, args, caller?, assumedAuth? })` | Prepare an independent read with its decoder for `client.readViews`; no I/O, and freshness belongs to the group |
 | `method.decodeArgs(bytes)` | Decode complete calldata |
 | `method.decodeReturn(bytes)` / `decodeException(bytes)` | Decode known method output |

@@ -40,7 +40,7 @@ This performs one status check. `client.waitForTransactionReceipt(hash)` polls f
 | `committed` | Fetch the receipt and check execution; `blockHeight` is always present |
 | `recentFailure` | Advisory failure of an attempt; the transaction can still commit |
 | `retry` | Scheduler processing failed; resubmitting the same signed transaction may succeed |
-| `dropped` | Scheduler processing failed permanently; modify the transaction before resubmitting |
+| `dropped` | Scheduler processing failed permanently; `error` tells you if a change is needed. After a drop for insufficient native tokens (`SchedulerErrorInsufficientNativeTokens`), fund the sender and resubmit the same signed transaction before it expires. For other drops, change the transaction before you resubmit |
 | `unknown` or `other` | No conclusive successful or failed execution result |
 
 `pending`, `retry`, and `dropped` can include an advisory `recentFailure` diagnostic. It can describe an earlier attempt. A value from a newer server arrives as `UnsupportedRpcValue`. See [`getTransactionStatus`](/reference/json-rpc-api/#gettransactionstatus) for the wire fields.

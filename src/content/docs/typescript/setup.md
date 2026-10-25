@@ -29,7 +29,7 @@ Create a `.npmrc` file in the application directory:
 
 Keep `${NODE_AUTH_TOKEN}` as a literal reference in this file. Do not replace it with the token. If your environment already supplies a package-read token, use that instead of the GitHub CLI commands.
 
-Use the latest packages when starting a new project and keep the generated lockfile. A package-access error needs an account or token with the required permissions; repository access alone may not be enough.
+These pages use `@thruputchain/client` 0.24.0 with `@thruputchain/protocol` 0.19.0. Install those versions and keep the generated lockfile. A package-access error needs an account or token with the required permissions; repository access alone may not be enough.
 
 ## Install the TypeScript client
 
@@ -38,14 +38,14 @@ In a new application directory:
 ```bash
 npm init -y
 npm pkg set type=module
-npm install @thruputchain/client @thruputchain/protocol
+npm install --save-exact @thruputchain/client@0.24.0 @thruputchain/protocol@0.19.0
 npm install --save-dev typescript tsx @types/node
 mkdir -p src
 ```
 
 In an existing application, keep its package configuration and add the dependencies you need. `tsx` runs the Node.js examples; browser apps can use their existing bundler.
 
-The client re-exports common types and constructors. Install the protocol package directly when you import protocol-only constants such as `HOG_ADDRESS`. Schema tooling can import `@thruputchain/contract-spec`; ordinary generated bindings use the client runtime.
+The client re-exports common types and constructors. Install the protocol package directly when you import protocol-only constants such as `NATIVE_TOKEN_ADDRESS`. Use the protocol version that the client requires; a different version installs a second copy. Schema tooling can import `@thruputchain/contract-spec`; ordinary generated bindings use the client runtime.
 
 ## Type-check an application
 

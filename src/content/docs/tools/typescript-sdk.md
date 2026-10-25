@@ -57,7 +57,7 @@ description: TypeScript client entry points, common operations, and links to foc
 | --- | --- |
 | `createPubkeyAccount({ signer, nonce? })` | Ed25519 or ML-DSA-65 signer; address nonce defaults to `0n` |
 | `createSourceAddressAccount({ address, signers, allowedKeys, requiredWeight })` | Existing stored-auth account; does not write auth data |
-| `createWalletClient({ client, account, invocationAdapter? })` | Separate signer-bound client; pubkey accounts default to DefaultWallet |
+| `createWalletClient({ client, account, invocationAdapter?, onSigned? })` | Separate signer-bound client; pubkey accounts default to DefaultWallet |
 | `networkHash` wallet option | Required for a client without validated network identity; must match the endpoint's network |
 | `createProviderWalletClient(...)` | External wallet adapter; see [provider API](/tools/wallet-provider/#sdk-adapter-behavior) |
 | Usage | [Accounts and wallet clients](/typescript/wallet-clients/), [script setup](/typescript/accounts/), [browser wallets](/tools/wallet-integration/) |
@@ -66,7 +66,7 @@ description: TypeScript client entry points, common operations, and links to foc
 
 | API | Result / behavior |
 | --- | --- |
-| `requestAirdrop(options?)` | One faucet call, then read-only observation; returns `AirdropSucceeded` with `transactionHash`, `blockHeight`, and `execution`; throws unless execution succeeds; account-defaulted on a signer wallet |
+| `requestAirdrop(options)` (client) / `wallet.requestAirdrop(options?)` | One faucet call, then read-only observation; returns `AirdropSucceeded` with `transactionHash`, `blockHeight`, and `execution`; throws unless execution succeeds; account-defaulted on a signer wallet |
 | `requestAirdropAttempt({ recipient, clientNonce })` | One faucet call; returns a `pending` or `succeeded` attempt without observation |
 | `prepareExecution(request)` | Unsigned wallet-root transaction |
 | `execute(request)` | Submitted hash; signer-based wallet |
@@ -100,7 +100,7 @@ description: TypeScript client entry points, common operations, and links to foc
 | API | Result / requirement |
 | --- | --- |
 | `localnet(options?)` | Local endpoint and pinned local network identity |
-| `PrivateKeySigner(seed)` | Ed25519 signer from a 32-byte seed in the application environment |
+| `Ed25519Signer.fromSeed(seed)` | Ed25519 signer from a 32-byte seed in the application environment |
 | `MlDsa65Signer.fromSeed(seed, { deterministic? })` | ML-DSA-65 signer from a 32-byte FIPS 204 seed; signing is randomized unless `deterministic` is set |
 | `createPubkeyAccount({ signer })` | Native pubkey account derived from the signer |
 | `wallet.requestAirdrop()` | Fund the account through the local faucet |
@@ -124,7 +124,7 @@ description: TypeScript client entry points, common operations, and links to foc
 | --- | --- |
 | `getContract({ binding, address, client })` | Bound method collection |
 | `method.view({ client, address, args?, caller?, assumedAuth?, minStateBlockHeight?, signal? })` | Typed `value`, `stateBlockHeight`, `gasUsed`, and `events` |
-| `method.viewOutcome(options)` | `return`, `abort`, or `fault`; same options as `view` |
+| `method.viewOutcome(options)` | `return`, `abort`, `fault`, or `unsupported`; same options as `view` |
 | `method.viewRequest({ address, args?, caller?, assumedAuth? })` | Prepare a typed read without I/O; arguments follow the method's generated types |
 | `client.readViews({ calls, minStateBlockHeight? }, options?)` | Tuple-typed outcomes in input order at one shared `stateBlockHeight`; no splitting or separate-read fallback |
 | `client.simulateInvocation(request, options?)` / `client.simulateInvocations({ invocations, minStateBlockHeight? }, options?)` | Raw single/grouped simulations; `minStateBlockHeight` goes on the single request or whole group |
@@ -132,7 +132,7 @@ description: TypeScript client entry points, common operations, and links to foc
 | `assumedAuth` | Protocol `AuthClaim`, such as `account.authClaim`; simulation does not verify signatures |
 | `(await client.getServerLimits()).simulationBatch` | Optional advertised batch limits; required for grouped reads |
 | `NativeRpcErrorCode.StateHeightUnavailable` (`-32012`) | RPC freshness error with `requestedStateBlockHeight` and `observedStateBlockHeight`; not a contract outcome |
-| `ContractViewError` | Contract abort or fault |
+| `ContractViewError` | Contract abort, fault, or unsupported result |
 | `ContractDecodeError` | Malformed contract data |
 | Usage | [Read contract data](/typescript/reads/), [bindings](/tools/typescript-bindings/) |
 
@@ -200,7 +200,7 @@ description: TypeScript client entry points, common operations, and links to foc
 | `@thruputchain/client/wallet` | Execution and provider adapters |
 | `@thruputchain/client/provider` | Provider wire types, validation, discovery |
 | `@thruputchain/client/transaction` | Construction, signing, serialization |
-| `@thruputchain/client/signers` | Signer interface, `PrivateKeySigner`, `MlDsa65Signer`, `verifyMlDsa65` |
+| `@thruputchain/client/signers` | Signer interface, `Ed25519Signer`, `MlDsa65Signer`, `verifyMlDsa65` |
 | `@thruputchain/client/signed-op` | Network-bound offchain signed operations |
 
 ## Maintained Examples

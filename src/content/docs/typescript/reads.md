@@ -14,11 +14,11 @@ Use the `src/client.ts` from [Connect to a network](/typescript/connect/). Creat
 ```ts
 import { formatUnits, getContract } from "@thruputchain/client";
 import { ERC20 } from "@thruputchain/client/contracts";
-import { HOG_ADDRESS } from "@thruputchain/protocol";
+import { NATIVE_TOKEN_ADDRESS } from "@thruputchain/protocol";
 import { client } from "./client.js";
 
-const hog = getContract({ binding: ERC20.v0_1, address: HOG_ADDRESS, client });
-const result = await hog.totalSupply.view({ args: undefined });
+const nativeToken = getContract({ binding: ERC20.v0_1, address: NATIVE_TOKEN_ADDRESS, client });
+const result = await nativeToken.totalSupply.view({ args: undefined });
 console.log("Native-token supply:", formatUnits(result.value, 7));
 console.log("Read at block:", result.stateBlockHeight.toString());
 ```
@@ -27,7 +27,7 @@ console.log("Read at block:", result.stateBlockHeight.toString());
 npx tsx src/read.ts
 ```
 
-The client supplies the standard ERC-20 binding, and the protocol package supplies the deployed native-token address as `HOG_ADDRESS`. No Rust contract or generated application file is needed for this example.
+The client supplies the standard ERC-20 binding, and the protocol package supplies the deployed native-token address as `NATIVE_TOKEN_ADDRESS`. No Rust contract or generated application file is needed for this example.
 
 ## Pass arguments and caller context
 
@@ -38,7 +38,7 @@ import { addressFromBase58 } from "@thruputchain/client";
 
 export async function readBalance(ownerText: string, signal?: AbortSignal) {
   const owner = addressFromBase58(ownerText);
-  return hog.getBalanceOf.view({ args: { addr: owner }, signal });
+  return nativeToken.getBalanceOf.view({ args: { addr: owner }, signal });
 }
 ```
 
@@ -52,7 +52,7 @@ Pass a successful receipt's `blockHeight` as `minStateBlockHeight` when the read
 
 ```ts
 export async function readBalanceAtLeast(ownerText: string, minStateBlockHeight: bigint, signal?: AbortSignal) {
-  return hog.getBalanceOf.view({
+  return nativeToken.getBalanceOf.view({
     args: { addr: addressFromBase58(ownerText) },
     minStateBlockHeight,
     signal,
@@ -73,9 +73,9 @@ export async function readTokenSnapshot(ownerText: string, minStateBlockHeight?:
   const owner = addressFromBase58(ownerText);
   const snapshot = await client.readViews({
     calls: [
-      ERC20.v0_1.totalSupply.viewRequest({ address: HOG_ADDRESS }),
+      ERC20.v0_1.totalSupply.viewRequest({ address: NATIVE_TOKEN_ADDRESS }),
       ERC20.v0_1.getBalanceOf.viewRequest({
-        address: HOG_ADDRESS,
+        address: NATIVE_TOKEN_ADDRESS,
         args: { addr: owner },
       }),
     ],
@@ -93,7 +93,7 @@ export async function readTokenSnapshot(ownerText: string, minStateBlockHeight?:
 }
 ```
 
-`viewRequest()` performs no I/O. `readViews()` returns results in input order, retaining each call's inferred return and exception types, events, and gas use. Each result is `return`, `abort`, or `fault`. Transport, freshness, and decoding failures reject the group.
+`viewRequest()` performs no I/O. `readViews()` returns results in input order, retaining each call's inferred return and exception types, events, and gas use. Each result is `return`, `abort`, `fault`, or `unsupported`. Transport, freshness, and decoding failures reject the group.
 
 All calls use one committed snapshot, and simulated writes stay within their own call. Put `minStateBlockHeight` on the group, not on individual prepared calls. Two separate reads with the same minimum height can still use different snapshots.
 
@@ -101,10 +101,10 @@ Shared reads require an endpoint that advertises batch simulation limits. Inspec
 
 ## Handle contract outcomes
 
-`view()` throws `ContractViewError` for an abort or fault. Use `viewOutcome()` when those outcomes belong in your application's normal control flow:
+`view()` throws `ContractViewError` for an abort, fault, or unsupported result. Use `viewOutcome()` when those outcomes belong in your application's normal control flow:
 
 ```ts
-const outcome = await hog.totalSupply.viewOutcome({ args: undefined });
+const outcome = await nativeToken.totalSupply.viewOutcome({ args: undefined });
 if (outcome.kind === "return") {
   console.log(outcome.value);
 } else {
@@ -121,7 +121,7 @@ import { classifyReadError } from "@thruputchain/client";
 
 export async function refreshSupply(signal: AbortSignal) {
   try {
-    return await hog.totalSupply.view({ args: undefined, signal });
+    return await nativeToken.totalSupply.view({ args: undefined, signal });
   } catch (error) {
     if (classifyReadError(error, { signal }) === "cancelled") return;
     throw error;

@@ -24,7 +24,7 @@ Write:  contract binding + wallet client → signed transaction → receipt
 | --- | --- |
 | `@thruputchain/client` | RPC clients, accounts, wallet helpers, amounts, and contract runtime |
 | `@thruputchain/client/contracts` | Standard contract bindings supplied with the client, including ERC-20 and DefaultWallet |
-| `@thruputchain/protocol` | Wire types, serialization, and protocol constants such as `HOG_ADDRESS` |
+| `@thruputchain/protocol` | Wire types, serialization, and protocol constants such as `NATIVE_TOKEN_ADDRESS` |
 | `@thruputchain/contract-spec` | Contract schema tooling; most applications use the generated binding instead |
 | `@thruputchain/react` | React integration over the client and wallet model; see [React](/react/) |
 

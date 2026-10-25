@@ -10,14 +10,14 @@ Use a generated event descriptor to build filters and decode payloads. This page
 With the client from [Connect to a network](/typescript/connect/), create `src/events.ts`:
 
 ```ts
-import { groundhog_erc20_if } from "@thruputchain/client/contracts";
-import { HOG_ADDRESS } from "@thruputchain/protocol";
+import { thruput_erc20_if } from "@thruputchain/client/contracts";
+import { NATIVE_TOKEN_ADDRESS } from "@thruputchain/protocol";
 import { client } from "./client.js";
 
-const { TransferEvent } = groundhog_erc20_if.v0_1.events;
+const { TransferEvent } = thruput_erc20_if.v0_1.events;
 const page = await client.getContractEvents({
   event: TransferEvent,
-  addresses: [HOG_ADDRESS],
+  addresses: [NATIVE_TOKEN_ADDRESS],
   start: { order: "descending", anchor: { kind: "atEnd" } },
   limit: 20,
 });
@@ -44,7 +44,7 @@ For raw event pages, use the descriptor's filter and decoder:
 import type { EventWalkQuery } from "@thruputchain/client";
 
 const query: EventWalkQuery = {
-  filters: [TransferEvent.filter({ addresses: [HOG_ADDRESS] })],
+  filters: [TransferEvent.filter({ addresses: [NATIVE_TOKEN_ADDRESS] })],
   start: { order: "ascending", anchor: { kind: "atBeginning" } },
   limit: 20,
 };
@@ -96,4 +96,4 @@ Raw [`getEvents`](/reference/json-rpc-api/#getevents) continuation sends the cur
 
 ## Decode receipt events
 
-Use `TransferEvent.allFromReceipt(receipt, { address: HOG_ADDRESS })` to decode matching events in a receipt. `singleFromReceipt` requires exactly one matching event. Both select the emitter as well as the event type; a transaction can call several contracts that emit the same event.
+Use `TransferEvent.allFromReceipt(receipt, { address: NATIVE_TOKEN_ADDRESS })` to decode matching events in a receipt. `singleFromReceipt` requires exactly one matching event. Both select the emitter as well as the event type; a transaction can call several contracts that emit the same event.
