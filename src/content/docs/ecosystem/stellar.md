@@ -35,6 +35,10 @@ fn transfer(&mut self, receiver: &ContractAddress, amount: Amount) {
 
 Here, `balances` is `Map<ContractAddress, Balance>`. The checked debit detects insufficient funds during execution; the lazy credit records a relative change. Compatible transactions can merge if aggregate bounds and their other changes permit it. See [Build a token](/guides/build-a-token/) for the complete implementation and events.
 
+Thruput tokens use native contract interfaces. The SDK's `thruput-sep41` client adapter provides familiar token operations over supported ERC20 interfaces. It uses Thruput caller authorization, native events, and Thruput block heights for approval expiry. See [Rust API Docs](/tools/rust-api-docs/) for exact signatures and the [adapter's API comments](https://github.com/thruputchain/thruput-sdk-rs/blob/main/standard-impls/thruput-sep41/src/lib.rs) for its requirements and differences.
+
+The adapter does not provide Soroban ABI compatibility. Moving assets between Stellar and Thruput through a bridge is a separate integration. Each bridge defines its supported assets and transfer guarantees.
+
 ### 2. Multi-Operation Transactions
 
 [Classic Stellar transactions](https://developers.stellar.org/docs/learn/fundamentals/transactions/operations-and-transactions) can bundle operations atomically. Soroban transactions contain a single smart-contract operation, which can invoke other contracts.
