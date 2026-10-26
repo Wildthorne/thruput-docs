@@ -44,7 +44,8 @@ description: TypeScript client entry points, common operations, and links to foc
 | `formatUnits(value, decimals)` | Decimal string |
 | `addressFromBase58(text)` / `hashFromBase58(text)` | Typed address or hash from base58 |
 | `toBase58(bytes)` | Base58 encoding for addresses and hashes that users see, store, or compare with RPC values |
-| `parseAddress(text)` | Typed address from base58 or a `C` StrKey |
+| `parseAddress(text)` | Typed Thruput address from base58 or a `Z` StrKey; rejects Stellar C addresses |
+| `addressToStrkey(bytes)` | Thruput Z address; does not identify a specific Thruput network |
 | `fromHex0x(text)` / `toHex0x(bytes)` | `0x` hex for signed transaction bytes and calldata |
 | `addressFromHex(text)` / `hashFromHex(text)` | Explicit hex conversion; use base58 for RPC and provider identifiers |
 | `gasAmount(bigint)` | Typed computation budget |

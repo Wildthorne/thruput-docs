@@ -33,7 +33,13 @@ export function parseIdentifiers(addressText: string, transactionText: string) {
 }
 ```
 
-Both parsers require 32 decoded bytes. `parseAddress(text)` also accepts a `C` StrKey address.
+Both parsers require 32 decoded bytes.
+
+`parseAddress(text)` also accepts a Thruput
+`Z` StrKey address. `addressToStrkey(address)` formats address bytes with the Z
+prefix. Stellar C addresses are rejected. Z does not distinguish local, test, and
+production networks; select the intended cluster. Ed25519 public keys and seeds
+retain their G and S StrKey formats. A G public key is not a Thruput wallet address.
 
 Use `toHex0x` and `fromHex0x` for signed transaction bytes, calldata, raw event topics, and storage keys. These opaque byte fields stay `0x`-prefixed hex.
 

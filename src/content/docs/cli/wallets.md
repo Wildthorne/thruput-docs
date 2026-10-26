@@ -44,6 +44,12 @@ thruput status --profile futurenet
 
 Keys live under `${XDG_CONFIG_HOME:-$HOME/.config}/thruput/keys/`. Wallet bindings live in the selected configuration layer. Wallet mutations inside a project update its overlay; outside a project they update global configuration.
 
+Address inputs accept base58 or a checksummed Thruput `Z` StrKey for native wallets
+and deployed contracts. Stellar C addresses are rejected. Z does not distinguish
+local, test, and production networks; select the intended profile. Reports and
+saved public configuration use base58. G public keys identify Ed25519 signers,
+not Thruput wallet addresses; S seeds remain valid for explicit key import.
+
 ## Select an account
 
 ```bash
