@@ -38,6 +38,7 @@ Key rules:
 - Keep concept and section landing pages high level. Put setup steps in quickstarts and task pages, and complete walkthroughs in tutorials or guides. Follow the section ownership in `src/navigation.ts` rather than inferring page purpose from its directory.
 - Prefer editing existing pages over creating parallel pages.
 - Maintain agent task prompts in their source page, not a second copy. Follow the Markdown-export and agent-prompt workflows in `MAINTAINING.md`.
+- Agent porting skill source generally lives in `../agent-skills/`. Users install the Thruput skill with `npx skills add thruputchain/agent-skills --skill thruput`. Keep supporting guidance near the relevant CLI, SDK, docs, or other source.
 
 ## Writing Style
 
