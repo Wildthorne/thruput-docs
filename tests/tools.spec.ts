@@ -13,7 +13,7 @@ for (const width of [375, 1280]) {
     await expect(tools.locator('a[aria-current="page"]')).toHaveAttribute('href', '/docs/tools/wallet-extension/');
     await expect(page.locator('main h1')).toHaveText('Wallet Extension');
     const images = page.locator('.sl-markdown-content img');
-    await expect(images).toHaveCount(3);
+    await expect(images).toHaveCount(1);
     for (const image of await images.all()) {
       await image.scrollIntoViewIfNeeded();
       await expect.poll(() => image.evaluate((element: HTMLImageElement) => element.complete && element.naturalWidth > 0)).toBe(true);
@@ -27,16 +27,15 @@ for (const width of [375, 1280]) {
   });
 }
 
-test('wallet download links match and Markdown exports retain screenshots', async ({ page, request }) => {
+test('wallet links point to Freighter builds and Markdown exports retain the Chrome screenshot', async ({ page, request }) => {
   await page.goto(origin + '/docs/tools/wallet-extension/');
-  const archive = await page.getByRole('link', { name: 'Download Thruput Wallet', exact: true }).getAttribute('href');
-  const checksum = await page.getByRole('link', { name: 'SHA-256 checksum', exact: true }).getAttribute('href');
-  expect(archive).toMatch(/\/wallet\/[a-f0-9]{64}\/thruput-wallet\.zip$/);
-  expect(checksum).toBe(archive!.replace('thruput-wallet.zip', 'SHA256SUMS'));
+  await expect(page.getByRole('link', { name: 'Thruput Freighter', exact: true })).toHaveAttribute('href', 'https://github.com/thruputchain/freighter');
+  await expect(page.getByRole('link', { name: 'successful Run Tests builds', exact: true })).toHaveAttribute('href', 'https://github.com/thruputchain/freighter/actions/workflows/runTests.yml?query=is%3Asuccess');
   const markdown = await request.get(origin + '/markdown/pages/tools/wallet-extension.md');
   expect(markdown.ok()).toBe(true);
   const content = await markdown.text();
-  for (const name of ['wallet-install', 'wallet-create', 'wallet-devnet']) {
+  expect(content).not.toMatch(/wallet-create|wallet-devnet|thruput-wallet\.zip/);
+  for (const name of ['wallet-install']) {
     expect(content).toContain(`../../assets/images/wallet/${name}.png`);
     const image = await request.get(`${origin}/markdown/assets/images/wallet/${name}.png`);
     expect(image.ok()).toBe(true);

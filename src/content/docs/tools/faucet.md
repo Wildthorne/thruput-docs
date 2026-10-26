@@ -17,10 +17,6 @@ If the page cannot connect, it shows **Faucet unavailable** and disables the req
 
 The faucet needs only a public address. Amounts, cooldowns, and quotas depend on the deployment; follow the values and errors shown by the service.
 
-## Request funds in the wallet
-
-In [Thruput Wallet](/tools/wallet-extension/#select-devnet-and-get-native-test-tokens), select **Devnet** (the wallet extension's label for Futurenet), open **Assets**, and click **Request test tokens**. The request funds the selected wallet account.
-
 ## CLI
 
 With a Futurenet wallet already configured:
