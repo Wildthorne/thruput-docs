@@ -31,6 +31,10 @@ Partitioning state across multiple HogDB shards within each validator is the pla
 
 Each address can register multiple keys, and authorization is abstracted over the signature scheme, so users can add or revoke keys without changing addresses. Ed25519 and ML-DSA-65 (FIPS 204) are supported. Validator key migration still needs design, and more schemes may follow as they are standardized. Threat-model, performance, and migration-design reviews would help.
 
+### Sponsored transactions
+
+Today, the account that sends a transaction backs its scheduling with its own native tokens. A contract pays the storage deposits for data stored under its address, which lets an operator [sponsor its users' storage](/how-it-works/storage-economics/#sponsoring-users). No party can pay another account's scheduling, and a caller cannot pay for the storage its call creates. This is a known gap. Sponsored transactions are planned so that one party can pay these costs for another. Scope and policy controls still need design. Applications that need sponsored onboarding, relayed submission, or caller-paid storage would help shape it.
+
 ## Exploring
 
 ### External calls
