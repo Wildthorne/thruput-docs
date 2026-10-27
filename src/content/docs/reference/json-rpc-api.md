@@ -447,7 +447,7 @@ Standard JSON-RPC 2.0 errors also apply, including `-32601` for unregistered met
 
 | Language | Package | Wire selection |
 | --- | --- | --- |
-| TypeScript | `@thruputchain/client` `0.24` | Calls `getVersionInfo` once at connect and requires major `14`. See [TypeScript SDK](/tools/typescript-sdk/) |
+| TypeScript | `@thruputchain/client` `0.25` | Calls `getVersionInfo` once at connect and requires major `14`. See [TypeScript SDK](/tools/typescript-sdk/) |
 | Rust | `thruput-json-rpc-client` (`NativeClient`) | `thruput-client`'s `check_endpoint` requires major `14` and the methods you name |
 
 ## Related Documentation

@@ -147,8 +147,8 @@ description: Wallet provider wire methods, data formats, validation rules, and S
 | --- | --- |
 | `registerWalletProvider(provider, target = window)` | Validate, announce immediately, and respond to provider requests |
 | `discoverWalletProviders(listener, target = window)` | Subscribe before requesting announcements; validate and deduplicate IDs |
-| Request event | `groundhog:requestProvider` (`REQUEST_PROVIDER_EVENT`) |
-| Announcement event | `groundhog:announceProvider` (`ANNOUNCE_PROVIDER_EVENT`); `detail` is the provider itself |
+| Request event | `thruput:requestProvider` (`REQUEST_PROVIDER_EVENT`) |
+| Announcement event | `thruput:announceProvider` (`ANNOUNCE_PROVIDER_EVENT`); `detail` is the provider itself |
 | Discovery limits | At most 32 IDs; first valid announcement for an ID wins |
 | Cleanup | Idempotent; removes listeners, but does not disconnect sessions |
 | Registration removal | Does not retract an already discovered provider |

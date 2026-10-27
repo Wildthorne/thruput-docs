@@ -15,10 +15,10 @@ npm pkg set type=module
 mkdir -p src
 ```
 
-Configure [npm package access](/typescript/setup/#give-npm-package-access) in this directory, then install the SDK and a TypeScript runner. Client 0.24.0 requires protocol 0.19.0, so install these exact versions:
+Configure [npm package access](/typescript/setup/#give-npm-package-access) in this directory, then install the SDK and a TypeScript runner. Client 0.25.0 requires protocol 0.19.1, so install these exact versions:
 
 ```bash
-npm install --save-exact @thruputchain/client@0.24.0 @thruputchain/protocol@0.19.0
+npm install --save-exact @thruputchain/client@0.25.0 @thruputchain/protocol@0.19.1
 npm install --save-dev typescript tsx @types/node
 ```
 
@@ -67,7 +67,7 @@ Use [Read contract data](/typescript/reads/) for arguments, caller context, and 
 ```text
 Build the Project Thruput TypeScript quickstart:
 https://thruput.network/docs/get-started/typescript/
-Use @thruputchain/client 0.24.0 with @thruputchain/protocol 0.19.0 and the hosted Futurenet.
+Use @thruputchain/client 0.25.0 with @thruputchain/protocol 0.19.1 and the hosted Futurenet.
 Configure package access through my environment. Create the typed native-token
 total-supply read shown in the guide and run it. Show the actual supply
 and block height, or report the exact error if the request fails.

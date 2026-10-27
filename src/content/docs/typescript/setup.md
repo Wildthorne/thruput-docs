@@ -29,7 +29,7 @@ Create a `.npmrc` file in the application directory:
 
 Keep `${NODE_AUTH_TOKEN}` as a literal reference in this file. Do not replace it with the token. If your environment already supplies a package-read token, use that instead of the GitHub CLI commands.
 
-These pages use `@thruputchain/client` 0.24.0 with `@thruputchain/protocol` 0.19.0. Install those versions and keep the generated lockfile. A package-access error needs an account or token with the required permissions; repository access alone may not be enough.
+These pages use `@thruputchain/client` 0.25.0 with `@thruputchain/protocol` 0.19.1. Install those versions and keep the generated lockfile. A package-access error needs an account or token with the required permissions; repository access alone may not be enough.
 
 ## Install the TypeScript client
 
@@ -38,7 +38,7 @@ In a new application directory:
 ```bash
 npm init -y
 npm pkg set type=module
-npm install --save-exact @thruputchain/client@0.24.0 @thruputchain/protocol@0.19.0
+npm install --save-exact @thruputchain/client@0.25.0 @thruputchain/protocol@0.19.1
 npm install --save-dev typescript tsx @types/node
 mkdir -p src
 ```
