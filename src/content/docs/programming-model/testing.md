@@ -189,6 +189,103 @@ Normal test-harness controls such as `--match-test`, `--skip`, `--fail-fast`, `-
 
 Integration tests use the same RV32 artifact path as normal builds and deployments.
 
+## Testkit
+
+`thruput-testkit` tests an application the way it is used: as several users acting at once. A `Scenario` runs a group of agents as ordinary async Rust, each with its own deterministic account. Agents deploy contracts, call them through typed proxies, coordinate over a mailbox, and assert on what they observe.
+
+Add testkit and Tokio as dev-dependencies:
+
+```bash
+cargo add --dev thruput-testkit --registry thruput
+cargo add --dev tokio --features macros,rt-multi-thread
+```
+
+Typed proxies come from `thruput-sdk`'s `remote` feature. To enable it for tests, add a `remote` feature to the contract crate and turn it on in the scaffold's dev-dependency on the crate itself:
+
+```toml
+[features]
+remote = ["thruput-sdk/remote"]
+
+[dev-dependencies]
+my-counter = { path = ".", features = ["dev", "remote"] }
+```
+
+With the feature on, `#[contract]` generates a `CounterRemote` proxy for the `Counter` contract. Each proxy method encodes its arguments and returns a prepared invocation. Awaiting a method declared `pure` or `readOnly` simulates it. Awaiting any other method, including one without an effect annotation, submits it through the agent's wallet. Either way, the result is the decoded return value.
+
+This scenario launches a local node, deploys Counter from one agent, and sends its address to a second agent that increments it:
+
+```rust
+use my_counter::CounterRemote;
+use thruput_testkit::xdr::types::ContractAddress;
+use thruput_testkit::{Agent, DeployOptions, LocalNetworkConfig, NetworkConfig, Scenario};
+
+#[tokio::test]
+#[ignore = "needs built counter contract"]
+async fn two_agents_share_a_counter() -> thruput_testkit::Result<()> {
+    let scenario = Scenario::builder("counter-test")
+        .network(NetworkConfig::local(LocalNetworkConfig::default()))
+        .artifact("counter", "../../target/thruput/my_counter.rv32a")
+        .build()
+        .await?;
+
+    let deployer = Agent::new("deployer", |mut ctx| async move {
+        let deployed = ctx
+            .deploy_artifact("counter", DeployOptions::funded(100_000_000))
+            .await?;
+        ctx.send("user", &deployed.address)?;
+        Ok(())
+    });
+
+    let user = Agent::new("user", |mut ctx| async move {
+        let address = ctx
+            .recv_from::<ContractAddress>("deployer")
+            .await
+            .expect("deployer sends an address")?
+            .body;
+        let counter = CounterRemote::new(ctx.caller().clone(), &address);
+        counter.increment(5).await?; // submitted
+        assert_eq!(counter.get().simulate().await?, 5); // if `get` isn't annotated
+        assert_eq!(counter.get().await?, 5); // if `get` is "readOnly"
+        Ok(())
+    });
+
+    scenario.run_agents([deployer, user]).await?;
+    scenario.stop().await
+}
+```
+
+Declaring `get` with `#[contract(effect = "readOnly")]` means `counter.get().await?` will request simulation instead of submitting a transaction; to simulate an unannotated method, use `simulate` as above.
+
+`run_agents` returns an error when any agent fails. `deploy_artifact` funds, deploys, and optionally initializes the contract in one transaction; `DeployOptions` sets the funding and the initializer. 
+
+When specifying artifact (guest binary) paths, note that cargo tests run in the root directory of their surrounding crate. When running the test, ensure the artifacts have already been built (with `thruput build -p <CONTRACT>`) and provide the path to the development node by setting `THRUPUT_DEVNODE_BINARY="$(thruput toolchain which)"`.
+
+Other features:
+
+- **Networks.** `NetworkConfig::local` launches and owns an ephemeral node, and gives each scenario account a genesis allocation (`LocalNetworkConfig::initial_account_tokens`). `NetworkConfig::existing(rpc_url, runtime_manifest)` attaches to a running node, where accounts start empty until an agent calls `ctx.fund(amount)`. `NetworkConfig::offline(accounts)` runs agents without a chain, for coordination and timing logic. Before signing anything, the scenario checks that the endpoint serves the network named in the runtime manifest.
+- **Receipts and errors.** `.with_receipt()` returns the value with its receipt, and `.receipt()` returns only the receipt, for events and gas. A reverted call is `Err(TestkitError::Reverted { .. })`.
+- **Manual blocks.** Set `LocalNetworkConfig::block_driver` to `BlockDriverConfig::manual()` to put several transactions in one block:
+
+  ```rust
+  let first = counter.increment(1).submit().await?;
+  let second = counter.increment(1).submit().await?;
+  first.await_pending().await?;
+  second.await_pending().await?;
+  ctx.network().produce_block().await?;
+  first.await_receipt().await?;
+  second.await_receipt().await?;
+  ```
+
+- **Uncertain submissions.** Testkit never resends a transaction. When a submission's outcome is uncertain, the error keeps the original transaction hash and signed bytes for reconciliation.
+- **Coordination.** Agents exchange XDR-encoded messages with `ctx.send` and `ctx.recv_from`, share a virtual clock (`ctx.clock()`), and draw from a deterministic per-agent random number generator (`ctx.rng()`).
+- **Calls by name.** Without an interface crate, `Contract::new(address, "Counter", "0.1.0")` calls methods by name.
+
+For the full API and more examples, build the testkit Rustdoc from a project that depends on it:
+
+```bash
+cargo doc -p thruput-testkit --no-deps --open
+```
+
 ## Named Addresses
 
 `ContractAddress::named("alice")` produces a deterministic address from a string. Same name always returns the same address. The method hashes the name with SHA-256 at runtime, so it cannot initialize a `static` or `const`. Bind it inside the test or a `LazyLock` instead:
