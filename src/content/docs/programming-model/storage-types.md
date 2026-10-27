@@ -5,7 +5,7 @@ description: "SDK storage types, their conflict semantics, and how to choose bet
 
 Start with `Balance` for nonnegative counts and amounts. It exposes reads, increases, and decreases without requiring you to manage the underlying integer base. The storage type you choose determines whether concurrent writes merge, conflict, or ignore each other.
 
-This page explains behavior and tradeoffs. For exact method signatures, see [Storage Types Reference](/reference/storage-types/) or [`thruput_sdk::storage` Rustdoc](https://crates.thruput.network/docs/sdk/0.42.2/doc/sdk/storage/index.html).
+This page explains behavior and tradeoffs. For exact method signatures, see [Storage Types Reference](/reference/storage-types/).
 
 ## Balance
 
