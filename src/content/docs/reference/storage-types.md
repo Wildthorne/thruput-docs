@@ -88,6 +88,7 @@ description: API reference for Project Thruput storage types.
 | `at_mut_exclusive` | `fn at_mut_exclusive(&mut self, entry_key: &K) -> SlotMut<'_, Self, V>` | Mutable borrow with an exclusive lock. One writer per key per block. Later writes to the entry in the same transaction keep the lock request. |
 | `at_disjoint_mut` | `fn at_disjoint_mut<const N: usize>(&mut self, keys: [&K; N]) -> DisjointMut<'_, Self, V, N>` | Mutably borrow N elements at once. Panics if any keys are equal. |
 | `at_disjoint_unchecked_mut` | `unsafe fn at_disjoint_unchecked_mut<const N: usize>(&mut self, keys: [&K; N]) -> DisjointMut<'_, Self, V, N>` | Mutably borrow N elements without duplicate checking. Caller must ensure all keys are disjoint. |
+| `delete_at` | `fn delete_at(&mut self, entry_key: &K)` | Delete the value at `entry_key`. Equivalent to `at_mut(entry_key).delete()`.
 | `keypath` | `fn keypath(&self) -> &Keypath` | Reference to the map's root keypath. |
 
 ### DisjointMut\<Owner, S, N\>
