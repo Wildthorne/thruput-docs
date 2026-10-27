@@ -27,11 +27,6 @@
 	route {
 		respond /health 200
 
-		@protected not path /health
-		basic_auth @protected {
-			{$BASIC_AUTH_USER} {$BASIC_AUTH_HASH}
-		}
-
 		@oldDocsRoot {
 			host docs.thruput.network docs.groundhog.dev
 			path /

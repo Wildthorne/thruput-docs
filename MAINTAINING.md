@@ -16,9 +16,8 @@ downloads keep their root URLs. Offline snapshots omit the `/docs` prefix.
 paths. Preserve existing page URLs and legacy fragment redirects when moving content.
 
 [Caddyfile](Caddyfile) serves the built files, redirects alias hosts to
-`thruput.network`, and applies basic authentication to every route except
-`/health`. Authentication also covers Markdown exports. Repository visibility
-does not change this configuration. After a build, verify host routing with:
+`thruput.network`, and serves the site and Markdown exports without authentication.
+After a build, verify host routing with:
 
 ```sh
 node scripts/smoke-host-routing.mjs /path/to/caddy
