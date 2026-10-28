@@ -9,9 +9,9 @@ const papers = [
     id: 'thruput',
     category: '01 / System design',
     title: 'Project Thruput',
-    pdf: '/whitepapers/thruput.pdf',
+    pdf: null,
     summary: 'The main whitepaper introduces the case for abundant blockchain compute. It explores unordered transactions within blocks, concurrent updates to shared state, and the system architecture and capacity model behind Project Thruput.',
-    audience: 'Start here for the project’s motivation and design.',
+    audience: 'White paper coming October 29. Stay tuned.',
   },
   {
     id: 'fba-bridging',
@@ -51,10 +51,10 @@ const papers = [
               <h2 id={`${paper.id}-title`}>{paper.title}</h2>
               <p class="summary">{paper.summary}</p>
               <p class="audience">{paper.audience}</p>
-              <div class="paper-links">
+              {paper.pdf && <div class="paper-links">
                 <a href={paper.pdf} aria-label={`Read ${paper.title} (PDF)`}>Read PDF <span aria-hidden="true">↗</span></a>
                 <a href={paper.pdf} download aria-label={`Download ${paper.title} (PDF)`}>Download PDF</a>
-              </div>
+              </div>}
             </div>
           </article>
         ))}
