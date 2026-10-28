@@ -1,5 +1,5 @@
 {
-  "cli": "thruput 0.39.0 (commit fbad74b2)",
+  "cli": "thruput 0.42.0 (commit e422d971)",
   "commands": {
     "": {
       "subcommands": {
