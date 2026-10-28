@@ -300,7 +300,7 @@ npm run build
 
 ```text
 Follow Build a counter, part 3:
-https://thruput.network/docs/tutorials/build-a-counter-with-react/
+https://www.thruput.network/docs/tutorials/build-a-counter-with-react/
 Create the listed files in my existing app directory. Do not clone an
 examples repo. Verify reads, increment/decrement, transaction feedback,
 and the build. Keep the development key on the server and retain an

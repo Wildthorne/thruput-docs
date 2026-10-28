@@ -115,7 +115,7 @@ See [Read contract data](/react/reads/) for arguments and query behavior, or [Co
 
 ```text
 Build the Project Thruput React quickstart:
-https://thruput.network/docs/get-started/react/
+https://www.thruput.network/docs/get-started/react/
 Use a React TypeScript Vite project, the latest published Project Thruput
 packages, and hosted Futurenet. Configure package access through my environment.
 Display the native-token total supply and its read height with useContractView.

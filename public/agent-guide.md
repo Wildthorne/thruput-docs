@@ -7,7 +7,7 @@ thruput skill install
 thruput skill show
 ```
 
-Follow [Build with an Agent](https://thruput.network/docs/start/build-with-an-agent/)
+Follow [Build with an Agent](https://www.thruput.network/docs/start/build-with-an-agent/)
 for setup and a first contract. The skill source is
 [thruputchain/agent-skills](https://github.com/thruputchain/agent-skills).
 Skill updates are independent of CLI releases.

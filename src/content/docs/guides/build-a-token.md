@@ -123,7 +123,7 @@ You now have a deployable token artifact. Use [Deploy and call](/cli/deploy-and-
 
 ```text
 Follow Build a token:
-https://thruput.network/docs/guides/build-a-token/
+https://www.thruput.network/docs/guides/build-a-token/
 Use contracts/erc20 in thruput-examples with its workspace lockfile.
 Trace administrator checks, transfers, allowances, and events in source.
 Run the native, same-block, and RV32 tests. Report actual results and

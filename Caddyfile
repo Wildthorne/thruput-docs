@@ -31,16 +31,16 @@
 			host docs.thruput.network docs.groundhog.dev
 			path /
 		}
-		redir @oldDocsRoot https://thruput.network/docs{uri} 308
+		redir @oldDocsRoot https://www.thruput.network/docs{uri} 308
 
 		@oldDocsPage {
 			host docs.thruput.network docs.groundhog.dev
 			path_regexp docs ^/(architecture|get-started|start|cli|contracts|typescript|react|guides|tools|reference|tutorials|programming-model|how-it-works|ecosystem)(/|$)
 		}
-		redir @oldDocsPage https://thruput.network/docs{uri} 308
+		redir @oldDocsPage https://www.thruput.network/docs{uri} 308
 
-		@aliasHosts host www.thruput.network docs.thruput.network docs.groundhog.dev
-		redir @aliasHosts https://thruput.network{uri} 308
+		@aliasHosts host thruput.network docs.thruput.network docs.groundhog.dev
+		redir @aliasHosts https://www.thruput.network{uri} 308
 
 		try_files {path} {path}.html {path}/index.html
 		file_server {

@@ -211,7 +211,7 @@ This server is for local development.
 
 ```text
 Follow Build a counter, part 2:
-https://thruput.network/docs/tutorials/work-with-thruput-from-typescript/
+https://www.thruput.network/docs/tutorials/work-with-thruput-from-typescript/
 Generate the binding from my part-1 contract spec and create the listed
 files using my deployment address. Verify the read, funding, and
 public configuration endpoint. Keep the development key server-side.

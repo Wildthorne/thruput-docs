@@ -107,7 +107,7 @@ For isolated local work, follow [Run a local node](/cli/local-node/) and use its
 
 ```text
 Follow Build a counter, part 1:
-https://thruput.network/docs/tutorials/build-a-counter/
+https://www.thruput.network/docs/tutorials/build-a-counter/
 Start with thruput new counter --template counter, without cloning an examples repo.
 Run the native and RV32 checks, build, and read the deployment estimate.
 Add the documented storage allowance to the minimum and deploy with that

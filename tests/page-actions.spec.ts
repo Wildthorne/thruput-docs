@@ -31,7 +31,7 @@ test('copies the exported page, Markdown link, and existing task prompt', async 
   const response = await request.get(origin + markdown);
   expect(response.ok()).toBe(true);
   const exported = await response.text();
-  expect(exported).toContain('Source: <https://thruput.network' + path + '>');
+  expect(exported).toContain('Source: <https://www.thruput.network' + path + '>');
   expect(exported).toContain('thruput codegen ts');
   expect(exported).not.toContain('Copy page');
   const more = actions.locator('summary');

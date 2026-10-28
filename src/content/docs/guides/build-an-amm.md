@@ -148,7 +148,7 @@ cargo test -p swap-driver -p swap-router -p swap-factory --features guest_test -
 
 ```text
 Follow Build an AMM:
-https://thruput.network/docs/guides/build-an-amm/
+https://www.thruput.network/docs/guides/build-an-amm/
 Use the existing swap contract suite in thruput-examples. Run pool,
 liquidity, swap, slippage, request-ID, authorization, and queue tests.
 Build the guest artifacts and rerun with guest_test. Explain how the

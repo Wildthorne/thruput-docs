@@ -3,10 +3,10 @@ const origin = 'http://127.0.0.1:4322';
 
 test('landing and docs have distinct canonical URLs and retain root downloads', async ({ page, request }) => {
   await page.goto(origin);
-  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', 'https://thruput.network/');
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', 'https://www.thruput.network/');
   await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('link', { name: 'Documentation', exact: true }).click();
   await expect(page).toHaveURL(origin + '/docs/get-started/');
-  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', 'https://thruput.network/docs/get-started/');
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', 'https://www.thruput.network/docs/get-started/');
   const links = await page.locator('main a[href^="/"]').evaluateAll(links => links.map(link => link.getAttribute('href')));
   expect(links.every(link => link!.startsWith('/docs/') || link!.startsWith('/markdown/'))).toBe(true);
   await page.getByRole('link', { name: 'Project Thruput homepage' }).click();
@@ -30,11 +30,11 @@ test('old root links preserve query strings and fragments', async ({ page }) => 
 
 test('sitemap lists canonical pages and excludes URL aliases and redirect pages', async ({ request }) => {
   const xml = await (await request.get(origin + '/sitemap-0.xml')).text();
-  expect(xml).toContain('<loc>https://thruput.network/</loc>');
-  expect(xml).toContain('<loc>https://thruput.network/docs/cli/install/</loc>');
+  expect(xml).toContain('<loc>https://www.thruput.network/</loc>');
+  expect(xml).toContain('<loc>https://www.thruput.network/docs/cli/install/</loc>');
   for (const path of ['/cli/install/', '/docs/', '/start/', '/docs/start/',
     '/docs/tutorials/build-a-token/', '/docs/tutorials/build-an-amm/', '/docs/tutorials/consume-the-firehose/']) {
-    expect(xml).not.toContain(`<loc>https://thruput.network${path}</loc>`);
+    expect(xml).not.toContain(`<loc>https://www.thruput.network${path}</loc>`);
   }
 });
 

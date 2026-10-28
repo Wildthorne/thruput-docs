@@ -71,7 +71,7 @@ The result should be **15**. You have built, tested, deployed, and called a cont
 
 ```text
 Help me complete the Project Thruput contract quickstart:
-https://thruput.network/docs/get-started/contract/
+https://www.thruput.network/docs/get-started/contract/
 Use the latest CLI. Check CLI setup first: select Futurenet with
 thruput config use futurenet if it is not already selected, and confirm
 the wallet is funded. Scaffold my-counter with --template counter, then

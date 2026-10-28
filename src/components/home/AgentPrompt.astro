@@ -81,7 +81,7 @@ const prompt = rawPrompt;
       const dialogFeedback = this.querySelector<HTMLElement>('[data-dialog-feedback]')!;
       const buttons = this.querySelectorAll<HTMLButtonElement>('[data-copy]');
       if (this.dataset.localSnapshot) {
-        textarea.value = textarea.value.replaceAll('https://thruput.network/docs/', `${location.origin}/`);
+        textarea.value = textarea.value.replaceAll('https://www.thruput.network/docs/', `${location.origin}/`);
         this.querySelector('[data-preview-text]')!.textContent = textarea.value;
       }
       const open = (trigger: HTMLElement) => {

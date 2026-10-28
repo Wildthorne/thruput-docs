@@ -16,7 +16,7 @@ downloads keep their root URLs. Offline snapshots omit the `/docs` prefix.
 paths. Preserve existing page URLs and legacy fragment redirects when moving content.
 
 [Caddyfile](Caddyfile) serves the built files, redirects alias hosts to
-`thruput.network`, and serves the site and Markdown exports without authentication.
+`www.thruput.network`, and serves the site and Markdown exports without authentication.
 After a build, verify host routing with:
 
 ```sh

@@ -68,7 +68,7 @@ try {
   await page.getByRole('complementary', { name: 'Local documentation snapshot' }).waitFor();
   const prompt = await page.locator('textarea[name="agent-prompt"]').inputValue();
   assert.ok(prompt.includes(`${origin}/cli/install/`));
-  assert.ok(!prompt.includes('https://thruput.network'));
+  assert.ok(!prompt.includes('https://www.thruput.network'));
   await page.goto(`${origin}/start/`);
   await page.waitForURL(`${origin}/architecture/`);
   assert.equal(await page.locator('main h1').textContent(), 'Introduction');
@@ -97,7 +97,7 @@ try {
   await page.waitForFunction(() => document.querySelector('page-actions [role="status"]')?.textContent === 'Copied');
   const task = await page.evaluate(() => navigator.clipboard.readText());
   assert.ok(task.includes(`${origin}/tutorials/build-a-counter/`));
-  assert.ok(!task.includes('https://thruput.network/'));
+  assert.ok(!task.includes('https://www.thruput.network/'));
   await page.locator('site-search > button').click();
   const dialog = page.getByRole('dialog');
   await dialog.getByRole('textbox', { name: /^Search/ }).fill('storage');

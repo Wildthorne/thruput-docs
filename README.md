@@ -1,7 +1,7 @@
 # Project Thruput documentation
 
-Source for the [Project Thruput website](https://thruput.network/) and
-[developer documentation](https://thruput.network/docs/). The site is built with
+Source for the [Project Thruput website](https://www.thruput.network/) and
+[developer documentation](https://www.thruput.network/docs/). The site is built with
 Astro and Starlight and published as static HTML, with Markdown exports and
 offline documentation for the Thruput CLI.
 

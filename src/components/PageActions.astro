@@ -73,7 +73,7 @@ const prompt = agentSection?.match(/```text\r?\n([\s\S]*?)\r?\n```/)?.[1];
             if (button.dataset.copy === 'link') text = markdownUrl;
             else if (button.dataset.copy === 'prompt') {
               text = this.querySelector<HTMLTemplateElement>('[data-task-prompt]')!.content.textContent!;
-              if (this.dataset.localSnapshot) text = text.replaceAll('https://thruput.network/docs/', `${location.origin}/`);
+              if (this.dataset.localSnapshot) text = text.replaceAll('https://www.thruput.network/docs/', `${location.origin}/`);
             } else {
               const response = await fetch(markdownUrl, { signal: controller.signal });
               if (!response.ok || response.headers.get('content-type')?.includes('text/html')) {

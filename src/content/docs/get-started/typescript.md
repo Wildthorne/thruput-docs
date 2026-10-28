@@ -66,7 +66,7 @@ Use [Read contract data](/typescript/reads/) for arguments, caller context, and 
 
 ```text
 Build the Project Thruput TypeScript quickstart:
-https://thruput.network/docs/get-started/typescript/
+https://www.thruput.network/docs/get-started/typescript/
 Use @thruputchain/client 0.25.0 with @thruputchain/protocol 0.19.1 and the hosted Futurenet.
 Configure package access through my environment. Create the typed native-token
 total-supply read shown in the guide and run it. Show the actual supply

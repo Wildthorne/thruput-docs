@@ -63,7 +63,7 @@ Copy this prompt into your agent:
 
 ```text
 Help me complete the Thruput CLI quickstart:
-https://thruput.network/docs/get-started/cli/
+https://www.thruput.network/docs/get-started/cli/
 Use the latest CLI, install the thruput skill, and read thruput skill show cli.
 Run thruput init, then thruput config use futurenet outside a project.
 Set up a Futurenet wallet without creating a contract project or running a local node.

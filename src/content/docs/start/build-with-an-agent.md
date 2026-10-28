@@ -12,7 +12,7 @@ Help me deploy and use my first Project Thruput counter contract on Futurenet.
 
 1. Install the latest Thruput CLI and run thruput init. Use
    thruput --help to see all available commands. Follow the installation
-   instructions at https://thruput.network/docs/cli/install/.
+   instructions at https://www.thruput.network/docs/cli/install/.
 2. Install the thruput skill user-wide for this coding agent with
    thruput skill install --global, then read the installed skill.
 3. Export the documentation into a new folder with thruput docs export.

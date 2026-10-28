@@ -35,10 +35,11 @@ try {
   }
   for (const host of ['thruput.network', 'www.thruput.network', 'docs.thruput.network', 'docs.groundhog.dev']) {
     assert.equal((await request(host, '/health')).status, 200);
-    assert.equal((await request(host, '/')).status, host === 'thruput.network' ? 200 : 308);
+    assert.equal((await request(host, '/')).status, host === 'www.thruput.network' ? 200 : 308);
   }
   for (const [host, path, destination] of [
-    ['www.thruput.network', '/docs/cli/install/?via=www', '/docs/cli/install/?via=www'],
+    ['thruput.network', '/?via=apex', '/?via=apex'],
+    ['thruput.network', '/docs/cli/install/?via=apex', '/docs/cli/install/?via=apex'],
     ['docs.thruput.network', '/?via=old', '/docs/?via=old'],
     ['docs.thruput.network', '/cli/install/?via=old', '/docs/cli/install/?via=old'],
     ['docs.groundhog.dev', '/programming-model/advanced/?via=old', '/docs/programming-model/advanced/?via=old'],
@@ -48,16 +49,16 @@ try {
   ]) {
     const response = await request(host, path);
     assert.equal(response.status, 308, `${host}${path}`);
-    assert.equal(response.headers.get('location'), 'https://thruput.network' + destination);
+    assert.equal(response.headers.get('location'), 'https://www.thruput.network' + destination);
   }
-  const home = await request('thruput.network', '/');
+  const home = await request('www.thruput.network', '/');
   assert.equal(home.status, 200);
-  assert.match(await home.text(), /href="https:\/\/thruput.network\/"/);
-  const docs = await request('thruput.network', '/docs/cli/install/');
+  assert.match(await home.text(), /href="https:\/\/www\.thruput\.network\/"/);
+  const docs = await request('www.thruput.network', '/docs/cli/install/');
   assert.equal(docs.status, 200);
-  assert.match(await docs.text(), /https:\/\/thruput.network\/docs\/cli\/install\//);
-  assert.equal((await request('thruput.network', '/missing-page')).status, 404);
-  assert.equal((await request('thruput.network', '/markdown/pages/cli/install.md')).status, 200);
+  assert.match(await docs.text(), /https:\/\/www\.thruput\.network\/docs\/cli\/install\//);
+  assert.equal((await request('www.thruput.network', '/missing-page')).status, 404);
+  assert.equal((await request('www.thruput.network', '/markdown/pages/cli/install.md')).status, 200);
   console.log('Caddy public access, canonical host redirects, query preservation, static routing, and 404 checks passed.');
 } finally {
   server.kill('SIGTERM');
