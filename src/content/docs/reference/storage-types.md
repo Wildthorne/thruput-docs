@@ -6,7 +6,7 @@ description: API reference for Project Thruput storage types.
 | Area | Links |
 |------|-------|
 | Type choice and conflict semantics | [Storage guidance](/programming-model/storage-types/) |
-| Generated type, guard, and trait APIs | [`thruput_sdk::storage`](https://crates.thruput.network/docs/sdk/0.42.2/doc/sdk/storage/index.html), [Rust API Docs](/tools/rust-api-docs/) |
+| Generated type, guard, and trait APIs | [`thruput_sdk::storage`](https://docs.rs/thruput-sdk/latest/thruput_sdk/storage/index.html), [Rust API Docs](/tools/rust-api-docs/) |
 | Encoding | CXS; serialization traits retain the names `ReadXDR` and `WriteXDR` |
 
 ## Balance

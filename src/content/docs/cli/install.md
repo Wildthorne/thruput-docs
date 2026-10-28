@@ -1,14 +1,13 @@
 ---
 title: Install the CLI
-description: Install the latest Thruput CLI and prepare Cargo access for contract development.
+description: Install the latest Thruput CLI and the local runtime for contract development.
 ---
 
 Install the latest `thruput` release. The CLI selects the dependencies and compiler settings for projects it creates; you do not need to choose SDK or node versions.
 
 ## Before you start
 
-- Install Rust with [rustup](https://rustup.rs/). Each project pins its own toolchain in `rust-toolchain.toml`: a nightly with the RV32 target and `rust-src`. Run `thruput status` in the project; it reports a missing toolchain or component and prints the `rustup` command that installs it.
-- Obtain access to the Project Thruput Cargo registry from your onboarding contact. Repository access alone does not grant package access.
+Install Rust with [rustup](https://rustup.rs/).
 
 Check that Cargo is available:
 
@@ -16,23 +15,12 @@ Check that Cargo is available:
 cargo --version
 ```
 
-## Configure Cargo access
-
-Set the registry address and credential provider in your shell:
-
-```bash
-export CARGO_REGISTRIES_THRUPUT_INDEX="sparse+https://crates.thruput.network/api/v1/crates/"
-export CARGO_REGISTRIES_THRUPUT_CREDENTIAL_PROVIDER=cargo:token
-```
-
-Supply `CARGO_REGISTRIES_THRUPUT_TOKEN` through your credential manager or onboarding environment. Keep the token out of project files and agent prompts. If you already use a Cargo credential manager for this registry, keep its provider instead.
-
-Use the same registry access in terminals where you build contracts. The generated project includes the registry address, but it does not include your credentials.
-
 ## Install with Cargo
 
+The CLI, SDK, and testkit are published on [crates.io](https://crates.io/crates/thruput).
+
 ```bash
-cargo install thruput-cli --registry thruput --locked
+cargo install thruput --locked
 thruput --version
 ```
 

@@ -11,7 +11,7 @@ You can also explore the [full counter example on GitHub](https://github.com/thr
 
 ## Create the contract
 
-Complete [CLI installation and Cargo access](/cli/install/). For deployment, use a funded Futurenet account from the [CLI quickstart](/get-started/cli/).
+Complete [CLI installation](/cli/install/). For deployment, use a funded Futurenet account from the [CLI quickstart](/get-started/cli/).
 
 ```bash
 thruput new counter --template counter

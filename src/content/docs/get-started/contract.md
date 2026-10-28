@@ -5,7 +5,7 @@ description: Create, test, and deploy a Rust counter contract to Project Thruput
 
 Deploy a counter to Futurenet, increase its value, and read the result.
 
-**Before you start:** complete the [CLI quickstart](/get-started/cli/) so you have the latest CLI and a funded Futurenet wallet. Keep your [Cargo registry access](/cli/install/#configure-cargo-access) available in this terminal.
+**Before you start:** complete the [CLI quickstart](/get-started/cli/) so you have the latest CLI and a funded Futurenet wallet.
 
 ## 1. Create a contract
 

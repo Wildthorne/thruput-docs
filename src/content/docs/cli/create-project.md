@@ -62,3 +62,5 @@ Keep shared `thruput.toml`, `.cargo/`, and `rust-toolchain.toml` files at the wo
 thruput build -p my-counter
 thruput test -p my-counter
 ```
+
+Each project pins its own toolchain in `rust-toolchain.toml`: a nightly with the RV32 target and `rust-src`. Run `thruput status` in the project; it reports a missing toolchain or component and prints the `rustup` command that installs it.

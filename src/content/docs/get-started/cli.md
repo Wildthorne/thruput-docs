@@ -70,6 +70,5 @@ Set up a Futurenet wallet without creating a contract project or running a local
 Preserve any existing keys and configuration. Request test funds,
 check the wallet balance, and inspect the airdrop transaction.
 Report success only after checking the committed transaction result.
-Ask me to supply any required registry access through my environment,
-not in this conversation. Report a network failure rather than bypassing it.
+Report a network failure rather than bypassing it.
 ```

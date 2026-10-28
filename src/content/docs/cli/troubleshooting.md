@@ -13,10 +13,6 @@ thruput config get futurenet --sources
 
 For local work, use `--profile local`. `status` can exit nonzero when it finds warnings; inspect the findings rather than assuming the report itself failed.
 
-## Cargo cannot access packages
-
-Complete [Cargo access setup](/cli/install/#configure-cargo-access) in the terminal running the build. A registry token alone is not enough if Cargo has no credential provider configured. Repository access does not imply registry access.
-
 ## The wrong profile or account is selected
 
 An explicit `--profile` wins over `THRUPUT_PROFILE`, which wins over project and global defaults. A profile-specific key or selected wallet can also override the global key. Inspect both configuration and `wallet ls --profile NAME` before changing them.

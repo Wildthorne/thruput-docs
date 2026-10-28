@@ -30,6 +30,6 @@ Finish with the project location, contract address, transaction hashes,
 verified counter value, and the CLI commands I can use next.
 ```
 
-The agent follows the [CLI](/get-started/cli/) and [contract](/get-started/contract/) quickstarts. Provide repository or registry access through your local environment when requested.
+The agent follows the [CLI](/get-started/cli/) and [contract](/get-started/contract/) quickstarts. Provide repository access through your local environment when requested.
 
 See [Skills and local docs](/cli/agent-tools/) for installation requirements, agent selection, and Markdown export. For a smaller task, use the prompt in an individual [quickstart](/get-started/).

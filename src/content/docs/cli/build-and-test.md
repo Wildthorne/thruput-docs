@@ -3,7 +3,7 @@ title: Build and test
 description: Build RV32 artifacts and choose native, artifact, or RPC integration tests.
 ---
 
-Run these commands inside a [CLI-generated project](/cli/create-project/) with [Cargo access](/cli/install/#configure-cargo-access) configured.
+Run these commands inside a [CLI-generated project](/cli/create-project/).
 
 ## Build a deployable artifact
 

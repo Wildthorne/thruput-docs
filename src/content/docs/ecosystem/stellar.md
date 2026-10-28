@@ -9,7 +9,7 @@ Project Thruput is a development network. Its relationship to the Stellar networ
 
 ## Before you start
 
-Install the [Thruput CLI](/cli/install/) 0.40.1 or later. Configure [Cargo access](/cli/install/#configure-cargo-access) to the Thruput package registry. `thruput new` [creates a project](/cli/create-project/) with native and RV32 guest tests.
+Install the [Thruput CLI](/cli/install/). `thruput new` [creates a project](/cli/create-project/) with native and RV32 guest tests.
 
 The examples follow one payment. Alice starts with 100 units. She pays Bob 10 directly, then 7 through a router. Alice ends with 83 and Bob with 17. Mallory tries to spend Alice's balance and is refused. The Soroban side is a small fixed-supply teaching ledger, not a full token implementation. It follows the official [Soroban auth](https://developers.stellar.org/docs/build/smart-contracts/example-contracts/auth) and [cross-contract](https://developers.stellar.org/docs/build/smart-contracts/example-contracts/cross-contract-call) examples: enum storage keys, a generated client, typed errors, and scoped authorization tests. The Thruput side uses the ERC20 token from [Build a token](/guides/build-a-token/).
 
