@@ -13,7 +13,8 @@ export default defineConfig({
   integrations: [
     canonicalSitemap(),
     starlight({
-      title: "Project Thruput",
+      title: "Stellar Project Thruput",
+      titleDelimiter: "|",
       head: [
         { tag: "meta", attrs: { property: "og:image", content: "https://www.thruput.network/images/thruput-social.png" } },
         { tag: "meta", attrs: { property: "og:image:type", content: "image/png" } },
