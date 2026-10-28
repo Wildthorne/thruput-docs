@@ -14,6 +14,15 @@ export default defineConfig({
     canonicalSitemap(),
     starlight({
       title: "Project Thruput",
+      head: [
+        { tag: "meta", attrs: { property: "og:image", content: "https://thruput.network/images/thruput-social.png" } },
+        { tag: "meta", attrs: { property: "og:image:type", content: "image/png" } },
+        { tag: "meta", attrs: { property: "og:image:width", content: "2400" } },
+        { tag: "meta", attrs: { property: "og:image:height", content: "1260" } },
+        { tag: "meta", attrs: { property: "og:image:alt", content: "Blockchain technology built for abundance. Stellar | Project Thruput." } },
+        { tag: "meta", attrs: { name: "twitter:image", content: "https://thruput.network/images/thruput-social.png" } },
+        { tag: "meta", attrs: { name: "twitter:image:alt", content: "Blockchain technology built for abundance. Stellar | Project Thruput." } },
+      ],
       routeMiddleware: "./src/route-middleware.ts",
       customCss: ["./src/styles/custom.css"],
       components: {

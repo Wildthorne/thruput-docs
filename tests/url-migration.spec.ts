@@ -18,7 +18,7 @@ test('landing and docs have distinct canonical URLs and retain root downloads', 
 
 test('old root links preserve query strings and fragments', async ({ page }) => {
   for (const [oldPath, destination] of [
-    ['/cli/install/?via=old#configure-cargo-access', '/docs/cli/install/?via=old#configure-cargo-access'],
+    ['/cli/install/?via=old#install-with-cargo', '/docs/cli/install/?via=old#install-with-cargo'],
     ['/start/?via=old#_top', '/docs/architecture/?via=old#_top'],
     ['/programming-model/advanced/?via=old#negative-set-values', '/docs/programming-model/nnint/?via=old#negative-set-values'],
   ]) {
