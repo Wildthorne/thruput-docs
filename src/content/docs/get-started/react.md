@@ -14,7 +14,7 @@ npm create vite@latest my-thruput-ui -- --template react-ts
 cd my-thruput-ui
 ```
 
-Configure [npm package access](/typescript/setup/#give-npm-package-access) in this directory, then install the application dependencies:
+Install the application dependencies from the public npm registry. If you used GitHub Packages before, [remove the old registry setting](/typescript/setup/#give-npm-package-access) first:
 
 ```bash
 npm install
@@ -117,7 +117,7 @@ See [Read contract data](/react/reads/) for arguments and query behavior, or [Co
 Build the Project Thruput React quickstart:
 https://www.thruput.network/docs/get-started/react/
 Use a React TypeScript Vite project, the latest published Project Thruput
-packages, and hosted Futurenet. Configure package access through my environment.
+packages from public npm, and hosted Futurenet. No GitHub authentication is needed.
 Display the native-token total supply and its read height with useContractView.
 Include loading and error states and a Refresh button. Run the build
 and verify the actual page result. No CLI, contract deployment, or wallet

@@ -18,7 +18,7 @@ npm init -y
 npm pkg set type=module
 ```
 
-Configure [npm registry access](/typescript/setup/#give-npm-package-access), then install the TypeScript dependencies:
+Install the TypeScript dependencies from the public npm registry. If you used GitHub Packages before, [remove the old registry setting](/typescript/setup/#give-npm-package-access) first:
 
 ```bash
 npm install @thruputchain/client @thruputchain/protocol

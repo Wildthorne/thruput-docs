@@ -1,35 +1,25 @@
 ---
 title: Package setup
-description: Configure access to Project Thruput's JavaScript packages for TypeScript and React applications.
+description: Install Project Thruput's public npm packages for TypeScript and React applications.
 ---
 
-The private `@thruputchain` TypeScript client and React library are distributed through GitHub Packages. Configure registry access once, then install the packages your application imports.
+The `@thruputchain` TypeScript client and React library are public packages on [npm](https://www.npmjs.com/org/thruputchain). Install the packages your application imports. No GitHub account or access token is required.
 
 ## Before you start
 
-- Install Node.js 22.12 or newer and npm.
-- Obtain access to Project Thruput's GitHub packages.
-- Install the [GitHub CLI](https://cli.github.com/) and sign in with `gh auth login`.
+Install Node.js 22.12 or newer and npm.
 
 ## Give npm package access
 
-Authorize package reads, then make the token available to npm in this terminal:
-
-```bash
-gh auth refresh -h github.com -s read:packages
-export NODE_AUTH_TOKEN="$(gh auth token)"
-```
-
-Create a `.npmrc` file in the application directory:
+New projects use the public npm registry without additional configuration. If you followed the older GitHub Packages instructions, remove this entry from your project's `.npmrc` and your user-level `~/.npmrc`, wherever it appears:
 
 ```ini
 @thruputchain:registry=https://npm.pkg.github.com
-//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}
 ```
 
-Keep `${NODE_AUTH_TOKEN}` as a literal reference in this file. Do not replace it with the token. If your environment already supplies a package-read token, use that instead of the GitHub CLI commands.
+Keep unrelated registry settings and credentials. If an existing lockfile still resolves `@thruputchain` packages through GitHub Packages, update those resolutions before using it for a clean install.
 
-These pages use `@thruputchain/client` 0.25.0 with `@thruputchain/protocol` 0.19.1. Install those versions and keep the generated lockfile. A package-access error needs an account or token with the required permissions; repository access alone may not be enough.
+These pages use `@thruputchain/client` 0.25.0 with `@thruputchain/protocol` 0.19.1. Install those versions and keep the generated lockfile.
 
 ## Install the TypeScript client
 
@@ -57,6 +47,7 @@ For the Node.js examples, create `tsconfig.json`:
     "target": "ES2022",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
+    "types": ["node"],
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "skipLibCheck": true,

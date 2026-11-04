@@ -32,7 +32,4 @@ if (!existsSync(resolve(output, 'package.json'))) {
     scripts: { dev: 'vite', build: 'tsc --noEmit && vite build' },
   }, null, 2) + '\n');
 }
-if (!existsSync(resolve(output, '.npmrc'))) {
-  writeFileSync(resolve(output, '.npmrc'), '@thruputchain:registry=https://npm.pkg.github.com\n');
-}
 console.log(`Counter part ${part} files prepared in ${output}`);

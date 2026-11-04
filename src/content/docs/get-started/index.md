@@ -20,7 +20,7 @@ Get a working result on Futurenet. Choose the tools you want to use; you do not 
 
 ## What you need
 
-CLI and contract work use the [Thruput CLI](/cli/install/). TypeScript and React applications use [Node.js and GitHub Packages](/typescript/setup/). Install the latest releases; the quickstarts link to the setup they need.
+CLI and contract work use the [Thruput CLI](/cli/install/). TypeScript and React applications use [Node.js and public npm packages](/typescript/setup/). Install the latest releases; the quickstarts link to the setup they need.
 
 Futurenet is a shared test network and can be reset. Keep your development keys, but expect to request new test funds or redeploy after a reset.
 

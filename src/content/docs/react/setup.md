@@ -11,7 +11,7 @@ cd my-thruput-ui
 npm install
 ```
 
-Complete the shared [registry access setup](/typescript/setup/#give-npm-package-access), then install the integration and its client together:
+Install the integration and its client together from the public npm registry. If you used GitHub Packages before, [remove the old registry setting](/typescript/setup/#give-npm-package-access) first:
 
 ```bash
 npm install @thruputchain/react @thruputchain/client @thruputchain/protocol @tanstack/react-query

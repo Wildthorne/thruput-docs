@@ -7,7 +7,7 @@ Use `thruput skill` for coding-agent instructions and `thruput docs` for the dev
 
 ## Install the maintained skill
 
-Installation requires Node.js 22.20 or newer, npm, Git, and access to the private [skill repository](https://github.com/thruputchain/agent-skills). Configure repository authentication through Git, GitHub CLI, or SSH.
+Installation requires Node.js 22.20 or newer, npm, and Git. The [skill repository](https://github.com/thruputchain/agent-skills) is public; no GitHub account or access token is required.
 
 ```bash
 thruput skill install
@@ -26,7 +26,7 @@ Repeat `--agent` to select more than one agent. These commands run `npx skills` 
 npx skills add thruputchain/agent-skills --skill thruput
 ```
 
-Installing the skill does not configure Cargo or npm access for a contract or application. Follow the relevant [quickstart](/get-started/) for those dependencies.
+Installing the skill does not install the contract or application dependencies. Follow the relevant [quickstart](/get-started/) for those dependencies.
 
 ## Update an installed skill
 

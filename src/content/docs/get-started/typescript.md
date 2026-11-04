@@ -3,7 +3,7 @@ title: TypeScript quickstart
 description: Connect to Futurenet and read the native-token contract with a typed TypeScript client.
 ---
 
-Read the native token's total supply from Futurenet with a typed contract call. This experimental token has no monetary value. This path needs Node.js and package access, but no CLI, signing key, or contract deployment.
+Read the native token's total supply from Futurenet with a typed contract call. This experimental token has no monetary value. This path needs Node.js and npm, but no CLI, signing key, or contract deployment.
 
 ## 1. Create a project
 
@@ -15,7 +15,7 @@ npm pkg set type=module
 mkdir -p src
 ```
 
-Configure [npm package access](/typescript/setup/#give-npm-package-access) in this directory, then install the SDK and a TypeScript runner. Client 0.25.0 requires protocol 0.19.1, so install these exact versions:
+Install the SDK and a TypeScript runner from the public npm registry. If you used GitHub Packages before, [remove the old registry setting](/typescript/setup/#give-npm-package-access) first. Client 0.25.0 requires protocol 0.19.1, so install these exact versions:
 
 ```bash
 npm install --save-exact @thruputchain/client@0.25.0 @thruputchain/protocol@0.19.1
@@ -68,7 +68,7 @@ Use [Read contract data](/typescript/reads/) for arguments, caller context, and 
 Build the Project Thruput TypeScript quickstart:
 https://www.thruput.network/docs/get-started/typescript/
 Use @thruputchain/client 0.25.0 with @thruputchain/protocol 0.19.1 and the hosted Futurenet.
-Configure package access through my environment. Create the typed native-token
+Install the packages from public npm without GitHub authentication. Create the typed native-token
 total-supply read shown in the guide and run it. Show the actual supply
 and block height, or report the exact error if the request fails.
 Do not install the Rust toolchain, deploy a contract, or create a wallet
