@@ -11,7 +11,7 @@ These are things we'd like to see built in Thruput.
 
 ### Sharded state storage
 
-Sharded storage would increase the amount of state each validator can hold by spreading it across multiple HogDB instances. Applications would still see one key space and would not need to choose or manage shards. An [initial proposal](https://github.com/thruputchain/hogd/pull/3108) covers the first part of this work.
+Sharded storage would increase the amount of state each validator can hold by spreading it across multiple HogDB instances. Applications would still see one key space and would not need to choose or manage shards. An [initial proposal](https://github.com/thruputchain/hogd/pull/3108) covers the first part of this work (repository access required).
 
 ### Sponsored transactions
 

@@ -5,6 +5,13 @@ description: Download and install the Thruput fork of Freighter in Chrome for Fu
 
 Use [Thruput Freighter](https://github.com/thruputchain/freighter), a fork of Stellar's Freighter wallet with added Thruput support. Developer builds are available for Futurenet testing.
 
+:::caution[Repository access required]
+The Thruput Freighter repository is currently private. The downloads and source-build
+instructions below require access to it. A GitHub account alone is not sufficient.
+If you do not have access, use the [CLI quickstart](/get-started/cli/) to work with
+Futurenet without the extension.
+:::
+
 ## Download and extract
 
 1. Sign in to GitHub.
@@ -36,7 +43,8 @@ Download and extract a newer build into the same folder. Click **Reload** on the
 
 | Symptom | Check |
 | --- | --- |
-| No artifact download | Sign in to GitHub and choose a successful run with an unexpired **thruput-freighter-dev-…** artifact. |
+| Repository or build page returns 404 | The repository is private. Confirm that your signed-in GitHub account has access. |
+| No artifact download | With repository access, choose a successful run with an unexpired **thruput-freighter-dev-…** artifact. |
 | Chrome cannot find the manifest | Select the extracted folder that directly contains `manifest.json`. |
 | The app does not detect a wallet | Enable the extension, allow it on the site, and refresh the app tab. |
 

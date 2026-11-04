@@ -3,7 +3,7 @@ import { Icon } from '@astrojs/starlight/components';
 ---
 
 <starlight-menu-button class="print:hidden">
-  <button type="button" aria-expanded="false" aria-label={Astro.locals.t('menuButton.accessibleLabel')} aria-controls="starlight__sidebar">
+  <button type="button" popovertarget="starlight__sidebar" aria-expanded="false" aria-label={Astro.locals.t('menuButton.accessibleLabel')} aria-controls="starlight__sidebar">
     <Icon name="bars" class="open-menu" />
     <Icon name="close" class="close-menu" />
   </button>
@@ -18,32 +18,36 @@ import { Icon } from '@astrojs/starlight/components';
     connectedCallback() {
       const button = this.querySelector('button');
       const navigation = this.closest('nav');
+      const sidebar = document.querySelector<HTMLElement>('#starlight__sidebar');
       const content = document.querySelector<HTMLElement>('.main-frame');
-      if (!button || !navigation) return;
+      if (!button || !navigation || !sidebar) return;
       const desktop = matchMedia('(min-width: 50rem)');
       const setExpanded = (expanded: boolean) => {
-        // PageFrame uses the host attribute to control the sibling sidebar's visibility.
         this.setAttribute('aria-expanded', String(expanded));
         button.setAttribute('aria-expanded', String(expanded));
         document.body.toggleAttribute('data-mobile-menu-expanded', expanded);
         if (content) content.inert = expanded;
       };
-      const toggle = () => setExpanded(button.getAttribute('aria-expanded') !== 'true');
+      const close = () => {
+        if (sidebar.matches(':popover-open')) sidebar.hidePopover();
+        setExpanded(false);
+      };
+      const syncPopover = () => setExpanded(sidebar.matches(':popover-open'));
       const closeOnEscape = (event: KeyboardEvent) => {
         if (event.key !== 'Escape' || document.querySelector('dialog[open]') || button.getAttribute('aria-expanded') !== 'true') return;
-        setExpanded(false);
+        close();
         button.focus();
       };
       const closeOnLink = (event: MouseEvent) => {
-        if (event.target instanceof Element && event.target.closest('a[href]')) setExpanded(false);
+        if (event.target instanceof Element && event.target.closest('a[href]')) close();
       };
-      const closeOnDesktop = () => { if (desktop.matches) setExpanded(false); };
-      button.addEventListener('click', toggle);
+      const closeOnDesktop = () => { if (desktop.matches) close(); };
+      sidebar.addEventListener('toggle', syncPopover);
       document.addEventListener('keydown', closeOnEscape);
       document.addEventListener('click', closeOnLink);
       desktop.addEventListener('change', closeOnDesktop);
       this.cleanup = () => {
-        button.removeEventListener('click', toggle);
+        sidebar.removeEventListener('toggle', syncPopover);
         document.removeEventListener('keydown', closeOnEscape);
         document.removeEventListener('click', closeOnLink);
         desktop.removeEventListener('change', closeOnDesktop);

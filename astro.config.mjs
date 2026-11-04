@@ -8,6 +8,7 @@ import markdownExport from "./scripts/markdown-export.mjs";
 
 export default defineConfig({
   site: "https://www.thruput.network",
+  compressHTML: true,
   markdown: { processor: unified({ remarkPlugins: [remarkDocsRoutes] }) },
 
   integrations: [

@@ -7,7 +7,8 @@ offline documentation for the Thruput CLI.
 
 ## Run locally
 
-Use Node.js 22 and the pnpm version specified in [package.json](package.json).
+Use Node.js 22.23.4 or newer within Node 22, and the pnpm version specified in
+[package.json](package.json).
 
 ```sh
 pnpm install --frozen-lockfile
@@ -25,6 +26,11 @@ pnpm preview
 
 Corrections, clearer explanations, and tested examples are welcome. Open an
 [issue](https://github.com/thruputchain/thruput-docs/issues) or submit a pull request.
+
+If you do not have write access, fork the repository and open a pull request
+against `main`. Contributors with write access can use repository branches.
+All changes require a pull request and passing CI. Maintainers select reviewers
+manually; core maintainers can waive review approval when merging a pull request.
 
 | What you want to change | Where to look |
 | --- | --- |
@@ -55,3 +61,6 @@ Publishing, Markdown exports, and CLI snapshot procedures are in
 ## License
 
 [Apache License 2.0](LICENSE).
+
+Bundled font notices are in [public/font-licenses/](public/font-licenses/).
+For vulnerability reports, see [SECURITY.md](SECURITY.md).
