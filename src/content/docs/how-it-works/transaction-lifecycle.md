@@ -93,7 +93,7 @@ Automatic requeue in the last two cases does not guarantee later inclusion. Afte
 
 Clients retain the signed bytes, transaction hash, and original network. Receipt polling observes the outcome and does not resubmit. When retrying is appropriate, resubmit the same signed transaction while it remains valid. Expiration prevents future inclusion; it does not prove that an earlier attempt never committed. See [Resubmission and replacement](/typescript/transaction-status/#resubmission-and-replacement) for the application workflow.
 
-Sources (repository access required): engine `0.1.31-rc.16` [commit handling](https://github.com/thruputchain/hogd/blob/fff489c82d0ff28594e9dc8694aa5571787be7fd/hogd/hog_mempool/rpc_from_coord.cc#L3251-L3335) and [nomination rollback](https://github.com/thruputchain/hogd/blob/fff489c82d0ff28594e9dc8694aa5571787be7fd/hogd/hog_mempool/rpc_from_coord.cc#L1246-L1258), and tools `0.40.0` [status composition](https://github.com/thruputchain/thruput-tools/blob/774ea4be4287b096eb38a57aa4aa952b038f5c7b/crates/x23/hogd-backend/src/native/transaction/status.rs#L4-L54).
+Sources: engine `0.1.31-rc.16` [commit handling](https://github.com/thruputchain/hogd/blob/fff489c82d0ff28594e9dc8694aa5571787be7fd/hogd/hog_mempool/rpc_from_coord.cc#L3251-L3335) and [nomination rollback](https://github.com/thruputchain/hogd/blob/fff489c82d0ff28594e9dc8694aa5571787be7fd/hogd/hog_mempool/rpc_from_coord.cc#L1246-L1258), and tools `0.40.0` [status composition](https://github.com/thruputchain/thruput-tools/blob/774ea4be4287b096eb38a57aa4aa952b038f5c7b/crates/x23/hogd-backend/src/native/transaction/status.rs#L4-L54).
 
 ## Related Documentation
 
