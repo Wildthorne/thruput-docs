@@ -144,7 +144,7 @@ The `try_decrement` method (generated alongside `decrement` by the `#[contract]`
 
 ## Blocks and Conflicts
 
-Each `env.transact` call runs in the current block. Transactions in the same block read the previous block's committed state and do not see each other's writes. Call `env.advance_block()` to commit the block and make its effects visible. Use `env.advance_block_at(timepoint)` to pin the next block's time for deadline and expiry tests.
+Each `env.transact` call runs in the current block. Transactions in the same block read the previous block's committed state and do not see each other's writes. Call `env.advance_block()` to commit the block and make its effects visible. Use `env.advance_block_at(timepoint)` to pin the next block's time for deadline and expiry tests. Block time never moves backward, and the first block and every `advance_block()` read their time from the wall clock. Pin forward from the current block time (`thruput_sdk::block::get_block_timepoint`), not to a fixed date. Once a test pins a future time, pin every later block too, for example `&pinned + Duration::from_secs(1)`: a plain `advance_block()` panics until the wall clock catches up.
 
 Use same-block transactions to test merges and exclusion:
 
