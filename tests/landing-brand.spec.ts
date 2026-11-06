@@ -52,6 +52,15 @@ test('hero paths, workflow, and footer links reach confirmed destinations', asyn
   await page.goto(origin);
   await expect(page.locator('.hero-links').getByRole('link')).toHaveCount(3);
   await expect(page.getByRole('navigation', { name: 'Footer' }).getByRole('heading')).toHaveText(['Build', 'Learn', 'Connect', 'Project']);
+  const footer = page.getByRole('navigation', { name: 'Footer' });
+  await expect(footer.getByRole('link', { name: 'Community discussions', exact: true }))
+    .toHaveAttribute('href', 'https://github.com/thruputchain/thruput-docs/discussions');
+  await expect(footer.getByRole('link', { name: 'Discord: #thruput', exact: true }))
+    .toHaveAttribute('href', 'https://discord.com/channels/897514728459468821/1564948118162898954');
+  await expect(footer.getByRole('link', { name: 'Join Stellar Developers Discord', exact: true }))
+    .toHaveAttribute('href', 'https://discord.gg/stellardev');
+  await expect(footer.getByRole('link', { name: 'GitHub repositories', exact: true }))
+    .toHaveAttribute('href', 'https://github.com/thruputchain');
   const links = await page.locator('main a[href^="/"]').evaluateAll(elements => [...new Set(elements.map(element => element.getAttribute('href')!))]);
   for (const link of links) expect((await request.get(origin + link)).ok(), link).toBe(true);
 });

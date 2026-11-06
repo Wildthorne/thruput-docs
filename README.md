@@ -5,6 +5,10 @@ Source for the [Project Thruput website](https://www.thruput.network/) and
 Astro and Starlight and published as static HTML, with Markdown exports and
 offline documentation for the Thruput CLI.
 
+Ask questions in [Community discussions](https://github.com/thruputchain/thruput-docs/discussions)
+or chat in [#thruput](https://discord.com/channels/897514728459468821/1564948118162898954)
+on [Stellar Developers Discord](https://discord.gg/stellardev).
+
 ## Run locally
 
 Use Node.js 22.23.4 or newer within Node 22, and the pnpm version specified in

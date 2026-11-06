@@ -125,7 +125,9 @@ test('mobile homepage navigation and docs sidebar/theme', async ({ page }, testI
   await page.goto(origin);
   await page.getByRole('button', { name: 'Menu', exact: true }).click();
   await expect(page.locator('.sidebar .site-navigation').getByRole('link', { name: 'Community', exact: true }))
-    .toHaveAttribute('href', 'https://github.com/thruputchain');
+    .toHaveAttribute('href', 'https://github.com/thruputchain/thruput-docs/discussions');
+  await expect(page.locator('.sidebar .site-navigation').getByRole('link', { name: 'Discord', exact: true }))
+    .toHaveAttribute('href', 'https://discord.com/channels/897514728459468821/1564948118162898954');
   await page.locator('.sidebar').getByRole('link', { name: 'Start Building', exact: true }).click();
   await expect(page).toHaveURL(origin + '/docs/get-started/');
   await page.getByRole('button', { name: 'Menu', exact: true }).click();

@@ -99,8 +99,8 @@ test('entry pages keep site navigation separate from expandable documentation se
     expect(response?.status()).toBe(200);
     await expect(page.locator('main h1')).toHaveText(title);
     const navigation = page.locator('header .site-navigation');
-    await expect(navigation.getByRole('link')).toHaveText(['About', 'Whitepapers', 'Documentation', 'Community']);
-    await expect(navigation.getByRole('link', { name: 'Community', exact: true })).toHaveAttribute('href', 'https://github.com/thruputchain');
+    await expect(navigation.getByRole('link')).toHaveText(['About', 'Whitepapers', 'Documentation', 'Community', 'Discord']);
+    await expect(navigation.getByRole('link', { name: 'Community', exact: true })).toHaveAttribute('href', 'https://github.com/thruputchain/thruput-docs/discussions');
     await expect(page.locator('.sidebar .top-level > li > details > summary .large')).toHaveText([
       ...sections.map(([name]) => name), 'Tools', 'Reference',
     ]);
