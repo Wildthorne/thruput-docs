@@ -247,14 +247,26 @@ for (const width of [320, 375, 800, 1024, 1280, 1920]) {
       await page.goto(origin + route);
       await page.evaluate(() => document.fonts.ready);
       await checkShell(page);
-      const geometry = await page.locator('.site-header').evaluate(header =>
-        ['.site-brand', '.site-navigation', 'site-search > button', '.build-link'].map(selector => {
+      const geometry = await page.locator('.site-header').evaluate((header, width) =>
+        (width < 800
+          ? ['.site-brand', '.site-navigation', 'site-search > button', '.build-link']
+          : ['.site-brand', '.site-navigation a']).map(selector => {
           const rect = header.querySelector(selector)!.getBoundingClientRect();
           return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
-        })
+        }), width
       );
       if (baseline) expect(geometry, route).toEqual(baseline);
       else baseline = geometry;
+      if (width < 800) continue;
+      const rightmostControl = route !== '/'
+          ? '.desktop-theme button'
+          : width < 1200 ? 'site-search > button' : '.build-link';
+      await expect(page.locator(rightmostControl)).toBeVisible();
+      const rightGap = await page.locator('.site-header').evaluate((header, selector) =>
+        header.getBoundingClientRect().right - header.querySelector(selector)!.getBoundingClientRect().right,
+        rightmostControl
+      );
+      expect(Math.abs(rightGap), `${route} right-edge alignment`).toBeLessThanOrEqual(1);
     }
   });
 }
